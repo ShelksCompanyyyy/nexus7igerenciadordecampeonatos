@@ -1,9 +1,12 @@
 import { getMatches, getTeams } from '@/lib/store';
+import { useAuth } from '@/contexts/AuthContext';
 import { Swords, Clock, CheckCircle } from 'lucide-react';
 
 export default function MatchesPage() {
-  const matches = getMatches();
-  const teams = getTeams();
+  const { user } = useAuth();
+  const clanId = user?.clanId || '';
+  const matches = getMatches().filter(m => m.clanId === clanId);
+  const teams = getTeams().filter(t => t.clanId === clanId);
   const upcoming = matches.filter(m => m.status === 'upcoming');
   const completed = matches.filter(m => m.status === 'completed');
 
@@ -15,8 +18,6 @@ export default function MatchesPage() {
   return (
     <div className="space-y-6 animate-slide-up">
       <h1 className="text-2xl font-heading text-primary text-glow">PARTIDAS</h1>
-
-      {/* Upcoming */}
       <div className="bg-card rounded-lg neon-border p-5">
         <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2"><Clock size={16} /> PRÓXIMAS</h3>
         <div className="space-y-3">
@@ -33,8 +34,6 @@ export default function MatchesPage() {
           {upcoming.length === 0 && <p className="text-center text-muted-foreground text-sm font-display">Nenhuma partida agendada</p>}
         </div>
       </div>
-
-      {/* Completed */}
       <div className="bg-card rounded-lg neon-border p-5">
         <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2"><CheckCircle size={16} /> RESULTADOS</h3>
         <div className="space-y-3">

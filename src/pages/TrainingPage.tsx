@@ -1,9 +1,12 @@
 import { getTrainings, getTeams } from '@/lib/store';
+import { useAuth } from '@/contexts/AuthContext';
 import { Target, Calendar, Clock } from 'lucide-react';
 
 export default function TrainingPage() {
-  const trainings = getTrainings();
-  const teams = getTeams();
+  const { user } = useAuth();
+  const clanId = user?.clanId || '';
+  const trainings = getTrainings().filter(t => t.clanId === clanId);
+  const teams = getTeams().filter(t => t.clanId === clanId);
   const scheduled = trainings.filter(t => t.status === 'scheduled');
   const completed = trainings.filter(t => t.status === 'completed');
 
@@ -15,7 +18,6 @@ export default function TrainingPage() {
   return (
     <div className="space-y-6 animate-slide-up">
       <h1 className="text-2xl font-heading text-primary text-glow flex items-center gap-3"><Target size={28} /> XTREINO</h1>
-
       <div className="bg-card rounded-lg neon-border p-5">
         <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2"><Calendar size={16} /> AGENDADOS</h3>
         <div className="space-y-3">
@@ -25,8 +27,7 @@ export default function TrainingPage() {
               <div className="flex flex-col items-center">
                 <span className="text-primary font-heading text-sm">VS</span>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground font-display">
-                  <Calendar size={12} /> {t.date}
-                  <Clock size={12} /> {t.time}
+                  <Calendar size={12} /> {t.date} <Clock size={12} /> {t.time}
                 </div>
               </div>
               <TeamName id={t.teamBId} />
@@ -35,7 +36,6 @@ export default function TrainingPage() {
           {scheduled.length === 0 && <p className="text-center text-muted-foreground text-sm font-display p-4">Nenhum treino agendado</p>}
         </div>
       </div>
-
       <div className="bg-card rounded-lg neon-border p-5">
         <h3 className="font-heading text-sm text-primary mb-4">RESULTADOS DE TREINOS</h3>
         <div className="space-y-3">
