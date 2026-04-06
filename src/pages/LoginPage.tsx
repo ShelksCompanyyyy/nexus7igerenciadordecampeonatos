@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import nexusLogo from '@/assets/nexus7i-logo.png';
-import { Shield, Crown, User, KeyRound, ArrowLeft, Mail, Users } from 'lucide-react';
+import { Shield, Crown, User, KeyRound, ArrowLeft, Mail, Users, Eye, EyeOff } from 'lucide-react';
 import { getUsers, updateUser, updateClan, getClans, addClan } from '@/lib/store';
 
 type LoginMode = 'user' | 'admin' | 'superadmin' | 'register' | 'forgot';
@@ -20,6 +20,9 @@ export default function LoginPage() {
   const [clanAdminCode, setClanAdminCode] = useState('');
   const [createClanMode, setCreateClanMode] = useState(false);
   const [newClanAdminCode, setNewClanAdminCode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Forgot password states
   const [forgotStep, setForgotStep] = useState<'email' | 'code' | 'newpass'>('email');
