@@ -147,6 +147,21 @@ function SuperAdminPanel() {
       {tab === 'users' && <SuperUsersTab users={users} clans={clans} onRefresh={r} />}
       {tab === 'withdrawals' && <WithdrawalsTab />}
       {tab === 'spins' && <SpinsTab users={users} onRefresh={r} />}
+      {tab === 'clan-manage' && (
+        <div className="space-y-4">
+          <div className="bg-card rounded-lg border border-gold/20 p-4">
+            <h3 className="font-heading text-xs text-gold mb-3">SELECIONE O CLÃ PARA GERENCIAR</h3>
+            <select value={selectedClanId} onChange={e => setSelectedClanId(e.target.value)}
+              className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm">
+              <option value="">Selecione um clã</option>
+              {clans.map(c => <option key={c.id} value={c.id}>{c.name} ({users.filter(u => u.clanId === c.id).length} membros)</option>)}
+            </select>
+          </div>
+          {selectedClanId && (
+            <SuperClanManagePanel clanId={selectedClanId} onRefresh={r} />
+          )}
+        </div>
+      )}
       {tab === 'economy' && (
         <div className="space-y-4">
           <div className="bg-card rounded-lg border border-border p-4">
@@ -163,6 +178,52 @@ function SuperAdminPanel() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ==================== SUPER ADMIN CLAN MANAGE PANEL ====================
+function SuperClanManagePanel({ clanId, onRefresh }: { clanId: string; onRefresh: () => void }) {
+  const [subTab, setSubTab] = useState<ClanTab>('members');
+  const { refreshUser } = useAuth();
+
+  const clan = getClans().find(c => c.id === clanId);
+  const clanUsers = getUsers().filter(u => u.clanId === clanId && u.role !== 'superadmin');
+  const clanTeams = getTeams().filter(t => t.clanId === clanId);
+  const clanMatches = getMatches().filter(m => m.clanId === clanId);
+  const clanTrainings = getTrainings().filter(t => t.clanId === clanId);
+  const clanNews = getNews().filter(n => n.clanId === clanId);
+
+  const subTabs: { id: ClanTab; label: string; icon: any }[] = [
+    { id: 'members', label: 'Membros', icon: Users },
+    { id: 'teams', label: 'Lines', icon: Shield },
+    { id: 'matches', label: 'Partidas', icon: Swords },
+    { id: 'training', label: 'XTreino', icon: Target },
+    { id: 'news', label: 'Avisos', icon: Newspaper },
+    { id: 'settings', label: 'Config', icon: Settings },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 p-3 bg-gold/5 rounded-lg border border-gold/20">
+        <Crown size={16} className="text-gold" />
+        <span className="font-heading text-sm text-gold">Gerenciando: {clan?.name}</span>
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        {subTabs.map(t => (
+          <button key={t.id} onClick={() => setSubTab(t.id)}
+            className={`px-3 py-2 rounded font-heading text-xs flex items-center gap-2 transition-all ${
+              subTab === t.id ? 'bg-gradient-to-r from-gold/20 to-gold/10 text-gold border border-gold/30' : 'bg-secondary text-muted-foreground'
+            }`}
+          ><t.icon size={14} /> {t.label}</button>
+        ))}
+      </div>
+      {subTab === 'members' && <ClanMembersTab clanUsers={clanUsers} clanId={clanId} onRefresh={onRefresh} />}
+      {subTab === 'teams' && <ClanTeamsTab clanTeams={clanTeams} clanUsers={clanUsers} clanId={clanId} onRefresh={onRefresh} />}
+      {subTab === 'matches' && <ClanMatchesTab clanMatches={clanMatches} clanTeams={clanTeams} clanUsers={clanUsers} clanId={clanId} onRefresh={onRefresh} />}
+      {subTab === 'training' && <ClanTrainingTab clanTrainings={clanTrainings} clanTeams={clanTeams} clanId={clanId} onRefresh={onRefresh} />}
+      {subTab === 'news' && <ClanNewsTab clanNews={clanNews} clanId={clanId} currentUserId={'superadmin'} onRefresh={onRefresh} />}
+      {subTab === 'settings' && <ClanSettingsTab clan={clan} onRefresh={onRefresh} />}
     </div>
   );
 }
