@@ -92,6 +92,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-gold text-xs font-display">{user?.gold}G</span>
+            <button onClick={() => { if (user) { markAllNotificationsRead(user.id); } navigate('/'); }} className="relative text-foreground">
+              <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full text-[9px] text-primary-foreground flex items-center justify-center font-heading animate-pulse">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
             <button onClick={() => setMobileOpen(!mobileOpen)} className="text-foreground">
               {mobileOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
