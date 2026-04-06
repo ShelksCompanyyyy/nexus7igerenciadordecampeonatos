@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
@@ -12,7 +12,7 @@ import {
   getTransfers, addTransfer,
   type User, type Team
 } from '@/lib/store';
-import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Plus, Trash, Check, X, Search, Edit, ArrowRight } from 'lucide-react';
+import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Plus, Trash, Check, X, Search, Edit, ArrowRight, Camera, Image } from 'lucide-react';
 
 type Tab = 'users' | 'teams' | 'matches' | 'training' | 'news' | 'withdrawals' | 'spins' | 'dashboard';
 
@@ -45,7 +45,6 @@ export default function AdminPage() {
   // ---- Dashboard ----
   const Dashboard = () => {
     const totalGold = users.reduce((s, u) => s + (u.gold || 0), 0);
-    const paidUsers = users.filter(u => u.gold > 0).length;
     const pendingWithdrawals = withdrawals.filter(w => w.status === 'pending');
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -86,7 +85,7 @@ export default function AdminPage() {
     );
   };
 
-  // ---- Teams ----
+  // ---- Teams (enhanced) ----
   const TeamsTab = () => {
     const [name, setName] = useState('');
     const handleAdd = () => {
@@ -344,9 +343,10 @@ function UserRow({ user, onRefresh }: { user: User; onRefresh: () => void }) {
   const [deaths, setDeaths] = useState(user.deaths);
   const [assists, setAssists] = useState(user.assists);
   const [mvps, setMvps] = useState(user.mvps);
+  const [role, setRole] = useState(user.role);
 
   const save = () => {
-    updateUser(user.id, { gold, kills, deaths, assists, mvps });
+    updateUser(user.id, { gold, kills, deaths, assists, mvps, role });
     setEditing(false);
     onRefresh();
     toast.success('Dados atualizados!');
@@ -358,6 +358,7 @@ function UserRow({ user, onRefresh }: { user: User; onRefresh: () => void }) {
         <div>
           <p className="font-display text-foreground text-sm">{user.username} ({user.gameNick})</p>
           <p className="text-[10px] text-muted-foreground">ID: #{user.uniqueId || user.id} | {user.email}</p>
+          <p className="text-[10px] text-muted-foreground">Cargo: <span className={user.role === 'admin' ? 'text-primary' : 'text-foreground'}>{user.role.toUpperCase()}</span></p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setEditing(!editing)} className="text-primary p-1"><Edit size={14} /></button>
@@ -365,7 +366,7 @@ function UserRow({ user, onRefresh }: { user: User; onRefresh: () => void }) {
         </div>
       </div>
       {editing && (
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mt-3">
+        <div className="grid grid-cols-3 md:grid-cols-7 gap-2 mt-3">
           {[
             { label: 'Gold', value: gold, set: setGold },
             { label: 'Kills', value: kills, set: setKills },
@@ -379,6 +380,14 @@ function UserRow({ user, onRefresh }: { user: User; onRefresh: () => void }) {
                 className="w-full p-1 bg-secondary rounded border border-border text-foreground text-center text-sm" />
             </div>
           ))}
+          <div>
+            <label className="text-[10px] text-muted-foreground font-display">Cargo</label>
+            <select value={role} onChange={e => setRole(e.target.value as any)}
+              className="w-full p-1 bg-secondary rounded border border-border text-foreground text-xs">
+              <option value="user">Jogador</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
           <div className="flex items-end">
             <button onClick={save} className="px-3 py-1 gradient-primary text-primary-foreground rounded text-xs font-heading">SALVAR</button>
           </div>
@@ -390,6 +399,9 @@ function UserRow({ user, onRefresh }: { user: User; onRefresh: () => void }) {
 
 function TeamRow({ team, users, onRefresh }: { team: Team; users: User[]; onRefresh: () => void }) {
   const [addingPlayer, setAddingPlayer] = useState('');
+  const [editingName, setEditingName] = useState(false);
+  const [teamName, setTeamName] = useState(team.name);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const teamPlayers = users.filter(u => team.players.includes(u.id));
   const availablePlayers = users.filter(u => !u.teamId && !team.players.includes(u.id));
 
@@ -408,10 +420,57 @@ function TeamRow({ team, users, onRefresh }: { team: Team; users: User[]; onRefr
     onRefresh();
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateTeam(team.id, { logo: reader.result as string });
+      onRefresh();
+      toast.success('Logo do time atualizado!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const saveTeamName = () => {
+    if (!teamName.trim()) return;
+    updateTeam(team.id, { name: teamName });
+    setEditingName(false);
+    onRefresh();
+    toast.success('Nome do time atualizado!');
+  };
+
   return (
     <div className="bg-secondary/50 p-4 rounded-lg">
       <div className="flex items-center justify-between mb-3">
-        <span className="font-heading text-sm text-foreground">{team.name}</span>
+        <div className="flex items-center gap-3">
+          {/* Team logo */}
+          <div className="relative">
+            <div className="w-10 h-10 rounded-lg bg-background/50 border border-border flex items-center justify-center overflow-hidden cursor-pointer"
+              onClick={() => logoInputRef.current?.click()}>
+              {team.logo ? (
+                <img src={team.logo} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <Image size={16} className="text-muted-foreground" />
+              )}
+            </div>
+            <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+          </div>
+          {/* Team name */}
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <input value={teamName} onChange={e => setTeamName(e.target.value)}
+                className="p-1 bg-secondary rounded border border-border text-foreground font-heading text-sm w-32" />
+              <button onClick={saveTeamName} className="text-success"><Check size={14} /></button>
+              <button onClick={() => setEditingName(false)} className="text-destructive"><X size={14} /></button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="font-heading text-sm text-foreground">{team.name}</span>
+              <button onClick={() => { setTeamName(team.name); setEditingName(true); }} className="text-muted-foreground hover:text-primary"><Edit size={12} /></button>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <input type="number" value={team.wins} onChange={e => { updateTeam(team.id, { wins: Number(e.target.value) }); onRefresh(); }}
             className="w-12 p-1 bg-secondary rounded border border-border text-success text-center text-xs" placeholder="W" />
@@ -423,7 +482,10 @@ function TeamRow({ team, users, onRefresh }: { team: Team; users: User[]; onRefr
       <div className="space-y-1 mb-3">
         {teamPlayers.map(p => (
           <div key={p.id} className="flex items-center justify-between text-xs bg-background/50 p-2 rounded">
-            <span className="text-foreground font-display">{p.gameNick || p.username}</span>
+            <div className="flex items-center gap-2">
+              {p.avatar && <img src={p.avatar} alt="" className="w-5 h-5 rounded-full object-cover" />}
+              <span className="text-foreground font-display">{p.gameNick || p.username}</span>
+            </div>
             <button onClick={() => handleRemovePlayer(p.id)} className="text-destructive"><X size={12} /></button>
           </div>
         ))}

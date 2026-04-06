@@ -1,10 +1,17 @@
+import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getTeams, getFrameStyle, getNickColor } from '@/lib/store';
-import { UserCircle, Copy, Trophy, Target, Zap, Shield, Award } from 'lucide-react';
+import { getTeams, getFrameStyle, getNickColor, updateUser } from '@/lib/store';
+import { UserCircle, Copy, Trophy, Target, Zap, Shield, Award, Camera, Edit, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editing, setEditing] = useState(false);
+  const [editUsername, setEditUsername] = useState('');
+  const [editGameNick, setEditGameNick] = useState('');
+  const [editWhatsapp, setEditWhatsapp] = useState('');
+
   if (!user) return null;
 
   const teams = getTeams();
@@ -16,6 +23,41 @@ export default function ProfilePage() {
   const copyId = () => {
     navigator.clipboard.writeText(user.uniqueId || user.id);
     toast.success('ID copiado!');
+  };
+
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Imagem muito grande (máx 2MB)');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      updateUser(user.id, { avatar: dataUrl });
+      refreshUser();
+      toast.success('Foto de perfil atualizada!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const startEditing = () => {
+    setEditUsername(user.username);
+    setEditGameNick(user.gameNick);
+    setEditWhatsapp(user.whatsapp);
+    setEditing(true);
+  };
+
+  const saveProfile = () => {
+    if (!editUsername.trim() || !editGameNick.trim()) {
+      toast.error('Preencha todos os campos');
+      return;
+    }
+    updateUser(user.id, { username: editUsername, gameNick: editGameNick, whatsapp: editWhatsapp });
+    refreshUser();
+    setEditing(false);
+    toast.success('Perfil atualizado!');
   };
 
   const nickStyle: React.CSSProperties = {};
@@ -33,19 +75,50 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6 animate-slide-up max-w-2xl mx-auto">
       <div className="bg-card rounded-lg neon-border-strong p-6 text-center">
-        <div className="w-24 h-24 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-3xl mx-auto mb-4"
-          style={frameStyle ? { border: frameStyle.border, boxShadow: frameStyle.boxShadow } : undefined}>
-          {user.avatar ? (
-            <img src={user.avatar} alt="" className="w-full h-full rounded-full object-cover" />
-          ) : (
-            user.gameNick?.[0]?.toUpperCase() || user.username[0]?.toUpperCase()
-          )}
+        {/* Avatar with upload */}
+        <div className="relative inline-block mb-4">
+          <div className="w-24 h-24 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-3xl"
+            style={frameStyle ? { border: frameStyle.border, boxShadow: frameStyle.boxShadow } : undefined}>
+            {user.avatar ? (
+              <img src={user.avatar} alt="" className="w-full h-full rounded-full object-cover" />
+            ) : (
+              user.gameNick?.[0]?.toUpperCase() || user.username[0]?.toUpperCase()
+            )}
+          </div>
+          <button onClick={() => fileInputRef.current?.click()}
+            className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/80 transition-colors shadow-lg">
+            <Camera size={14} />
+          </button>
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
         </div>
-        <h1 className={`text-2xl font-heading ${!nickColor && user.coloredNick ? 'text-primary text-glow' : 'text-foreground'}`}
-          style={nickColor ? nickStyle : undefined}>
-          {user.gameNick || user.username}
-        </h1>
-        <p className="text-muted-foreground font-display text-sm">@{user.username}</p>
+
+        {/* Name / Edit */}
+        {editing ? (
+          <div className="space-y-3 max-w-xs mx-auto">
+            <input value={editUsername} onChange={e => setEditUsername(e.target.value)} placeholder="Username"
+              className="w-full p-2 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display text-sm text-center" />
+            <input value={editGameNick} onChange={e => setEditGameNick(e.target.value)} placeholder="Nick do Jogo"
+              className="w-full p-2 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display text-sm text-center" />
+            <input value={editWhatsapp} onChange={e => setEditWhatsapp(e.target.value)} placeholder="WhatsApp"
+              className="w-full p-2 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display text-sm text-center" />
+            <div className="flex justify-center gap-2">
+              <button onClick={saveProfile} className="px-4 py-1 gradient-primary text-primary-foreground rounded text-xs font-heading flex items-center gap-1"><Check size={12} /> Salvar</button>
+              <button onClick={() => setEditing(false)} className="px-4 py-1 bg-secondary text-muted-foreground rounded text-xs font-heading flex items-center gap-1"><X size={12} /> Cancelar</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-center gap-2">
+              <h1 className={`text-2xl font-heading ${!nickColor && user.coloredNick ? 'text-primary text-glow' : 'text-foreground'}`}
+                style={nickColor ? nickStyle : undefined}>
+                {user.gameNick || user.username}
+              </h1>
+              <button onClick={startEditing} className="text-muted-foreground hover:text-primary transition-colors"><Edit size={16} /></button>
+            </div>
+            <p className="text-muted-foreground font-display text-sm">@{user.username}</p>
+          </>
+        )}
+
         <div className="flex items-center justify-center gap-2 mt-2">
           <span className="text-xs text-muted-foreground font-display">ID: #{user.uniqueId || user.id}</span>
           <button onClick={copyId} className="text-primary hover:text-neon-glow"><Copy size={12} /></button>

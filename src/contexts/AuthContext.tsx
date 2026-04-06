@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { User, getCurrentUser, setCurrentUser, loginUser, registerUser, isAdmin, isSuperAdmin } from '@/lib/store';
+import { User, getCurrentUser, setCurrentUser, loginUser, registerUser, isAdmin, isSuperAdmin, getUserById } from '@/lib/store';
 
 interface AuthContextType {
   user: User | null;
@@ -18,8 +18,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(getCurrentUser());
 
   const refreshUser = useCallback(() => {
-    const u = getCurrentUser();
-    setUser(u);
+    const cur = getCurrentUser();
+    if (cur) {
+      const fresh = getUserById(cur.id);
+      if (fresh) {
+        setCurrentUser(fresh);
+        setUser(fresh);
+        return;
+      }
+    }
+    setUser(cur);
   }, []);
 
   const login = useCallback((email: string, password: string) => {
