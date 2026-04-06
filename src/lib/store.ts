@@ -13,6 +13,7 @@ export function genNumericId(): string {
 
 export interface User {
   id: string;
+  uniqueId: string;
   username: string;
   email: string;
   password: string;
@@ -27,6 +28,8 @@ export interface User {
   createdAt: string;
   badges: string[];
   coloredNick: boolean;
+  nickColorId?: string;
+  frameId?: string;
   kills: number;
   deaths: number;
   assists: number;
