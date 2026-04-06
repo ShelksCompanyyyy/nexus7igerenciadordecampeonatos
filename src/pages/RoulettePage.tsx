@@ -284,22 +284,77 @@ export default function RoulettePage() {
             SOLICITAR SAQUE
           </button>
         ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground font-display">Preencha os dados para saque:</p>
-            <input type="number" placeholder="Quantidade de Gold" value={withdrawAmount} onChange={e => setWithdrawAmount(Number(e.target.value))}
-              className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
-            {['gameNick', 'username', 'email', 'whatsapp', 'pixKey', 'password'].map(field => (
-              <input key={field}
-                type={field === 'password' ? 'password' : 'text'}
-                placeholder={field === 'gameNick' ? 'Nick do Jogo' : field === 'username' ? 'Nick de Usuário' : field === 'email' ? 'Gmail' : field === 'whatsapp' ? 'WhatsApp para contato' : field === 'pixKey' ? 'Sua Chave Pix para recebimento' : 'Senha de confirmação'}
-                value={(withdrawData as any)[field]}
-                onChange={e => setWithdrawData(prev => ({ ...prev, [field]: e.target.value }))}
-                className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display"
-              />
-            ))}
-            <p className="text-xs text-warning font-display">⚠️ Por favor entrar em contato com ADM e print do valor retirado. Aguarde 24h a 48h para retirada ser concluída.</p>
+          <div className="space-y-4">
+            <p className="text-sm text-primary font-heading">📋 DADOS PARA SAQUE</p>
+            <p className="text-xs text-muted-foreground font-display">Preencha corretamente. O ADM usará esses dados para liberar o pagamento.</p>
+
+            <div>
+              <label className="text-xs text-muted-foreground font-display block mb-1">💰 Quantidade de Gold para sacar</label>
+              <input type="number" placeholder="Quantidade de Gold" value={withdrawAmount} onChange={e => setWithdrawAmount(Number(e.target.value))}
+                className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground font-display block mb-1">🔑 Sua Chave Pix (para recebimento)</label>
+              <input type="text" placeholder="CPF, Email, Telefone ou Chave Aleatória"
+                value={withdrawData.pixKey}
+                onChange={e => setWithdrawData(prev => ({ ...prev, pixKey: e.target.value }))}
+                className="w-full p-3 bg-secondary rounded border border-primary/50 focus:border-primary outline-none text-foreground font-display" />
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground font-display block mb-1">🎮 Nick no Jogo</label>
+              <input type="text" placeholder="Seu nick no jogo"
+                value={withdrawData.gameNick}
+                onChange={e => setWithdrawData(prev => ({ ...prev, gameNick: e.target.value }))}
+                className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground font-display block mb-1">👤 Nome de Usuário</label>
+              <input type="text" placeholder="Seu username"
+                value={withdrawData.username}
+                onChange={e => setWithdrawData(prev => ({ ...prev, username: e.target.value }))}
+                className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground font-display block mb-1">🆔 Seu ID Único</label>
+              <div className="w-full p-3 bg-secondary/50 rounded border border-border text-foreground font-display text-sm opacity-70">
+                {user?.uniqueId || user?.id}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground font-display block mb-1">📧 Gmail</label>
+              <input type="email" placeholder="Seu email"
+                value={withdrawData.email}
+                onChange={e => setWithdrawData(prev => ({ ...prev, email: e.target.value }))}
+                className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground font-display block mb-1">📱 WhatsApp (para contato)</label>
+              <input type="text" placeholder="(XX) XXXXX-XXXX"
+                value={withdrawData.whatsapp}
+                onChange={e => setWithdrawData(prev => ({ ...prev, whatsapp: e.target.value }))}
+                className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground font-display block mb-1">🔒 Senha de confirmação</label>
+              <input type="password" placeholder="Sua senha de login"
+                value={withdrawData.password}
+                onChange={e => setWithdrawData(prev => ({ ...prev, password: e.target.value }))}
+                className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
+            </div>
+
+            <div className="bg-warning/10 border border-warning/30 rounded-lg p-3">
+              <p className="text-xs text-warning font-display">⏳ Após solicitar o saque, <strong>aguarde o ADM entrar em contato ou liberar o pagamento</strong>. Prazo: 24h a 48h úteis.</p>
+            </div>
+
             <div className="flex gap-3">
-              <button onClick={handleWithdraw} className="px-6 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs">CONFIRMAR</button>
+              <button onClick={handleWithdraw} className="px-6 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs">CONFIRMAR SAQUE</button>
               <button onClick={() => setShowWithdraw(false)} className="px-6 py-2 bg-secondary text-muted-foreground rounded font-heading text-xs">CANCELAR</button>
             </div>
           </div>

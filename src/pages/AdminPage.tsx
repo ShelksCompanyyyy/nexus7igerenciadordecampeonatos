@@ -869,6 +869,8 @@ function WithdrawalsTab() {
 function SpinsTab({ users, onRefresh }: { users: User[]; onRefresh: () => void }) {
   const [freeSpinUserId, setFreeSpinUserId] = useState('');
   const [freeSpinAmount, setFreeSpinAmount] = useState(1);
+  const [goldUserId, setGoldUserId] = useState('');
+  const [goldAmount, setGoldAmount] = useState(100);
   const spinPurchases = getSpinPurchases();
 
   const handleFreeSpins = () => {
@@ -880,10 +882,35 @@ function SpinsTab({ users, onRefresh }: { users: User[]; onRefresh: () => void }
     onRefresh();
   };
 
+  const handleGiveGold = () => {
+    if (!goldUserId) return;
+    const u = users.find(u2 => u2.id === goldUserId);
+    if (!u) { toast.error('Usuário não encontrado'); return; }
+    updateUser(u.id, { gold: (u.gold || 0) + goldAmount });
+    toast.success(`${goldAmount}G enviados para ${u.username}`);
+    onRefresh();
+  };
+
   return (
     <div className="space-y-6">
+      {/* Give Gold */}
       <div className="bg-card rounded-lg border border-gold/20 p-5">
-        <h3 className="font-heading text-sm text-gold mb-4">ENVIAR GIROS GRÁTIS</h3>
+        <h3 className="font-heading text-sm text-gold mb-4 flex items-center gap-2"><DollarSign size={16} /> DAR GOLDS</h3>
+        <div className="flex gap-3 flex-wrap">
+          <select value={goldUserId} onChange={e => setGoldUserId(e.target.value)}
+            className="flex-1 p-3 bg-secondary rounded border border-border text-foreground font-display text-sm">
+            <option value="">Selecionar usuário</option>
+            {users.map(u => <option key={u.id} value={u.id}>{u.username} ({u.gameNick}) - {u.gold || 0}G</option>)}
+          </select>
+          <input type="number" value={goldAmount} onChange={e => setGoldAmount(Number(e.target.value))} min={1}
+            className="w-24 p-3 bg-secondary rounded border border-border text-foreground text-center font-display" placeholder="Gold" />
+          <button onClick={handleGiveGold} className="px-4 bg-gradient-to-r from-gold/80 to-gold text-background rounded font-heading text-xs">ENVIAR GOLD</button>
+        </div>
+      </div>
+
+      {/* Free Spins */}
+      <div className="bg-card rounded-lg border border-primary/20 p-5">
+        <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2"><Dices size={16} /> ENVIAR GIROS GRÁTIS</h3>
         <div className="flex gap-3 flex-wrap">
           <select value={freeSpinUserId} onChange={e => setFreeSpinUserId(e.target.value)}
             className="flex-1 p-3 bg-secondary rounded border border-border text-foreground font-display text-sm">
@@ -892,9 +919,11 @@ function SpinsTab({ users, onRefresh }: { users: User[]; onRefresh: () => void }
           </select>
           <input type="number" value={freeSpinAmount} onChange={e => setFreeSpinAmount(Number(e.target.value))} min={1}
             className="w-20 p-3 bg-secondary rounded border border-border text-foreground text-center font-display" />
-          <button onClick={handleFreeSpins} className="px-4 bg-gradient-to-r from-gold/80 to-gold text-background rounded font-heading text-xs">ENVIAR</button>
+          <button onClick={handleFreeSpins} className="px-4 bg-gradient-to-r from-primary/80 to-primary text-primary-foreground rounded font-heading text-xs">ENVIAR</button>
         </div>
       </div>
+
+      {/* Pending purchases */}
       <div className="space-y-3">
         <h3 className="font-heading text-sm text-gold">COMPRAS PENDENTES</h3>
         {spinPurchases.filter(p => p.status === 'pending').map(p => {
