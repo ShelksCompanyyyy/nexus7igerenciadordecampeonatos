@@ -73,7 +73,7 @@ function SuperAdminPanel() {
 
   return (
     <div className="space-y-6 animate-slide-up">
-      <h1 className="text-2xl font-heading text-gold text-glow flex items-center gap-3"><Crown size={28} /> SUPER ADMIN</h1>
+      <h1 className="text-2xl font-heading text-gold text-glow flex items-center gap-3"><Crown size={28} /> ADM CRIADOR</h1>
 
       <div className="flex gap-2 flex-wrap">
         {tabs.map(t => (

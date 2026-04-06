@@ -74,7 +74,7 @@ export default function LoginPage() {
       const user = login(email, password);
       if (user) {
         if (mode === 'superadmin' && user.role !== 'superadmin') {
-          toast.error('Credenciais de Super Admin inválidas');
+          toast.error('Credenciais de ADM Criador inválidas');
           return;
         }
         toast.success(`Bem-vindo, ${user.username}!`);
@@ -111,7 +111,7 @@ export default function LoginPage() {
   const modeConfig = {
     user: { title: 'LOGIN JOGADOR', icon: User, color: 'text-foreground' },
     admin: { title: 'LOGIN ADMIN CLÃ', icon: Shield, color: 'text-primary' },
-    superadmin: { title: 'SUPER ADMIN', icon: Crown, color: 'text-gold' },
+    superadmin: { title: 'ADM CRIADOR', icon: Crown, color: 'text-gold' },
     register: { title: 'CRIAR CONTA', icon: User, color: 'text-foreground' },
     forgot: { title: 'RECUPERAR SENHA', icon: KeyRound, color: 'text-primary' },
   };
@@ -137,7 +137,7 @@ export default function LoginPage() {
             {([
               { id: 'user' as const, label: 'Jogador', icon: User },
               { id: 'admin' as const, label: 'Admin', icon: Shield },
-              { id: 'superadmin' as const, label: 'Super ADM', icon: Crown },
+              { id: 'superadmin' as const, label: 'ADM Criador', icon: Crown },
             ]).map(tab => (
               <button key={tab.id} onClick={() => { setMode(tab.id); setEmail(''); setPassword(''); setClanAdminCode(''); }}
                 className={`flex-1 flex flex-col items-center gap-1 p-3 rounded-lg font-display text-xs transition-all ${
@@ -163,7 +163,7 @@ export default function LoginPage() {
             <h2 className={`font-heading text-sm ${current.color}`}>{current.title}</h2>
           </div>
 
-          {mode === 'superadmin' && <p className="text-xs text-center text-gold/60 font-display">Acesso restrito ao dono da plataforma</p>}
+          {mode === 'superadmin' && <p className="text-xs text-center text-gold/60 font-display">Acesso exclusivo do criador da plataforma</p>}
           {mode === 'admin' && <p className="text-xs text-center text-primary/60 font-display">Acesso para administradores de clã</p>}
 
           {/* FORGOT PASSWORD FLOW */}
