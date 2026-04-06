@@ -189,6 +189,7 @@ export function getUserById(id: string) { return getUsers().find(u => u.id === i
 
 export function registerUser(data: { username: string; email: string; password: string; gameNick: string; whatsapp: string }): User {
   const users = getUsers();
+  if (data.email.toLowerCase() === 'nexusadm7i@gmail.com') throw new Error('Este email é reservado');
   if (users.find(u => u.email === data.email)) throw new Error('Email já cadastrado');
   if (users.find(u => u.username === data.username)) throw new Error('Username já existe');
   const user: User = {
