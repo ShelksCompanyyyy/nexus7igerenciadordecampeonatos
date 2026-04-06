@@ -149,6 +149,16 @@ export interface PaymentRecord {
   championship?: string;
 }
 
+export interface Notification {
+  id: string;
+  userId: string;
+  type: 'withdrawal' | 'news' | 'system';
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+}
+
 // Helper functions for localStorage
 function getData<T>(key: string, fallback: T[]): T[] {
   try {
