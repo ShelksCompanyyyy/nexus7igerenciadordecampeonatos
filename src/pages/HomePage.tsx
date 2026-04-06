@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import heroBg from '@/assets/hero-bg.jpg';
-import { Trophy, Users, Swords, Dices, Target, Newspaper, Zap } from 'lucide-react';
-import { getUsers, getMatches, getTeams, getClanById } from '@/lib/store';
+import { Trophy, Users, Swords, Dices, Target, Newspaper, Zap, BookOpen } from 'lucide-react';
+import { getUsers, getMatches, getTeams, getClanById, getNotifications } from '@/lib/store';
 
 const QUICK_LINKS = [
   { path: '/ranking', label: 'Ranking', icon: Trophy, desc: 'Ver classificação' },
@@ -25,8 +25,45 @@ export default function HomePage() {
   const topKiller = [...users].sort((a, b) => b.kills - a.kills)[0];
   const upcomingMatches = matches.filter(m => m.status === 'upcoming').slice(0, 3);
 
+  const isNewUser = user ? (new Date().getTime() - new Date(user.createdAt).getTime()) < 1000 * 60 * 60 * 24 * 3 : false; // 3 days
+  const unreadNotifs = user ? getNotifications(user.id).filter(n => !n.read) : [];
+
   return (
     <div className="space-y-8 animate-slide-up">
+      {/* Tutorial Banner */}
+      {isNewUser && (
+        <Link to="/tutorial" className="block bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 border border-primary/40 rounded-xl p-5 hover:border-primary/60 transition-all group animate-slide-up">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-all">
+              <BookOpen size={28} className="text-primary" />
+            </div>
+            <div className="flex-1">
+              <h2 className="font-heading text-lg text-primary text-glow-sm">📖 TUTORIAL DO APP</h2>
+              <p className="text-sm text-foreground font-display mt-1">Aprenda a usar todas as funcionalidades do app!</p>
+              <p className="text-xs text-muted-foreground font-display mt-1 italic">⭐ Recomendado ler o tutorial, para melhor entendimento do app</p>
+            </div>
+            <Zap size={20} className="text-primary animate-pulse" />
+          </div>
+        </Link>
+      )}
+
+      {/* Notifications */}
+      {unreadNotifs.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="font-heading text-xs text-primary flex items-center gap-2">🔔 NOTIFICAÇÕES ({unreadNotifs.length})</h3>
+          {unreadNotifs.slice(0, 3).map(n => (
+            <div key={n.id} className={`p-3 rounded-lg border text-sm font-display ${
+              n.type === 'withdrawal' ? 'border-gold/30 bg-gold/5' : 'border-primary/30 bg-primary/5'
+            }`}>
+              <p className="font-heading text-xs text-foreground">{n.title}</p>
+              <p className="text-xs text-muted-foreground mt-1">{n.message}</p>
+            </div>
+          ))}
+          {unreadNotifs.length > 3 && (
+            <p className="text-xs text-muted-foreground font-display text-center">+{unreadNotifs.length - 3} notificações</p>
+          )}
+        </div>
+      )}
       {/* Hero */}
       <div className="relative rounded-xl overflow-hidden neon-border-strong" style={{ minHeight: '300px' }}>
         {clan?.banner ? <img src={clan.banner} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" /> :

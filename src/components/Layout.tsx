@@ -1,8 +1,9 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import { useState } from 'react';
-import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, Settings, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen } from 'lucide-react';
+import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, Settings, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell } from 'lucide-react';
+import { getNotifications, markAllNotificationsRead } from '@/lib/store';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Home', icon: Home },
@@ -25,7 +26,9 @@ const ADMIN_ITEMS = [
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout, isAdminUser } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const unreadCount = user ? getNotifications(user.id).filter(n => !n.read).length : 0;
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -89,6 +92,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-gold text-xs font-display">{user?.gold}G</span>
+            <button onClick={() => { if (user) { markAllNotificationsRead(user.id); } navigate('/'); }} className="relative text-foreground">
+              <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full text-[9px] text-primary-foreground flex items-center justify-center font-heading animate-pulse">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
             <button onClick={() => setMobileOpen(!mobileOpen)} className="text-foreground">
               {mobileOpen ? <X size={24} /> : <Menu size={24} />}
             </button>

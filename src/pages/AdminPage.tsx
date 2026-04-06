@@ -11,6 +11,7 @@ import {
   getSpinPurchases, updateSpinPurchase,
   getTransfers, addTransfer,
   getClans, updateClan, deleteClan,
+  addNotification,
   type User, type Team, type Clan
 } from '@/lib/store';
 import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Plus, Trash, Check, X, Search, Edit, Image, Crown, BarChart3, Settings, Lock, Copy } from 'lucide-react';
@@ -642,6 +643,11 @@ function ClanNewsTab({ clanNews, clanId, currentUserId, onRefresh }: { clanNews:
   const handleAdd = () => {
     if (!title || !content) return;
     addNews({ title, content, clanId, authorId: currentUserId, createdAt: new Date().toISOString(), image: image || undefined });
+    // Notify all clan members
+    const clanMembers = getUsers().filter(u => u.clanId === clanId && u.role !== 'superadmin');
+    clanMembers.forEach(u => {
+      addNotification({ userId: u.id, type: 'news', title: '📰 Nova Notícia', message: title, read: false, createdAt: new Date().toISOString() });
+    });
     setTitle(''); setContent(''); setImage('');
     onRefresh(); toast.success('Aviso publicado!');
   };
@@ -849,12 +855,17 @@ function WithdrawalsTab() {
           </div>
           {w.status === 'pending' && (
             <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-              <button onClick={() => { updateWithdrawal(w.id, { status: 'completed' }); r(); toast.success('Saque aprovado'); }}
+              <button onClick={() => {
+                updateWithdrawal(w.id, { status: 'completed' });
+                addNotification({ userId: w.userId, type: 'withdrawal', title: 'Saque Aprovado ✅', message: `Seu saque de ${w.amount}G foi aprovado! O pagamento será enviado para sua chave Pix.`, read: false, createdAt: new Date().toISOString() });
+                r(); toast.success('Saque aprovado');
+              }}
                 className="flex-1 py-2 bg-success/20 text-success rounded font-heading text-xs hover:bg-success/30">✅ APROVAR</button>
               <button onClick={() => {
                 updateWithdrawal(w.id, { status: 'rejected' });
                 const u = getUsers().find(u2 => u2.id === w.userId);
                 if (u) updateUser(u.id, { gold: (u.gold || 0) + w.amount });
+                addNotification({ userId: w.userId, type: 'withdrawal', title: 'Saque Rejeitado ❌', message: `Seu saque de ${w.amount}G foi rejeitado. O valor foi devolvido ao seu saldo.`, read: false, createdAt: new Date().toISOString() });
                 r(); toast.info('Saque rejeitado, gold devolvido');
               }} className="flex-1 py-2 bg-destructive/20 text-destructive rounded font-heading text-xs hover:bg-destructive/30">❌ REJEITAR</button>
             </div>
