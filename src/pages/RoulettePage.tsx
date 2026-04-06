@@ -128,7 +128,7 @@ export default function RoulettePage() {
       whatsapp: withdrawData.whatsapp,
       status: 'pending',
       createdAt: new Date().toISOString(),
-      userUniqueId: user.id,
+      userUniqueId: user.uniqueId || user.id,
     });
     updateUser(user.id, { gold: (user.gold || 0) - withdrawAmount });
     refreshUser();
