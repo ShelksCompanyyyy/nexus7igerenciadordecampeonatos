@@ -280,7 +280,12 @@ export default function LoginPage() {
               )}
 
               <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className={inputClass} />
-              <input type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required className={inputClass} />
+              <div className="relative">
+                <input type={showPassword ? 'text' : 'password'} placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required className={`${inputClass} pr-10`} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3.5 text-muted-foreground hover:text-foreground">
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
 
               {/* Admin clan code */}
               {mode === 'admin' && (
