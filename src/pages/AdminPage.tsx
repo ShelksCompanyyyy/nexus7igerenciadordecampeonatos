@@ -643,6 +643,11 @@ function ClanNewsTab({ clanNews, clanId, currentUserId, onRefresh }: { clanNews:
   const handleAdd = () => {
     if (!title || !content) return;
     addNews({ title, content, clanId, authorId: currentUserId, createdAt: new Date().toISOString(), image: image || undefined });
+    // Notify all clan members
+    const clanMembers = getUsers().filter(u => u.clanId === clanId && u.role !== 'superadmin');
+    clanMembers.forEach(u => {
+      addNotification({ userId: u.id, type: 'news', title: '📰 Nova Notícia', message: title, read: false, createdAt: new Date().toISOString() });
+    });
     setTitle(''); setContent(''); setImage('');
     onRefresh(); toast.success('Aviso publicado!');
   };
