@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getChatMessages, addChatMessage } from '@/lib/store';
+import { getChatMessages, addChatMessage, getUserById, getFrameStyle, getNickColor } from '@/lib/store';
 import { MessageSquare, Send } from 'lucide-react';
 
 export default function ChatPage() {
@@ -30,6 +30,62 @@ export default function ChatPage() {
     setMessages(getChatMessages());
   };
 
+  const renderAvatar = (msgUserId: string, username: string) => {
+    const msgUser = getUserById(msgUserId);
+    const frameStyle = msgUser?.frameId ? getFrameStyle(msgUser.frameId) : null;
+
+    return (
+      <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-xs flex-shrink-0"
+        style={frameStyle ? { border: frameStyle.border, boxShadow: frameStyle.boxShadow } : undefined}>
+        {username[0]?.toUpperCase()}
+      </div>
+    );
+  };
+
+  const renderUsername = (msgUserId: string, username: string) => {
+    const msgUser = getUserById(msgUserId);
+    const nickColor = msgUser?.nickColorId ? getNickColor(msgUser.nickColorId) : null;
+    const frameStyle = msgUser?.frameId ? getFrameStyle(msgUser.frameId) : null;
+
+    const nameStyle: React.CSSProperties = {};
+    if (nickColor) {
+      if (nickColor.startsWith('linear')) {
+        nameStyle.backgroundImage = nickColor;
+        nameStyle.WebkitBackgroundClip = 'text';
+        nameStyle.WebkitTextFillColor = 'transparent';
+      } else {
+        nameStyle.color = nickColor;
+        nameStyle.textShadow = `0 0 8px ${nickColor}`;
+      }
+    }
+
+    return (
+      <div className="flex items-center gap-1.5">
+        <p className="text-xs font-heading mb-1" style={nameStyle}>
+          {username}
+        </p>
+        {msgUser?.badges && msgUser.badges.length > 0 && (
+          <div className="flex gap-1 mb-1">
+            {msgUser.badges.map(b => (
+              <span key={b} className="px-1 py-0.5 rounded text-[8px] font-heading"
+                style={{
+                  background: b === 'badge_legend' ? 'linear-gradient(135deg, #FFD700, #FF8C00)' :
+                    b === 'badge_vip' ? 'linear-gradient(135deg, #BF00FF, #8B00FF)' :
+                    b === 'superadmin' ? 'linear-gradient(135deg, #FF0040, #FF6600)' :
+                    b === 'founder' ? 'linear-gradient(135deg, #FFD700, #FFA500)' :
+                    'hsl(var(--primary) / 0.3)',
+                  color: '#fff',
+                  textShadow: '0 0 4px rgba(0,0,0,0.5)',
+                }}>
+                {b.replace('badge_', '').toUpperCase()}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)] animate-slide-up">
       <h1 className="text-2xl font-heading text-primary text-glow mb-4 flex items-center gap-3"><MessageSquare size={28} /> CHAT GERAL</h1>
@@ -37,11 +93,9 @@ export default function ChatPage() {
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {messages.map(msg => (
             <div key={msg.id} className={`flex gap-3 ${msg.userId === user?.id ? 'flex-row-reverse' : ''}`}>
-              <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-xs flex-shrink-0">
-                {msg.username[0]?.toUpperCase()}
-              </div>
+              {renderAvatar(msg.userId, msg.username)}
               <div className={`max-w-[70%] ${msg.userId === user?.id ? 'text-right' : ''}`}>
-                <p className="text-xs text-primary font-display mb-1">{msg.username}</p>
+                {renderUsername(msg.userId, msg.username)}
                 <div className={`p-3 rounded-lg ${msg.userId === user?.id ? 'bg-primary/20 neon-border' : 'bg-secondary'}`}>
                   <p className="text-sm text-foreground font-display">{msg.message}</p>
                 </div>

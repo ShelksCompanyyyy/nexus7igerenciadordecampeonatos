@@ -418,13 +418,8 @@ export function spinRoulette(): number {
 }
 
 // ========== SHOP ==========
-export const SHOP_ITEMS = [
-  { id: 'colored_nick', name: 'Nick Colorido', price: 100, description: 'Destaque seu nick com cor especial' },
-  { id: 'badge_vip', name: 'Badge VIP', price: 200, description: 'Badge exclusivo VIP' },
-  { id: 'badge_legend', name: 'Badge Lendário', price: 500, description: 'Badge lendário dourado' },
-  { id: 'extra_spin_1', name: '1 Giro Extra', price: 50, description: '1 giro extra na roleta' },
-  { id: 'extra_spin_5', name: '5 Giros Extra', price: 200, description: '5 giros extras na roleta' },
-];
+// Shop items moved to src/lib/shopData.ts
+export { SHOP_ITEMS, NICK_COLORS, FRAMES, getFrameStyle, getNickColor } from '@/lib/shopData';
 
 // ========== DIVISIONS ==========
 export const DIVISIONS = ['Bronze', 'Prata', 'Ouro', 'Platina', 'Diamante', 'Mestre', 'Lendário'];
