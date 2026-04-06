@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getChatMessages, addChatMessage, getUserById, getFrameStyle, getNickColor } from '@/lib/store';
-import { MessageSquare, Send } from 'lucide-react';
+import { getChatMessages, addChatMessage, clearChatMessages, getUserById, getFrameStyle, getNickColor } from '@/lib/store';
+import { MessageSquare, Send, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function ChatPage() {
   const { user } = useAuth();
@@ -30,14 +31,21 @@ export default function ChatPage() {
     setMessages(getChatMessages());
   };
 
+  const handleClear = () => {
+    clearChatMessages();
+    setMessages([]);
+    toast.success('Chat limpo!');
+  };
+
   const renderAvatar = (msgUserId: string, username: string) => {
     const msgUser = getUserById(msgUserId);
     const frameStyle = msgUser?.frameId ? getFrameStyle(msgUser.frameId) : null;
-
     return (
       <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-xs flex-shrink-0"
         style={frameStyle ? { border: frameStyle.border, boxShadow: frameStyle.boxShadow } : undefined}>
-        {username[0]?.toUpperCase()}
+        {msgUser?.avatar ? (
+          <img src={msgUser.avatar} alt={username} className="w-full h-full rounded-full object-cover" />
+        ) : username[0]?.toUpperCase()}
       </div>
     );
   };
@@ -45,7 +53,6 @@ export default function ChatPage() {
   const renderUsername = (msgUserId: string, username: string) => {
     const msgUser = getUserById(msgUserId);
     const nickColor = msgUser?.nickColorId ? getNickColor(msgUser.nickColorId) : null;
-    const frameStyle = msgUser?.frameId ? getFrameStyle(msgUser.frameId) : null;
 
     const nameStyle: React.CSSProperties = {};
     if (nickColor) {
@@ -60,14 +67,19 @@ export default function ChatPage() {
     }
 
     return (
-      <div className="flex items-center gap-1.5">
-        <p className="text-xs font-heading mb-1" style={nameStyle}>
-          {username}
-        </p>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <p className="text-xs font-heading mb-1" style={nameStyle}>{username}</p>
+        {msgUser?.frameId && (
+          <span className="px-1.5 py-0.5 rounded text-[8px] font-heading mb-1" style={{
+            background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.6))',
+            color: 'hsl(var(--primary-foreground))',
+            boxShadow: '0 0 6px hsl(var(--primary) / 0.5)',
+          }}>★ FRAME</span>
+        )}
         {msgUser?.badges && msgUser.badges.length > 0 && (
           <div className="flex gap-1 mb-1">
             {msgUser.badges.map(b => (
-              <span key={b} className="px-1 py-0.5 rounded text-[8px] font-heading"
+              <span key={b} className="px-1.5 py-0.5 rounded text-[8px] font-heading"
                 style={{
                   background: b === 'badge_legend' ? 'linear-gradient(135deg, #FFD700, #FF8C00)' :
                     b === 'badge_vip' ? 'linear-gradient(135deg, #BF00FF, #8B00FF)' :
@@ -76,6 +88,7 @@ export default function ChatPage() {
                     'hsl(var(--primary) / 0.3)',
                   color: '#fff',
                   textShadow: '0 0 4px rgba(0,0,0,0.5)',
+                  boxShadow: '0 0 8px rgba(255,255,255,0.1)',
                 }}>
                 {b.replace('badge_', '').toUpperCase()}
               </span>
@@ -88,9 +101,22 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)] animate-slide-up">
-      <h1 className="text-2xl font-heading text-primary text-glow mb-4 flex items-center gap-3"><MessageSquare size={28} /> CHAT GERAL</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-heading text-primary text-glow flex items-center gap-3">
+          <MessageSquare size={28} /> CHAT GERAL
+        </h1>
+        <button onClick={handleClear}
+          className="flex items-center gap-2 px-3 py-2 rounded text-xs font-heading bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 transition-all">
+          <Trash2 size={14} /> Limpar Chat
+        </button>
+      </div>
       <div className="flex-1 bg-card rounded-lg neon-border overflow-hidden flex flex-col">
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {messages.length === 0 && (
+            <div className="flex-1 flex items-center justify-center h-full">
+              <p className="text-muted-foreground font-display text-sm">Nenhuma mensagem ainda. Seja o primeiro!</p>
+            </div>
+          )}
           {messages.map(msg => (
             <div key={msg.id} className={`flex gap-3 ${msg.userId === user?.id ? 'flex-row-reverse' : ''}`}>
               {renderAvatar(msg.userId, msg.username)}

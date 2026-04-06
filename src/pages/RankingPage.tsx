@@ -1,18 +1,18 @@
 import { useState } from 'react';
-import { getUsers, getTeams } from '@/lib/store';
+import { getUsers, getTeams, getClans, getClanById } from '@/lib/store';
 import { useAuth } from '@/contexts/AuthContext';
-import { Trophy, Target, Zap, ChevronDown } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Trophy, Target, Zap, Users, ChevronRight, ArrowLeft } from 'lucide-react';
 
-type Tab = 'players' | 'teams' | 'mvp' | 'gold';
+type Tab = 'players' | 'teams' | 'mvp' | 'gold' | 'clans';
 
 export default function RankingPage() {
   const [tab, setTab] = useState<Tab>('players');
+  const [viewingClanId, setViewingClanId] = useState<string | null>(null);
   const { user } = useAuth();
   const clanId = user?.clanId || '';
   const users = getUsers().filter(u => u.role !== 'superadmin' && u.clanId === clanId);
   const teams = getTeams().filter(t => t.clanId === clanId);
-  const navigate = useNavigate();
+  const allClans = getClans();
 
   const sortedPlayers = [...users].sort((a, b) => {
     const kdA = a.deaths > 0 ? a.kills / a.deaths : a.kills;
@@ -28,7 +28,71 @@ export default function RankingPage() {
     { id: 'teams', label: 'Times', icon: Trophy },
     { id: 'mvp', label: 'MVP', icon: Zap },
     { id: 'gold', label: 'Gold', icon: Trophy },
+    { id: 'clans', label: 'Clãs', icon: Users },
   ];
+
+  // Clan detail view
+  if (viewingClanId) {
+    const clan = getClanById(viewingClanId);
+    const clanMembers = getUsers().filter(u => u.clanId === viewingClanId && u.role !== 'superadmin');
+    const clanTeams = getTeams().filter(t => t.clanId === viewingClanId);
+    return (
+      <div className="space-y-6 animate-slide-up">
+        <button onClick={() => setViewingClanId(null)}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-display text-sm transition-colors">
+          <ArrowLeft size={16} /> Voltar aos Clãs
+        </button>
+        <div className="bg-card rounded-lg neon-border p-6">
+          <div className="flex items-center gap-4 mb-4">
+            {clan?.logo ? (
+              <img src={clan.logo} alt={clan.name} className="w-16 h-16 rounded-full object-cover border-2 border-primary/50" />
+            ) : (
+              <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-xl">
+                {clan?.name?.[0]?.toUpperCase()}
+              </div>
+            )}
+            <div>
+              <h2 className="text-xl font-heading text-primary text-glow">{clan?.name}</h2>
+              <p className="text-sm text-muted-foreground font-display">{clanMembers.length} membros · {clanTeams.length} times</p>
+            </div>
+          </div>
+        </div>
+
+        <h3 className="font-heading text-sm text-primary">MEMBROS ({clanMembers.length})</h3>
+        <div className="bg-card rounded-lg neon-border overflow-hidden">
+          <table className="w-full text-sm font-display">
+            <thead><tr className="border-b border-border text-muted-foreground text-xs font-heading">
+              <th className="p-3 text-left">JOGADOR</th><th className="p-3">K/D</th><th className="p-3">MVPs</th>
+            </tr></thead>
+            <tbody>
+              {clanMembers.map(p => (
+                <tr key={p.id} className="border-b border-border/50 hover:bg-primary/5 transition-colors">
+                  <td className="p-3 text-foreground">{p.gameNick || p.username}</td>
+                  <td className="p-3 text-center text-primary font-heading">{p.deaths > 0 ? (p.kills / p.deaths).toFixed(2) : p.kills.toFixed(2)}</td>
+                  <td className="p-3 text-center text-foreground">{p.mvps}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {clanMembers.length === 0 && <p className="p-6 text-center text-muted-foreground font-display">Nenhum membro</p>}
+        </div>
+
+        {clanTeams.length > 0 && (
+          <>
+            <h3 className="font-heading text-sm text-primary">TIMES ({clanTeams.length})</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {clanTeams.map(team => (
+                <div key={team.id} className="p-4 bg-card rounded-lg border border-border">
+                  <p className="font-display text-foreground">{team.name}</p>
+                  <p className="text-xs text-muted-foreground">{team.players.length} jogadores · <span className="text-success">{team.wins}W</span> / <span className="text-destructive">{team.losses}L</span></p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-slide-up">
@@ -72,8 +136,8 @@ export default function RankingPage() {
       {tab === 'teams' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {sortedTeams.map((team, i) => (
-            <button key={team.id} onClick={() => navigate(`/teams/${team.id}`)}
-              className={`p-4 bg-card rounded-lg border transition-all text-left hover:neon-border ${i < 3 ? 'neon-border' : 'border-border'}`}
+            <div key={team.id}
+              className={`p-4 bg-card rounded-lg border transition-all text-left ${i < 3 ? 'neon-border' : 'border-border'}`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -88,7 +152,7 @@ export default function RankingPage() {
                   <p className="text-xs text-muted-foreground">{team.wins + team.losses > 0 ? ((team.wins / (team.wins + team.losses)) * 100).toFixed(0) : 0}% WR</p>
                 </div>
               </div>
-            </button>
+            </div>
           ))}
           {sortedTeams.length === 0 && <p className="col-span-2 text-center text-muted-foreground font-display p-6">Nenhum time</p>}
         </div>
@@ -129,6 +193,37 @@ export default function RankingPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {tab === 'clans' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {allClans.map(clan => {
+            const memberCount = getUsers().filter(u => u.clanId === clan.id && u.role !== 'superadmin').length;
+            const teamCount = getTeams().filter(t => t.clanId === clan.id).length;
+            return (
+              <button key={clan.id} onClick={() => setViewingClanId(clan.id)}
+                className="p-4 bg-card rounded-lg border border-border hover:neon-border transition-all text-left group">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {clan.logo ? (
+                      <img src={clan.logo} alt={clan.name} className="w-12 h-12 rounded-full object-cover border border-primary/30" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-lg">
+                        {clan.name[0]?.toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-heading text-sm text-foreground group-hover:text-primary transition-colors">{clan.name}</p>
+                      <p className="text-xs text-muted-foreground font-display">{memberCount} membros · {teamCount} times</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={18} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+              </button>
+            );
+          })}
+          {allClans.length === 0 && <p className="col-span-2 text-center text-muted-foreground font-display p-6">Nenhum clã registrado</p>}
         </div>
       )}
     </div>
