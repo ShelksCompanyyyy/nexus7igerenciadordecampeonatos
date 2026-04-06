@@ -355,6 +355,7 @@ export function updateSpinPurchase(id: string, updates: Partial<SpinPurchase>) {
 // ========== CLANS ==========
 export function getClans(): Clan[] { return getData<Clan>('clans', []); }
 export function saveClans(clans: Clan[]) { setData('clans', clans); }
+export function getClanById(id: string) { return getClans().find(c => c.id === id); }
 export function addClan(clan: Omit<Clan, 'id'>) {
   const all = getClans();
   const c = { ...clan, id: genId() };
@@ -362,6 +363,12 @@ export function addClan(clan: Omit<Clan, 'id'>) {
   saveClans(all);
   return c;
 }
+export function updateClan(id: string, updates: Partial<Clan>) {
+  const all = getClans();
+  const idx = all.findIndex(c => c.id === id);
+  if (idx !== -1) { all[idx] = { ...all[idx], ...updates }; saveClans(all); }
+}
+export function deleteClan(id: string) { saveClans(getClans().filter(c => c.id !== id)); }
 
 // ========== TRANSFERS ==========
 export function getTransfers(): Transfer[] { return getData<Transfer>('transfers', []); }
