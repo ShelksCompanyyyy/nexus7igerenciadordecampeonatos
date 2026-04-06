@@ -209,18 +209,18 @@ export function registerUser(data: { username: string; email: string; password: 
 }
 
 export function loginUser(email: string, password: string): User | null {
-  // Super admin check
-  if (email === 'Nexus7i@gmail.com' && password === 'Nexus7i007') {
+  // ADM Criador - único login fixo
+  if (email === 'NexusADM7i@gmail.com' && password === 'Nexus7i007') {
     const users = getUsers();
     let admin = users.find(u => u.role === 'superadmin');
     if (!admin) {
       admin = {
         id: 'superadmin',
         uniqueId: '000001',
-        username: 'SuperAdmin',
-        email: 'Nexus7i@gmail.com',
+        username: 'ADM Criador',
+        email: 'NexusADM7i@gmail.com',
         password: 'Nexus7i007',
-        gameNick: 'NEXUS7i_ADMIN',
+        gameNick: 'NEXUS7i_CRIADOR',
         whatsapp: '',
         gold: 999999,
         freeSpins: 999,
