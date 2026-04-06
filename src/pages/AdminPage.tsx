@@ -16,7 +16,7 @@ import {
 import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Plus, Trash, Check, X, Search, Edit, Image, Crown, BarChart3, Settings, Lock } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
-type SuperTab = 'dashboard' | 'clans' | 'users' | 'withdrawals' | 'spins' | 'economy';
+type SuperTab = 'dashboard' | 'clans' | 'users' | 'withdrawals' | 'spins' | 'economy' | 'clan-manage';
 type ClanTab = 'dashboard' | 'members' | 'teams' | 'matches' | 'training' | 'news' | 'settings';
 
 const CHART_COLORS = ['hsl(0,100%,50%)', 'hsl(45,100%,50%)', 'hsl(120,70%,50%)', 'hsl(200,100%,50%)', 'hsl(280,100%,50%)', 'hsl(30,100%,50%)'];
