@@ -13,7 +13,7 @@ import {
   getClans, updateClan, deleteClan,
   type User, type Team, type Clan
 } from '@/lib/store';
-import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Plus, Trash, Check, X, Search, Edit, Image, Crown, BarChart3, Settings, Lock } from 'lucide-react';
+import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Plus, Trash, Check, X, Search, Edit, Image, Crown, BarChart3, Settings, Lock, Copy } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
 type SuperTab = 'dashboard' | 'clans' | 'users' | 'withdrawals' | 'spins' | 'economy' | 'clan-manage';
@@ -819,34 +819,46 @@ function WithdrawalsTab() {
   const [refresh, setRefresh] = useState(0);
   const r = () => setRefresh(p => p + 1);
   const withdrawals = getWithdrawals();
+  const copyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copiado!`);
+  };
   return (
     <div className="space-y-3">
       {withdrawals.map(w => (
         <div key={w.id} className={`p-4 rounded-lg border ${w.status === 'completed' ? 'border-success/30 bg-success/5' : w.status === 'rejected' ? 'border-destructive/30 bg-destructive/5' : 'border-border bg-secondary/50'}`}>
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="font-display text-foreground text-sm">{w.username} ({w.gameNick})</p>
-              <p className="text-xs text-muted-foreground">ID: {w.userUniqueId} | {w.email} | WA: {w.whatsapp}</p>
-            </div>
-            <span className="font-heading text-gold">{w.amount}G</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`text-xs font-display ${w.status === 'completed' ? 'text-success' : w.status === 'rejected' ? 'text-destructive' : 'text-warning'}`}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="font-heading text-gold text-lg">{w.amount}G</span>
+            <span className={`text-xs font-display px-2 py-1 rounded ${w.status === 'completed' ? 'bg-success/20 text-success' : w.status === 'rejected' ? 'bg-destructive/20 text-destructive' : 'bg-warning/20 text-warning'}`}>
               {w.status === 'completed' ? '✅ Concluído' : w.status === 'rejected' ? '❌ Rejeitado' : '⏳ Pendente'}
             </span>
-            {w.status === 'pending' && (
-              <div className="flex gap-2 ml-auto">
-                <button onClick={() => { updateWithdrawal(w.id, { status: 'completed' }); r(); toast.success('Saque aprovado'); }}
-                  className="p-1 text-success hover:bg-success/10 rounded"><Check size={16} /></button>
-                <button onClick={() => {
-                  updateWithdrawal(w.id, { status: 'rejected' });
-                  const u = getUsers().find(u2 => u2.id === w.userId);
-                  if (u) updateUser(u.id, { gold: (u.gold || 0) + w.amount });
-                  r(); toast.info('Saque rejeitado, gold devolvido');
-                }} className="p-1 text-destructive hover:bg-destructive/10 rounded"><X size={16} /></button>
+          </div>
+          <div className="space-y-1 text-sm font-display">
+            {w.pixKey && (
+              <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded p-2">
+                <span className="text-primary">🔑 Pix: <span className="text-foreground">{w.pixKey}</span></span>
+                <button onClick={() => copyText(w.pixKey, 'Chave Pix')} className="text-xs text-primary hover:underline flex items-center gap-1"><Copy size={12} /> Copiar</button>
               </div>
             )}
+            <p className="text-muted-foreground">🎮 Nick: <span className="text-foreground">{w.gameNick}</span></p>
+            <p className="text-muted-foreground">🆔 ID: <span className="text-foreground">{w.userUniqueId}</span></p>
+            <p className="text-muted-foreground">👤 Usuário: <span className="text-foreground">{w.username}</span></p>
+            <p className="text-muted-foreground">📱 WhatsApp: <span className="text-foreground">{w.whatsapp}</span></p>
+            <p className="text-muted-foreground">📧 Email: <span className="text-foreground">{w.email}</span></p>
+            <p className="text-muted-foreground text-xs">📅 {new Date(w.createdAt).toLocaleString('pt-BR')}</p>
           </div>
+          {w.status === 'pending' && (
+            <div className="flex gap-2 mt-3 pt-3 border-t border-border">
+              <button onClick={() => { updateWithdrawal(w.id, { status: 'completed' }); r(); toast.success('Saque aprovado'); }}
+                className="flex-1 py-2 bg-success/20 text-success rounded font-heading text-xs hover:bg-success/30">✅ APROVAR</button>
+              <button onClick={() => {
+                updateWithdrawal(w.id, { status: 'rejected' });
+                const u = getUsers().find(u2 => u2.id === w.userId);
+                if (u) updateUser(u.id, { gold: (u.gold || 0) + w.amount });
+                r(); toast.info('Saque rejeitado, gold devolvido');
+              }} className="flex-1 py-2 bg-destructive/20 text-destructive rounded font-heading text-xs hover:bg-destructive/30">❌ REJEITAR</button>
+            </div>
+          )}
         </div>
       ))}
       {withdrawals.length === 0 && <p className="text-center text-muted-foreground font-display p-6">Nenhum saque</p>}
@@ -857,6 +869,8 @@ function WithdrawalsTab() {
 function SpinsTab({ users, onRefresh }: { users: User[]; onRefresh: () => void }) {
   const [freeSpinUserId, setFreeSpinUserId] = useState('');
   const [freeSpinAmount, setFreeSpinAmount] = useState(1);
+  const [goldUserId, setGoldUserId] = useState('');
+  const [goldAmount, setGoldAmount] = useState(100);
   const spinPurchases = getSpinPurchases();
 
   const handleFreeSpins = () => {
@@ -868,10 +882,35 @@ function SpinsTab({ users, onRefresh }: { users: User[]; onRefresh: () => void }
     onRefresh();
   };
 
+  const handleGiveGold = () => {
+    if (!goldUserId) return;
+    const u = users.find(u2 => u2.id === goldUserId);
+    if (!u) { toast.error('Usuário não encontrado'); return; }
+    updateUser(u.id, { gold: (u.gold || 0) + goldAmount });
+    toast.success(`${goldAmount}G enviados para ${u.username}`);
+    onRefresh();
+  };
+
   return (
     <div className="space-y-6">
+      {/* Give Gold */}
       <div className="bg-card rounded-lg border border-gold/20 p-5">
-        <h3 className="font-heading text-sm text-gold mb-4">ENVIAR GIROS GRÁTIS</h3>
+        <h3 className="font-heading text-sm text-gold mb-4 flex items-center gap-2"><DollarSign size={16} /> DAR GOLDS</h3>
+        <div className="flex gap-3 flex-wrap">
+          <select value={goldUserId} onChange={e => setGoldUserId(e.target.value)}
+            className="flex-1 p-3 bg-secondary rounded border border-border text-foreground font-display text-sm">
+            <option value="">Selecionar usuário</option>
+            {users.map(u => <option key={u.id} value={u.id}>{u.username} ({u.gameNick}) - {u.gold || 0}G</option>)}
+          </select>
+          <input type="number" value={goldAmount} onChange={e => setGoldAmount(Number(e.target.value))} min={1}
+            className="w-24 p-3 bg-secondary rounded border border-border text-foreground text-center font-display" placeholder="Gold" />
+          <button onClick={handleGiveGold} className="px-4 bg-gradient-to-r from-gold/80 to-gold text-background rounded font-heading text-xs">ENVIAR GOLD</button>
+        </div>
+      </div>
+
+      {/* Free Spins */}
+      <div className="bg-card rounded-lg border border-primary/20 p-5">
+        <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2"><Dices size={16} /> ENVIAR GIROS GRÁTIS</h3>
         <div className="flex gap-3 flex-wrap">
           <select value={freeSpinUserId} onChange={e => setFreeSpinUserId(e.target.value)}
             className="flex-1 p-3 bg-secondary rounded border border-border text-foreground font-display text-sm">
@@ -880,9 +919,11 @@ function SpinsTab({ users, onRefresh }: { users: User[]; onRefresh: () => void }
           </select>
           <input type="number" value={freeSpinAmount} onChange={e => setFreeSpinAmount(Number(e.target.value))} min={1}
             className="w-20 p-3 bg-secondary rounded border border-border text-foreground text-center font-display" />
-          <button onClick={handleFreeSpins} className="px-4 bg-gradient-to-r from-gold/80 to-gold text-background rounded font-heading text-xs">ENVIAR</button>
+          <button onClick={handleFreeSpins} className="px-4 bg-gradient-to-r from-primary/80 to-primary text-primary-foreground rounded font-heading text-xs">ENVIAR</button>
         </div>
       </div>
+
+      {/* Pending purchases */}
       <div className="space-y-3">
         <h3 className="font-heading text-sm text-gold">COMPRAS PENDENTES</h3>
         {spinPurchases.filter(p => p.status === 'pending').map(p => {

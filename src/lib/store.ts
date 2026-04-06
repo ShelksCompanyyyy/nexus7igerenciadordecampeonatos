@@ -99,6 +99,7 @@ export interface Withdrawal {
   username: string;
   email: string;
   whatsapp: string;
+  pixKey: string;
   status: 'pending' | 'completed' | 'rejected';
   createdAt: string;
   userUniqueId: string;
