@@ -126,6 +126,7 @@ export interface Clan {
   wins: number;
   losses: number;
   createdAt: string;
+  adminCode?: string;
 }
 
 export interface Transfer {
