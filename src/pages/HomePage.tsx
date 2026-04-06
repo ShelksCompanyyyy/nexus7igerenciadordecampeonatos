@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import heroBg from '@/assets/hero-bg.jpg';
-import { Trophy, Users, Swords, Dices, Target, Newspaper, Zap } from 'lucide-react';
-import { getUsers, getMatches, getTeams, getClanById } from '@/lib/store';
+import { Trophy, Users, Swords, Dices, Target, Newspaper, Zap, BookOpen } from 'lucide-react';
+import { getUsers, getMatches, getTeams, getClanById, getNotifications } from '@/lib/store';
 
 const QUICK_LINKS = [
   { path: '/ranking', label: 'Ranking', icon: Trophy, desc: 'Ver classificação' },
