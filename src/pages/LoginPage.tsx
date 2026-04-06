@@ -111,7 +111,7 @@ export default function LoginPage() {
   const modeConfig = {
     user: { title: 'LOGIN JOGADOR', icon: User, color: 'text-foreground' },
     admin: { title: 'LOGIN ADMIN CLÃ', icon: Shield, color: 'text-primary' },
-    superadmin: { title: 'SUPER ADMIN', icon: Crown, color: 'text-gold' },
+    superadmin: { title: 'ADM CRIADOR', icon: Crown, color: 'text-gold' },
     register: { title: 'CRIAR CONTA', icon: User, color: 'text-foreground' },
     forgot: { title: 'RECUPERAR SENHA', icon: KeyRound, color: 'text-primary' },
   };
