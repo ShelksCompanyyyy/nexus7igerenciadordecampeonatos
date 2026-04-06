@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import nexusLogo from '@/assets/nexus7i-logo.png';
-import { Shield, Crown, User, KeyRound, ArrowLeft, Mail, Users } from 'lucide-react';
+import { Shield, Crown, User, KeyRound, ArrowLeft, Mail, Users, Eye, EyeOff } from 'lucide-react';
 import { getUsers, updateUser, updateClan, getClans, addClan } from '@/lib/store';
 
 type LoginMode = 'user' | 'admin' | 'superadmin' | 'register' | 'forgot';
@@ -20,6 +20,9 @@ export default function LoginPage() {
   const [clanAdminCode, setClanAdminCode] = useState('');
   const [createClanMode, setCreateClanMode] = useState(false);
   const [newClanAdminCode, setNewClanAdminCode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Forgot password states
   const [forgotStep, setForgotStep] = useState<'email' | 'code' | 'newpass'>('email');
@@ -59,12 +62,15 @@ export default function LoginPage() {
           if (!clanId) { toast.error('Selecione seu clã'); return; }
         }
         const u = register({ username, email, password, gameNick, whatsapp });
-        // Update with clanId
-        updateUser(u.id, { clanId });
+        // Update with clanId and refresh context
         if (createClanMode) {
           updateUser(u.id, { clanId, role: 'admin' as const });
           updateClan(clanId, { ownerId: u.id });
+        } else {
+          updateUser(u.id, { clanId });
         }
+        // Re-login to refresh user data in context with clanId
+        login(email, password);
         toast.success('Conta criada com sucesso!');
       } catch (err: any) {
         toast.error(err.message);
@@ -206,8 +212,18 @@ export default function LoginPage() {
               {forgotStep === 'newpass' && (
                 <>
                   <p className="text-xs text-center text-muted-foreground font-display">Crie sua nova senha</p>
-                  <input type="password" placeholder="Nova senha" value={newPassword} onChange={e => setNewPassword(e.target.value)} required className={inputClass} />
-                  <input type="password" placeholder="Confirmar nova senha" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className={inputClass} />
+                  <div className="relative">
+                    <input type={showNewPassword ? 'text' : 'password'} placeholder="Nova senha" value={newPassword} onChange={e => setNewPassword(e.target.value)} required className={`${inputClass} pr-10`} />
+                    <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-3.5 text-muted-foreground hover:text-foreground">
+                      {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input type={showConfirmPassword ? 'text' : 'password'} placeholder="Confirmar nova senha" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className={`${inputClass} pr-10`} />
+                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-3.5 text-muted-foreground hover:text-foreground">
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </>
               )}
               <button type="submit" className="w-full py-3 font-heading text-sm rounded gradient-primary text-primary-foreground hover:opacity-90 transition-all">
@@ -264,7 +280,12 @@ export default function LoginPage() {
               )}
 
               <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className={inputClass} />
-              <input type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required className={inputClass} />
+              <div className="relative">
+                <input type={showPassword ? 'text' : 'password'} placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required className={`${inputClass} pr-10`} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3.5 text-muted-foreground hover:text-foreground">
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
 
               {/* Admin clan code */}
               {mode === 'admin' && (
