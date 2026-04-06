@@ -26,7 +26,9 @@ const ADMIN_ITEMS = [
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout, isAdminUser } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const unreadCount = user ? getNotifications(user.id).filter(n => !n.read).length : 0;
 
   return (
     <div className="min-h-screen bg-background flex">
