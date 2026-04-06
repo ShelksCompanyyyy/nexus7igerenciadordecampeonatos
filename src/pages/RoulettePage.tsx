@@ -126,6 +126,7 @@ export default function RoulettePage() {
       username: withdrawData.username,
       email: withdrawData.email,
       whatsapp: withdrawData.whatsapp,
+      pixKey: withdrawData.pixKey,
       status: 'pending',
       createdAt: new Date().toISOString(),
       userUniqueId: user.uniqueId || user.id,
@@ -133,7 +134,7 @@ export default function RoulettePage() {
     updateUser(user.id, { gold: (user.gold || 0) - withdrawAmount });
     refreshUser();
     setShowWithdraw(false);
-    toast.success('Saque solicitado! Aguarde 24h a 48h. Entre em contato com ADM com print do valor retirado.');
+    toast.success('Saque solicitado! Aguarde o ADM entrar em contato ou liberar o pagamento.');
   };
 
   return (
