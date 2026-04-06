@@ -16,6 +16,7 @@ import NewsPage from "@/pages/NewsPage";
 import ShopPage from "@/pages/ShopPage";
 import ProfilePage from "@/pages/ProfilePage";
 import AdminPage from "@/pages/AdminPage";
+import TutorialPage from "@/pages/TutorialPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
