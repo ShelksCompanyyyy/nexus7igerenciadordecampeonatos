@@ -458,6 +458,7 @@ function MatchRow({ match, teams, users, onRefresh }: { match: any; teams: Team[
         <input type="number" value={match.scoreB} onChange={e => { updateMatch(match.id, { scoreB: Number(e.target.value) }); onRefresh(); }}
           className="w-14 p-1 bg-secondary rounded border border-border text-foreground text-center text-sm" />
         <select value={match.status} onChange={e => { updateMatch(match.id, { status: e.target.value }); onRefresh(); }}
+        <select value={match.status} onChange={e => { updateMatch(match.id, { status: e.target.value as 'upcoming' | 'live' | 'completed' }); onRefresh(); }}
           className="p-1 bg-secondary rounded border border-border text-foreground text-xs ml-auto">
           <option value="upcoming">Próxima</option>
           <option value="live">Ao Vivo</option>
