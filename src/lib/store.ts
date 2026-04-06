@@ -1,8 +1,15 @@
 // Nexus7i E-Sports Data Store (localStorage based)
 
-
 // Generate simple unique IDs
 const genId = () => Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+
+// Generate numeric unique ID (6 digits)
+let _uidCounter = parseInt(localStorage.getItem('nexus7i_uidCounter') || '100000', 10);
+export function genNumericId(): string {
+  _uidCounter++;
+  localStorage.setItem('nexus7i_uidCounter', String(_uidCounter));
+  return String(_uidCounter);
+}
 
 export interface User {
   id: string;
