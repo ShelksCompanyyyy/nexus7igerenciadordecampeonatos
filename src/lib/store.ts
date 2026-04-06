@@ -443,3 +443,27 @@ export { SHOP_ITEMS, NICK_COLORS, FRAMES, getFrameStyle, getNickColor } from '@/
 
 // ========== DIVISIONS ==========
 export const DIVISIONS = ['Bronze', 'Prata', 'Ouro', 'Platina', 'Diamante', 'Mestre', 'Lendário'];
+
+// ========== NOTIFICATIONS ==========
+export function getNotifications(userId: string): Notification[] {
+  return getData<Notification>('notifications', []).filter(n => n.userId === userId);
+}
+export function addNotification(n: Omit<Notification, 'id'>) {
+  const all = getData<Notification>('notifications', []);
+  all.push({ ...n, id: genId() });
+  setData('notifications', all);
+}
+export function markNotificationRead(id: string) {
+  const all = getData<Notification>('notifications', []);
+  const idx = all.findIndex(n => n.id === id);
+  if (idx !== -1) { all[idx].read = true; setData('notifications', all); }
+}
+export function markAllNotificationsRead(userId: string) {
+  const all = getData<Notification>('notifications', []);
+  all.forEach(n => { if (n.userId === userId) n.read = true; });
+  setData('notifications', all);
+}
+export function clearNotifications(userId: string) {
+  const all = getData<Notification>('notifications', []).filter(n => n.userId !== userId);
+  setData('notifications', all);
+}
