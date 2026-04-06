@@ -38,6 +38,7 @@ function AppRoutes() {
         <Route path="/news" element={<NewsPage />} />
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/tutorial" element={<TutorialPage />} />
         {isAdminUser && <Route path="/admin" element={<AdminPage />} />}
         <Route path="*" element={<NotFound />} />
       </Routes>

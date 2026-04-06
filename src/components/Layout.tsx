@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { path: '/shop', label: 'Loja', icon: ShoppingBag },
   { path: '/news', label: 'Notícias', icon: Newspaper },
   { path: '/chat', label: 'Chat', icon: MessageSquare },
+  { path: '/tutorial', label: 'Tutorial', icon: BookOpen },
   { path: '/profile', label: 'Perfil', icon: UserCircle },
 ];
 
