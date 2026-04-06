@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import { Shield, Crown, User, KeyRound, ArrowLeft, Mail, Users } from 'lucide-react';
-import { getUsers, updateUser, getClans, addClan } from '@/lib/store';
+import { getUsers, updateUser, updateClan, getClans, addClan } from '@/lib/store';
 
 type LoginMode = 'user' | 'admin' | 'superadmin' | 'register' | 'forgot';
 
