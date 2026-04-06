@@ -204,6 +204,7 @@ export function loginUser(email: string, password: string): User | null {
     if (!admin) {
       admin = {
         id: 'superadmin',
+        uniqueId: '000001',
         username: 'SuperAdmin',
         email: 'Nexus7i@gmail.com',
         password: 'Nexus7i007',
