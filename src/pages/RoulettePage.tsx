@@ -16,7 +16,7 @@ export default function RoulettePage() {
   const [rotation, setRotation] = useState(0);
   const [showPix, setShowPix] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
-  const [withdrawData, setWithdrawData] = useState({ gameNick: '', username: '', email: '', whatsapp: '', password: '' });
+  const [withdrawData, setWithdrawData] = useState({ gameNick: '', username: '', email: '', whatsapp: '', password: '', pixKey: '' });
   const [withdrawAmount, setWithdrawAmount] = useState(500);
   const wheelRef = useRef<HTMLDivElement>(null);
 
