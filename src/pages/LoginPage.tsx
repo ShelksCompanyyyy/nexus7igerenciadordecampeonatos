@@ -137,7 +137,7 @@ export default function LoginPage() {
             {([
               { id: 'user' as const, label: 'Jogador', icon: User },
               { id: 'admin' as const, label: 'Admin', icon: Shield },
-              { id: 'superadmin' as const, label: 'Super ADM', icon: Crown },
+              { id: 'superadmin' as const, label: 'ADM Criador', icon: Crown },
             ]).map(tab => (
               <button key={tab.id} onClick={() => { setMode(tab.id); setEmail(''); setPassword(''); setClanAdminCode(''); }}
                 className={`flex-1 flex flex-col items-center gap-1 p-3 rounded-lg font-display text-xs transition-all ${
