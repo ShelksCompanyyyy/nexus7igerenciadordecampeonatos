@@ -111,7 +111,7 @@ export default function RoulettePage() {
       toast.error('Saldo insuficiente');
       return;
     }
-    if (!withdrawData.gameNick || !withdrawData.username || !withdrawData.email || !withdrawData.whatsapp || !withdrawData.password) {
+    if (!withdrawData.gameNick || !withdrawData.username || !withdrawData.email || !withdrawData.whatsapp || !withdrawData.password || !withdrawData.pixKey) {
       toast.error('Preencha todos os campos');
       return;
     }
