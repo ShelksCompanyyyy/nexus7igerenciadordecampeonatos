@@ -62,12 +62,15 @@ export default function LoginPage() {
           if (!clanId) { toast.error('Selecione seu clã'); return; }
         }
         const u = register({ username, email, password, gameNick, whatsapp });
-        // Update with clanId
-        updateUser(u.id, { clanId });
+        // Update with clanId and refresh context
         if (createClanMode) {
           updateUser(u.id, { clanId, role: 'admin' as const });
           updateClan(clanId, { ownerId: u.id });
+        } else {
+          updateUser(u.id, { clanId });
         }
+        // Re-login to refresh user data in context with clanId
+        login(email, password);
         toast.success('Conta criada com sucesso!');
       } catch (err: any) {
         toast.error(err.message);
