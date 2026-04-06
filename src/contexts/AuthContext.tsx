@@ -18,8 +18,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(getCurrentUser());
 
   const refreshUser = useCallback(() => {
-    const u = getCurrentUser();
-    setUser(u);
+    const cur = getCurrentUser();
+    if (cur) {
+      // Re-read from users list to get latest data
+      const { getUserById } = require('@/lib/store');
+      const fresh = getUserById(cur.id);
+      if (fresh) {
+        setCurrentUser(fresh);
+        setUser(fresh);
+        return;
+      }
+    }
+    setUser(cur);
   }, []);
 
   const login = useCallback((email: string, password: string) => {
