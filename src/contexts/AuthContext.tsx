@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { User, getCurrentUser, setCurrentUser, loginUser, registerUser, isAdmin, isSuperAdmin } from '@/lib/store';
+import { User, getCurrentUser, setCurrentUser, loginUser, registerUser, isAdmin, isSuperAdmin, getUserById } from '@/lib/store';
 
 interface AuthContextType {
   user: User | null;
