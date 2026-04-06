@@ -321,6 +321,7 @@ export function addChatMessage(msg: Omit<ChatMessage, 'id'>) {
   if (all.length > 200) all.splice(0, all.length - 200);
   setData('chat', all);
 }
+export function clearChatMessages() { setData('chat', []); }
 
 // ========== WITHDRAWALS ==========
 export function getWithdrawals(): Withdrawal[] { return getData<Withdrawal>('withdrawals', []); }

@@ -42,34 +42,10 @@ export default function LoginPage() {
     }
     if (mode === 'register') {
       try {
-        // Must select or create a clan
-        let clanId = selectedClanId;
-        if (createClanMode) {
-          if (!newClanName.trim()) { toast.error('Digite o nome do clã'); return; }
-          if (!newClanAdminCode.trim() || newClanAdminCode.length < 4) { toast.error('Crie um código de admin com pelo menos 4 caracteres'); return; }
-          const clan = addClan({
-            name: newClanName.trim(),
-            description: '',
-            ownerId: '',
-            division: 'Bronze',
-            wins: 0,
-            losses: 0,
-            createdAt: new Date().toISOString(),
-            adminCode: newClanAdminCode.trim(),
-          });
-          clanId = clan.id;
-        } else {
-          if (!clanId) { toast.error('Selecione seu clã'); return; }
-        }
+        const clanId = selectedClanId;
+        if (!clanId) { toast.error('Selecione seu clã'); return; }
         const u = register({ username, email, password, gameNick, whatsapp });
-        // Update with clanId and refresh context
-        if (createClanMode) {
-          updateUser(u.id, { clanId, role: 'admin' as const });
-          updateClan(clanId, { ownerId: u.id });
-        } else {
-          updateUser(u.id, { clanId });
-        }
-        // Re-login to refresh user data in context with clanId
+        updateUser(u.id, { clanId });
         login(email, password);
         toast.success('Conta criada com sucesso!');
       } catch (err: any) {
