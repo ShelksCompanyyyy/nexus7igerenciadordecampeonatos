@@ -212,8 +212,18 @@ export default function LoginPage() {
               {forgotStep === 'newpass' && (
                 <>
                   <p className="text-xs text-center text-muted-foreground font-display">Crie sua nova senha</p>
-                  <input type="password" placeholder="Nova senha" value={newPassword} onChange={e => setNewPassword(e.target.value)} required className={inputClass} />
-                  <input type="password" placeholder="Confirmar nova senha" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className={inputClass} />
+                  <div className="relative">
+                    <input type={showNewPassword ? 'text' : 'password'} placeholder="Nova senha" value={newPassword} onChange={e => setNewPassword(e.target.value)} required className={`${inputClass} pr-10`} />
+                    <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-3.5 text-muted-foreground hover:text-foreground">
+                      {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input type={showConfirmPassword ? 'text' : 'password'} placeholder="Confirmar nova senha" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className={`${inputClass} pr-10`} />
+                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-3.5 text-muted-foreground hover:text-foreground">
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </>
               )}
               <button type="submit" className="w-full py-3 font-heading text-sm rounded gradient-primary text-primary-foreground hover:opacity-90 transition-all">
