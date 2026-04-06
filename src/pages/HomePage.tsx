@@ -1,0 +1,155 @@
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import nexusLogo from '@/assets/nexus7i-logo.png';
+import heroBg from '@/assets/hero-bg.jpg';
+import { Trophy, Users, Swords, Dices, Target, Newspaper, Zap } from 'lucide-react';
+import { getUsers, getMatches, getTeams } from '@/lib/store';
+
+const QUICK_LINKS = [
+  { path: '/ranking', label: 'Ranking', icon: Trophy, desc: 'Ver classificação' },
+  { path: '/teams', label: 'Times', icon: Users, desc: 'Gerenciar equipes' },
+  { path: '/matches', label: 'Partidas', icon: Swords, desc: 'Jogos e resultados' },
+  { path: '/roulette', label: 'Roleta', icon: Dices, desc: 'Gire e ganhe' },
+  { path: '/training', label: 'XTreino', icon: Target, desc: 'Treinos agendados' },
+  { path: '/news', label: 'Notícias', icon: Newspaper, desc: 'Últimas novidades' },
+];
+
+export default function HomePage() {
+  const { user } = useAuth();
+  const users = getUsers();
+  const matches = getMatches();
+  const teams = getTeams();
+  const topMvp = [...users].sort((a, b) => b.mvps - a.mvps)[0];
+  const topKiller = [...users].sort((a, b) => b.kills - a.kills)[0];
+  const upcomingMatches = matches.filter(m => m.status === 'upcoming').slice(0, 3);
+
+  return (
+    <div className="space-y-8 animate-slide-up">
+      {/* Hero */}
+      <div className="relative rounded-xl overflow-hidden neon-border-strong" style={{ minHeight: '300px' }}>
+        <img src={heroBg} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+        <div className="relative z-10 flex flex-col items-center justify-center py-16 px-4 text-center">
+          <img src={nexusLogo} alt="Nexus7i" className="w-28 h-28 animate-float drop-shadow-[0_0_40px_hsl(0,100%,50%,0.6)] mb-4" />
+          <h1 className="text-3xl md:text-5xl font-heading text-primary text-glow tracking-widest">NEXUS7i</h1>
+          <p className="text-lg md:text-xl font-display text-foreground/80 tracking-[0.3em] mt-1">E-SPORTS</p>
+          <div className="flex items-center gap-2 mt-4 text-muted-foreground text-sm font-display">
+            <Zap size={14} className="text-primary" />
+            <span>Bem-vindo, <span className="text-primary">{user?.username}</span></span>
+            <Zap size={14} className="text-primary" />
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Links */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {QUICK_LINKS.map(link => (
+          <Link key={link.path} to={link.path}
+            className="flex flex-col items-center gap-2 p-4 bg-card rounded-lg border border-border hover:neon-border transition-all group"
+          >
+            <link.icon size={28} className="text-primary group-hover:text-glow transition-all" />
+            <span className="font-heading text-xs text-foreground">{link.label}</span>
+            <span className="text-[10px] text-muted-foreground font-display">{link.desc}</span>
+          </Link>
+        ))}
+      </div>
+
+      {/* Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Top MVP */}
+        <div className="bg-card rounded-lg neon-border p-5">
+          <h3 className="font-heading text-xs text-primary mb-3 flex items-center gap-2">
+            <Trophy size={14} /> TOP MVP
+          </h3>
+          {topMvp ? (
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading">
+                {topMvp.gameNick?.[0]?.toUpperCase()}
+              </div>
+              <div>
+                <p className="font-display text-foreground">{topMvp.gameNick}</p>
+                <p className="text-primary text-sm font-heading">{topMvp.mvps} MVPs</p>
+              </div>
+            </div>
+          ) : <p className="text-muted-foreground text-sm font-display">Nenhum MVP ainda</p>}
+        </div>
+
+        {/* Top Killer */}
+        <div className="bg-card rounded-lg neon-border p-5">
+          <h3 className="font-heading text-xs text-primary mb-3 flex items-center gap-2">
+            <Target size={14} /> MELHOR JOGADOR
+          </h3>
+          {topKiller ? (
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-foreground font-heading">
+                {topKiller.gameNick?.[0]?.toUpperCase()}
+              </div>
+              <div>
+                <p className="font-display text-foreground">{topKiller.gameNick}</p>
+                <p className="text-sm text-muted-foreground font-display">{topKiller.kills}K / {topKiller.deaths}D / {topKiller.assists}A</p>
+              </div>
+            </div>
+          ) : <p className="text-muted-foreground text-sm font-display">Sem dados</p>}
+        </div>
+
+        {/* Quick Stats */}
+        <div className="bg-card rounded-lg neon-border p-5">
+          <h3 className="font-heading text-xs text-primary mb-3 flex items-center gap-2">
+            <Zap size={14} /> ESTATÍSTICAS
+          </h3>
+          <div className="space-y-2 font-display text-sm">
+            <div className="flex justify-between"><span className="text-muted-foreground">Jogadores</span><span className="text-foreground">{users.length}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Times</span><span className="text-foreground">{teams.length}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Partidas</span><span className="text-foreground">{matches.length}</span></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Upcoming Matches */}
+      {upcomingMatches.length > 0 && (
+        <div className="bg-card rounded-lg neon-border p-5">
+          <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2">
+            <Swords size={16} /> PRÓXIMOS JOGOS
+          </h3>
+          <div className="space-y-3">
+            {upcomingMatches.map(m => {
+              const tA = teams.find(t => t.id === m.teamAId);
+              const tB = teams.find(t => t.id === m.teamBId);
+              return (
+                <div key={m.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                  <span className="font-display text-foreground text-sm">{tA?.name || '???'}</span>
+                  <div className="flex flex-col items-center">
+                    <span className="text-primary font-heading text-xs">VS</span>
+                    <span className="text-[10px] text-muted-foreground">{m.date} {m.time}</span>
+                  </div>
+                  <span className="font-display text-foreground text-sm">{tB?.name || '???'}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Prizes */}
+      <div className="bg-card rounded-lg neon-border p-5">
+        <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2">
+          <Trophy size={16} /> PREMIAÇÃO
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 bg-gradient-to-b from-gold/10 to-transparent rounded-lg border border-gold/30">
+            <p className="font-heading text-gold text-lg">🥇 1° LUGAR</p>
+            <p className="text-sm text-muted-foreground font-display mt-2">Pot total já contabilizado os 15%</p>
+          </div>
+          <div className="p-4 bg-gradient-to-b from-metallic/10 to-transparent rounded-lg border border-metallic/30">
+            <p className="font-heading text-metallic text-lg">🥈 2° LUGAR</p>
+            <p className="text-sm text-muted-foreground font-display mt-2">Entrada gratuita para o próximo campeonato</p>
+          </div>
+          <div className="p-4 bg-gradient-to-b from-primary/10 to-transparent rounded-lg border border-primary/30">
+            <p className="font-heading text-primary text-lg">🥉 3° LUGAR</p>
+            <p className="text-sm text-muted-foreground font-display mt-2">4 Rodadas grátis na roleta para cada jogador</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
