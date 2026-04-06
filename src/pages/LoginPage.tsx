@@ -267,13 +267,15 @@ export default function LoginPage() {
                 </button>
               )}
 
-              <p className="text-center text-muted-foreground text-xs font-display">
-                {mode === 'register' ? (
-                  <>Já tem conta?{' '}<button type="button" onClick={() => setMode('user')} className="text-primary hover:text-neon-glow transition-colors">Fazer Login</button></>
-                ) : (
-                  <>Não tem conta?{' '}<button type="button" onClick={() => setMode('register')} className="text-primary hover:text-neon-glow transition-colors">Registrar</button></>
-                )}
-              </p>
+              {mode !== 'superadmin' && (
+                <p className="text-center text-muted-foreground text-xs font-display">
+                  {mode === 'register' ? (
+                    <>Já tem conta?{' '}<button type="button" onClick={() => setMode('user')} className="text-primary hover:text-neon-glow transition-colors">Fazer Login</button></>
+                  ) : (
+                    <>Não tem conta?{' '}<button type="button" onClick={() => setMode('register')} className="text-primary hover:text-neon-glow transition-colors">Registrar</button></>
+                  )}
+                </p>
+              )}
             </>
           )}
         </form>
