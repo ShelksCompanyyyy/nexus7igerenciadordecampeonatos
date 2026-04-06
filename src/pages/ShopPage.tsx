@@ -1,48 +1,132 @@
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { SHOP_ITEMS, updateUser } from '@/lib/store';
+import { SHOP_ITEMS, NICK_COLORS, FRAMES, updateUser } from '@/lib/store';
 import { toast } from 'sonner';
-import { ShoppingBag, Coins } from 'lucide-react';
+import { ShoppingBag, Coins, Palette, Frame, Award, Dices } from 'lucide-react';
+import type { ShopItem } from '@/lib/shopData';
+
+type Category = 'all' | 'nick_color' | 'frame' | 'badge' | 'spin';
 
 export default function ShopPage() {
   const { user, refreshUser } = useAuth();
+  const [category, setCategory] = useState<Category>('all');
 
-  const handleBuy = (item: typeof SHOP_ITEMS[0]) => {
+  const filtered = category === 'all' ? SHOP_ITEMS : SHOP_ITEMS.filter(i => i.category === category);
+
+  const alreadyOwned = (item: ShopItem) => {
+    if (!user) return false;
+    if (item.category === 'nick_color') return user.nickColorId === item.id;
+    if (item.category === 'frame') return user.frameId === item.id;
+    if (item.category === 'badge') return user.badges?.includes(item.id);
+    return false;
+  };
+
+  const handleBuy = (item: ShopItem) => {
     if (!user) return;
+    if (alreadyOwned(item)) {
+      toast.error('Você já possui este item!');
+      return;
+    }
     if ((user.gold || 0) < item.price) {
       toast.error('Gold insuficiente!');
       return;
     }
     const updates: any = { gold: (user.gold || 0) - item.price };
-    if (item.id === 'colored_nick') updates.coloredNick = true;
+
+    if (item.category === 'nick_color') {
+      updates.nickColorId = item.id;
+      updates.coloredNick = true;
+    }
+    if (item.category === 'frame') {
+      updates.frameId = item.id;
+    }
     if (item.id.startsWith('badge_')) updates.badges = [...(user.badges || []), item.id];
     if (item.id === 'extra_spin_1') updates.freeSpins = (user.freeSpins || 0) + 1;
     if (item.id === 'extra_spin_5') updates.freeSpins = (user.freeSpins || 0) + 5;
+
     updateUser(user.id, updates);
     refreshUser();
     toast.success(`${item.name} adquirido!`);
   };
 
+  const categories: { id: Category; label: string; icon: any }[] = [
+    { id: 'all', label: 'Todos', icon: ShoppingBag },
+    { id: 'nick_color', label: 'Nicks', icon: Palette },
+    { id: 'frame', label: 'Quadros', icon: Frame },
+    { id: 'badge', label: 'Badges', icon: Award },
+    { id: 'spin', label: 'Giros', icon: Dices },
+  ];
+
   return (
     <div className="space-y-6 animate-slide-up">
-      <h1 className="text-2xl font-heading text-primary text-glow flex items-center gap-3"><ShoppingBag size={28} /> LOJA</h1>
+      <h1 className="text-2xl font-heading text-primary text-glow flex items-center gap-3">
+        <ShoppingBag size={28} /> LOJA
+      </h1>
       <div className="flex items-center gap-2 text-gold font-heading">
         <Coins size={20} /> Seu saldo: {user?.gold || 0}G
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {SHOP_ITEMS.map(item => (
-          <div key={item.id} className="bg-card rounded-lg neon-border p-5 flex flex-col">
-            <h3 className="font-heading text-sm text-foreground mb-2">{item.name}</h3>
-            <p className="text-sm text-muted-foreground font-display flex-1">{item.description}</p>
-            <div className="flex items-center justify-between mt-4">
-              <span className="font-heading text-gold">{item.price}G</span>
-              <button onClick={() => handleBuy(item)}
-                className="px-4 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs"
-              >
-                COMPRAR
-              </button>
-            </div>
-          </div>
+
+      {/* Category filter */}
+      <div className="flex gap-2 flex-wrap">
+        {categories.map(c => (
+          <button key={c.id} onClick={() => setCategory(c.id)}
+            className={`px-3 py-2 rounded font-heading text-xs flex items-center gap-2 transition-all ${
+              category === c.id ? 'gradient-primary text-primary-foreground box-glow-sm' : 'bg-secondary text-muted-foreground'
+            }`}
+          >
+            <c.icon size={14} /> {c.label}
+          </button>
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.map(item => {
+          const owned = alreadyOwned(item);
+          const nickColor = item.category === 'nick_color' ? NICK_COLORS.find(c => c.id === item.id) : null;
+          const frame = item.category === 'frame' ? FRAMES.find(f => f.id === item.id) : null;
+
+          return (
+            <div key={item.id} className={`bg-card rounded-lg neon-border p-5 flex flex-col ${owned ? 'opacity-60' : ''}`}>
+              {/* Preview */}
+              {nickColor && (
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="font-heading text-sm" style={{
+                    color: nickColor.color.startsWith('linear') ? undefined : nickColor.color,
+                    backgroundImage: nickColor.color.startsWith('linear') ? nickColor.color : undefined,
+                    WebkitBackgroundClip: nickColor.color.startsWith('linear') ? 'text' : undefined,
+                    WebkitTextFillColor: nickColor.color.startsWith('linear') ? 'transparent' : undefined,
+                    textShadow: nickColor.color.startsWith('linear') ? 'none' : `0 0 10px ${nickColor.color}`,
+                  }}>
+                    EXEMPLO_NICK
+                  </span>
+                </div>
+              )}
+              {frame && (
+                <div className="mb-3 flex justify-center">
+                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center font-heading text-foreground text-lg"
+                    style={{ border: frame.borderStyle, boxShadow: frame.glowColor }}>
+                    N7
+                  </div>
+                </div>
+              )}
+
+              <h3 className="font-heading text-sm text-foreground mb-2">{item.name}</h3>
+              <p className="text-sm text-muted-foreground font-display flex-1">{item.description}</p>
+              <div className="flex items-center justify-between mt-4">
+                <span className="font-heading text-gold">{item.price}G</span>
+                {owned ? (
+                  <span className="px-4 py-2 bg-success/20 text-success rounded font-heading text-xs">EQUIPADO</span>
+                ) : (
+                  <button onClick={() => handleBuy(item)}
+                    className="px-4 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs"
+                  >
+                    COMPRAR
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

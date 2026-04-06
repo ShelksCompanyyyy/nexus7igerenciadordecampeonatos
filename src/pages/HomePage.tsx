@@ -132,9 +132,10 @@ export default function HomePage() {
 
       {/* Prizes */}
       <div className="bg-card rounded-lg neon-border p-5">
-        <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2">
-          <Trophy size={16} /> PREMIAÇÃO
+        <h3 className="font-heading text-sm text-primary mb-2 flex items-center gap-2">
+          <Trophy size={16} /> PREMIAÇÃO DO CAMPEONATO
         </h3>
+        <p className="text-xs text-muted-foreground font-display mb-4">Premiação para o campeonato de Lines contra Lines</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 bg-gradient-to-b from-gold/10 to-transparent rounded-lg border border-gold/30">
             <p className="font-heading text-gold text-lg">🥇 1° LUGAR</p>

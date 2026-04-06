@@ -357,7 +357,7 @@ function UserRow({ user, onRefresh }: { user: User; onRefresh: () => void }) {
       <div className="flex items-center justify-between mb-2">
         <div>
           <p className="font-display text-foreground text-sm">{user.username} ({user.gameNick})</p>
-          <p className="text-[10px] text-muted-foreground">ID: {user.id} | {user.email}</p>
+          <p className="text-[10px] text-muted-foreground">ID: #{user.uniqueId || user.id} | {user.email}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setEditing(!editing)} className="text-primary p-1"><Edit size={14} /></button>

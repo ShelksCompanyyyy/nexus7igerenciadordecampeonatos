@@ -1,11 +1,19 @@
 // Nexus7i E-Sports Data Store (localStorage based)
 
-
 // Generate simple unique IDs
 const genId = () => Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
 
+// Generate numeric unique ID (6 digits)
+let _uidCounter = parseInt(localStorage.getItem('nexus7i_uidCounter') || '100000', 10);
+export function genNumericId(): string {
+  _uidCounter++;
+  localStorage.setItem('nexus7i_uidCounter', String(_uidCounter));
+  return String(_uidCounter);
+}
+
 export interface User {
   id: string;
+  uniqueId: string;
   username: string;
   email: string;
   password: string;
@@ -20,6 +28,8 @@ export interface User {
   createdAt: string;
   badges: string[];
   coloredNick: boolean;
+  nickColorId?: string;
+  frameId?: string;
   kills: number;
   deaths: number;
   assists: number;
@@ -171,6 +181,7 @@ export function registerUser(data: { username: string; email: string; password: 
   if (users.find(u => u.username === data.username)) throw new Error('Username já existe');
   const user: User = {
     id: genId(),
+    uniqueId: genNumericId(),
     ...data,
     gold: 0,
     freeSpins: 0,
@@ -193,6 +204,7 @@ export function loginUser(email: string, password: string): User | null {
     if (!admin) {
       admin = {
         id: 'superadmin',
+        uniqueId: '000001',
         username: 'SuperAdmin',
         email: 'Nexus7i@gmail.com',
         password: 'Nexus7i007',
@@ -406,13 +418,8 @@ export function spinRoulette(): number {
 }
 
 // ========== SHOP ==========
-export const SHOP_ITEMS = [
-  { id: 'colored_nick', name: 'Nick Colorido', price: 100, description: 'Destaque seu nick com cor especial' },
-  { id: 'badge_vip', name: 'Badge VIP', price: 200, description: 'Badge exclusivo VIP' },
-  { id: 'badge_legend', name: 'Badge Lendário', price: 500, description: 'Badge lendário dourado' },
-  { id: 'extra_spin_1', name: '1 Giro Extra', price: 50, description: '1 giro extra na roleta' },
-  { id: 'extra_spin_5', name: '5 Giros Extra', price: 200, description: '5 giros extras na roleta' },
-];
+// Shop items moved to src/lib/shopData.ts
+export { SHOP_ITEMS, NICK_COLORS, FRAMES, getFrameStyle, getNickColor } from '@/lib/shopData';
 
 // ========== DIVISIONS ==========
 export const DIVISIONS = ['Bronze', 'Prata', 'Ouro', 'Platina', 'Diamante', 'Mestre', 'Lendário'];

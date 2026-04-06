@@ -16,7 +16,7 @@ export default function RoulettePage() {
   const [rotation, setRotation] = useState(0);
   const [showPix, setShowPix] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
-  const [withdrawData, setWithdrawData] = useState({ gameNick: '', username: '', email: '', whatsapp: '', password: '' });
+  const [withdrawData, setWithdrawData] = useState({ gameNick: '', username: '', email: '', whatsapp: '', password: '', pixKey: '' });
   const [withdrawAmount, setWithdrawAmount] = useState(500);
   const wheelRef = useRef<HTMLDivElement>(null);
 
@@ -111,7 +111,7 @@ export default function RoulettePage() {
       toast.error('Saldo insuficiente');
       return;
     }
-    if (!withdrawData.gameNick || !withdrawData.username || !withdrawData.email || !withdrawData.whatsapp || !withdrawData.password) {
+    if (!withdrawData.gameNick || !withdrawData.username || !withdrawData.email || !withdrawData.whatsapp || !withdrawData.password || !withdrawData.pixKey) {
       toast.error('Preencha todos os campos');
       return;
     }
@@ -128,7 +128,7 @@ export default function RoulettePage() {
       whatsapp: withdrawData.whatsapp,
       status: 'pending',
       createdAt: new Date().toISOString(),
-      userUniqueId: user.id,
+      userUniqueId: user.uniqueId || user.id,
     });
     updateUser(user.id, { gold: (user.gold || 0) - withdrawAmount });
     refreshUser();
@@ -287,10 +287,10 @@ export default function RoulettePage() {
             <p className="text-sm text-muted-foreground font-display">Preencha os dados para saque:</p>
             <input type="number" placeholder="Quantidade de Gold" value={withdrawAmount} onChange={e => setWithdrawAmount(Number(e.target.value))}
               className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
-            {['gameNick', 'username', 'email', 'whatsapp', 'password'].map(field => (
+            {['gameNick', 'username', 'email', 'whatsapp', 'pixKey', 'password'].map(field => (
               <input key={field}
                 type={field === 'password' ? 'password' : 'text'}
-                placeholder={field === 'gameNick' ? 'Nick do Jogo' : field === 'username' ? 'Nick de Usuário' : field === 'email' ? 'Gmail' : field === 'whatsapp' ? 'WhatsApp para contato' : 'Senha de confirmação'}
+                placeholder={field === 'gameNick' ? 'Nick do Jogo' : field === 'username' ? 'Nick de Usuário' : field === 'email' ? 'Gmail' : field === 'whatsapp' ? 'WhatsApp para contato' : field === 'pixKey' ? 'Sua Chave Pix para recebimento' : 'Senha de confirmação'}
                 value={(withdrawData as any)[field]}
                 onChange={e => setWithdrawData(prev => ({ ...prev, [field]: e.target.value }))}
                 className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display"
