@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getUsers, getTeams } from '@/lib/store';
+import { useAuth } from '@/contexts/AuthContext';
 import { Trophy, Target, Zap, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,8 +8,10 @@ type Tab = 'players' | 'teams' | 'mvp' | 'gold';
 
 export default function RankingPage() {
   const [tab, setTab] = useState<Tab>('players');
-  const users = getUsers().filter(u => u.role !== 'superadmin');
-  const teams = getTeams();
+  const { user } = useAuth();
+  const clanId = user?.clanId || '';
+  const users = getUsers().filter(u => u.role !== 'superadmin' && u.clanId === clanId);
+  const teams = getTeams().filter(t => t.clanId === clanId);
   const navigate = useNavigate();
 
   const sortedPlayers = [...users].sort((a, b) => {
