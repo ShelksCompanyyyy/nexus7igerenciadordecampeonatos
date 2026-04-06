@@ -181,6 +181,7 @@ export function registerUser(data: { username: string; email: string; password: 
   if (users.find(u => u.username === data.username)) throw new Error('Username já existe');
   const user: User = {
     id: genId(),
+    uniqueId: genNumericId(),
     ...data,
     gold: 0,
     freeSpins: 0,
