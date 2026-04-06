@@ -34,6 +34,7 @@ export default function AdminPage() {
 function SuperAdminPanel() {
   const [tab, setTab] = useState<SuperTab>('dashboard');
   const [refresh, setRefresh] = useState(0);
+  const [selectedClanId, setSelectedClanId] = useState('');
   const r = () => setRefresh(p => p + 1);
 
   const users = getUsers().filter(u => u.role !== 'superadmin');
@@ -45,6 +46,7 @@ function SuperAdminPanel() {
 
   const tabs: { id: SuperTab; label: string; icon: any }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'clan-manage', label: 'Gerenciar Clã', icon: Shield },
     { id: 'clans', label: 'Clãs', icon: Crown },
     { id: 'users', label: 'Contas', icon: Users },
     { id: 'withdrawals', label: 'Saques', icon: Wallet },
