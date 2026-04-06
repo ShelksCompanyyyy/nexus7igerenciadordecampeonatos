@@ -74,7 +74,7 @@ export default function LoginPage() {
       const user = login(email, password);
       if (user) {
         if (mode === 'superadmin' && user.role !== 'superadmin') {
-          toast.error('Credenciais de Super Admin inválidas');
+          toast.error('Credenciais de ADM Criador inválidas');
           return;
         }
         toast.success(`Bem-vindo, ${user.username}!`);
