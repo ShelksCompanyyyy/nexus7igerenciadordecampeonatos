@@ -163,7 +163,7 @@ export default function LoginPage() {
             <h2 className={`font-heading text-sm ${current.color}`}>{current.title}</h2>
           </div>
 
-          {mode === 'superadmin' && <p className="text-xs text-center text-gold/60 font-display">Acesso restrito ao dono da plataforma</p>}
+          {mode === 'superadmin' && <p className="text-xs text-center text-gold/60 font-display">Acesso exclusivo do criador da plataforma</p>}
           {mode === 'admin' && <p className="text-xs text-center text-primary/60 font-display">Acesso para administradores de clã</p>}
 
           {/* FORGOT PASSWORD FLOW */}
