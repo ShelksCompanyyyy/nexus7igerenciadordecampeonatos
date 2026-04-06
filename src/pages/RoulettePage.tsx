@@ -287,10 +287,10 @@ export default function RoulettePage() {
             <p className="text-sm text-muted-foreground font-display">Preencha os dados para saque:</p>
             <input type="number" placeholder="Quantidade de Gold" value={withdrawAmount} onChange={e => setWithdrawAmount(Number(e.target.value))}
               className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
-            {['gameNick', 'username', 'email', 'whatsapp', 'password'].map(field => (
+            {['gameNick', 'username', 'email', 'whatsapp', 'pixKey', 'password'].map(field => (
               <input key={field}
                 type={field === 'password' ? 'password' : 'text'}
-                placeholder={field === 'gameNick' ? 'Nick do Jogo' : field === 'username' ? 'Nick de Usuário' : field === 'email' ? 'Gmail' : field === 'whatsapp' ? 'WhatsApp para contato' : 'Senha de confirmação'}
+                placeholder={field === 'gameNick' ? 'Nick do Jogo' : field === 'username' ? 'Nick de Usuário' : field === 'email' ? 'Gmail' : field === 'whatsapp' ? 'WhatsApp para contato' : field === 'pixKey' ? 'Sua Chave Pix para recebimento' : 'Senha de confirmação'}
                 value={(withdrawData as any)[field]}
                 onChange={e => setWithdrawData(prev => ({ ...prev, [field]: e.target.value }))}
                 className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display"
