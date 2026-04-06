@@ -60,12 +60,9 @@ export default function LoginPage() {
         }
         const u = register({ username, email, password, gameNick, whatsapp });
         // Update with clanId
-        const { updateUser: _uu } = require('@/lib/store');
-        _uu(u.id, { clanId });
+        updateUser(u.id, { clanId });
         if (createClanMode) {
-          // Also set as admin and clan owner
-          const { updateClan } = require('@/lib/store');
-          _uu(u.id, { clanId, role: 'admin' as const });
+          updateUser(u.id, { clanId, role: 'admin' as const });
           updateClan(clanId, { ownerId: u.id });
         }
         toast.success('Conta criada com sucesso!');
