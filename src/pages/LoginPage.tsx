@@ -19,8 +19,9 @@ export default function LoginPage() {
   const [newClanName, setNewClanName] = useState('');
   const [clanAdminCode, setClanAdminCode] = useState('');
   const [createClanMode, setCreateClanMode] = useState(false);
-  const [newClanAdminCode, setNewClanAdminCode] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+   const [newClanAdminCode, setNewClanAdminCode] = useState('');
+   const [isLeader, setIsLeader] = useState(false);
+   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -42,12 +43,23 @@ export default function LoginPage() {
     }
     if (mode === 'register') {
       try {
-        const clanId = selectedClanId;
-        if (!clanId) { toast.error('Selecione seu clã'); return; }
-        const u = register({ username, email, password, gameNick, whatsapp });
-        updateUser(u.id, { clanId });
-        login(email, password);
-        toast.success('Conta criada com sucesso!');
+        if (isLeader) {
+          // Admin leader creates a new clan
+          if (!newClanName.trim()) { toast.error('Digite o nome do clã'); return; }
+          if (!newClanAdminCode.trim() || newClanAdminCode.length < 4) { toast.error('Crie um código de admin com no mínimo 4 caracteres'); return; }
+          const u = register({ username, email, password, gameNick, whatsapp });
+          const clan = addClan({ name: newClanName.trim(), description: '', ownerId: u.id, division: 'Livre', wins: 0, losses: 0, createdAt: new Date().toISOString(), adminCode: newClanAdminCode.trim() });
+          updateUser(u.id, { clanId: clan.id, role: 'admin' });
+          login(email, password);
+          toast.success('Clã criado e conta de Admin registrada!');
+        } else {
+          // Regular player selects existing clan
+          if (!selectedClanId) { toast.error('Selecione seu clã'); return; }
+          const u = register({ username, email, password, gameNick, whatsapp });
+          updateUser(u.id, { clanId: selectedClanId });
+          login(email, password);
+          toast.success('Conta criada com sucesso!');
+        }
       } catch (err: any) {
         toast.error(err.message);
       }
@@ -221,18 +233,39 @@ export default function LoginPage() {
                   <input type="text" placeholder="Nick do Jogo" value={gameNick} onChange={e => setGameNick(e.target.value)} required className={inputClass} />
                   <input type="text" placeholder="WhatsApp" value={whatsapp} onChange={e => setWhatsapp(e.target.value)} required className={inputClass} />
 
-                   {/* Clan Selection */}
-                   <div className="border border-border rounded-lg p-3 space-y-3">
-                     <div className="flex items-center gap-2 text-xs font-heading text-primary">
-                       <Users size={14} /> SELECIONE SEU CLÃ
-                     </div>
-                     <select value={selectedClanId} onChange={e => setSelectedClanId(e.target.value)}
-                       className={`${inputClass} text-sm`}>
-                       <option value="">Selecione o clã</option>
-                       {clans.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                     </select>
-                     <p className="text-[10px] text-muted-foreground font-display">Selecione o clã do qual você faz parte</p>
+                   {/* Leader toggle */}
+                   <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
+                     <button type="button" onClick={() => setIsLeader(!isLeader)}
+                       className={`w-10 h-5 rounded-full transition-all relative ${isLeader ? 'bg-primary' : 'bg-muted'}`}>
+                       <div className={`w-4 h-4 rounded-full bg-foreground absolute top-0.5 transition-all ${isLeader ? 'left-5' : 'left-0.5'}`} />
+                     </button>
+                     <span className="text-xs font-display text-muted-foreground">Sou líder/Admin de clã</span>
                    </div>
+
+                   {isLeader ? (
+                     /* Create new clan */
+                     <div className="border border-primary/30 rounded-lg p-3 space-y-3">
+                       <div className="flex items-center gap-2 text-xs font-heading text-primary">
+                         <Shield size={14} /> CRIAR MEU CLÃ
+                       </div>
+                       <input type="text" placeholder="Nome do Clã" value={newClanName} onChange={e => setNewClanName(e.target.value)} required className={inputClass} />
+                       <input type="text" placeholder="Código de Admin (mín. 4 caracteres)" value={newClanAdminCode} onChange={e => setNewClanAdminCode(e.target.value)} required className={inputClass} />
+                       <p className="text-[10px] text-muted-foreground font-display">Crie um código secreto para acessar o painel Admin do seu clã</p>
+                     </div>
+                   ) : (
+                     /* Select existing clan */
+                     <div className="border border-border rounded-lg p-3 space-y-3">
+                       <div className="flex items-center gap-2 text-xs font-heading text-primary">
+                         <Users size={14} /> SELECIONE SEU CLÃ
+                       </div>
+                       <select value={selectedClanId} onChange={e => setSelectedClanId(e.target.value)}
+                         className={`${inputClass} text-sm`}>
+                         <option value="">Selecione o clã</option>
+                         {clans.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                       </select>
+                       <p className="text-[10px] text-muted-foreground font-display">Selecione o clã do qual você faz parte</p>
+                     </div>
+                   )}
                 </>
               )}
 
