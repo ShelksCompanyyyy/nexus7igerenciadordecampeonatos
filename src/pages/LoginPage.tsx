@@ -205,17 +205,6 @@ export default function LoginPage() {
               </div>
             </button>
 
-            <button type="button" onClick={() => setMode('register-dev')}
-              className="w-full flex items-center gap-4 p-4 rounded-lg border border-border hover:border-accent/50 bg-secondary/50 hover:bg-secondary transition-all group">
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                <Code size={22} className="text-muted-foreground group-hover:text-accent-foreground transition-colors" />
-              </div>
-              <div className="text-left">
-                <p className="font-heading text-sm text-foreground">DEV</p>
-                <p className="text-[10px] text-muted-foreground font-display">Conta de desenvolvedor</p>
-              </div>
-            </button>
-
             <button type="button" onClick={() => setMode('user')}
               className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground text-xs font-display transition-colors mt-2">
               <ArrowLeft size={14} /> Voltar ao login
