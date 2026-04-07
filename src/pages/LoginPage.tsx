@@ -19,8 +19,9 @@ export default function LoginPage() {
   const [newClanName, setNewClanName] = useState('');
   const [clanAdminCode, setClanAdminCode] = useState('');
   const [createClanMode, setCreateClanMode] = useState(false);
-  const [newClanAdminCode, setNewClanAdminCode] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+   const [newClanAdminCode, setNewClanAdminCode] = useState('');
+   const [isLeader, setIsLeader] = useState(false);
+   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
