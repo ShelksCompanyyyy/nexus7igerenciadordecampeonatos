@@ -66,15 +66,6 @@ export default function LoginPage() {
       return;
     }
 
-    if (mode === 'register-dev') {
-      try {
-        const u = register({ username, email, password, gameNick, whatsapp });
-        // Dev doesn't need a clan
-        login(email, password);
-        toast.success('Conta Dev criada com sucesso!');
-      } catch (err: any) { toast.error(err.message); }
-      return;
-    }
 
     if (mode === 'admin') {
       const user = login(email, password);
