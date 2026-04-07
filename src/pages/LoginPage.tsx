@@ -33,7 +33,7 @@ export default function LoginPage() {
 
   const clans = getClans();
 
-  const isRegisterMode = mode === 'register-player' || mode === 'register-leader' || mode === 'register-dev';
+  const isRegisterMode = mode === 'register-player' || mode === 'register-leader';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
