@@ -305,12 +305,6 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                {/* Dev: no extra fields */}
-                {mode === 'register-dev' && (
-                  <div className="border border-border rounded-lg p-3">
-                    <p className="text-[10px] text-muted-foreground font-display text-center">Conta de desenvolvedor — sem vínculo com clã</p>
-                  </div>
-                )}
 
                 <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className={inputClass} />
                 <div className="relative">
