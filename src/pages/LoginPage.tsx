@@ -5,7 +5,7 @@ import nexusLogo from '@/assets/nexus7i-logo.png';
 import { Shield, Crown, User, KeyRound, ArrowLeft, Mail, Users, Eye, EyeOff, Code } from 'lucide-react';
 import { getUsers, updateUser, updateClan, getClans, addClan } from '@/lib/store';
 
-type LoginMode = 'user' | 'admin' | 'superadmin' | 'register-player' | 'register-leader' | 'register-dev' | 'forgot' | 'register-select';
+type LoginMode = 'user' | 'admin' | 'superadmin' | 'register-player' | 'register-leader' | 'forgot' | 'register-select';
 
 export default function LoginPage() {
   const { login, register } = useAuth();
