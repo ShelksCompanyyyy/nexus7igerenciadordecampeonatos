@@ -357,7 +357,7 @@ export default function LoginPage() {
             )}
 
             {/* LOGIN FORMS */}
-            {isLoginMode && mode !== 'forgot' && (
+            {isLoginMode && (
               <>
                 <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className={inputClass} />
                 <div className="relative">
