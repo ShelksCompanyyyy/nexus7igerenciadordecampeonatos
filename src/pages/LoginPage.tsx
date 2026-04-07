@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import nexusLogo from '@/assets/nexus7i-logo.png';
-import { Shield, Crown, User, KeyRound, ArrowLeft, Mail, Users, Eye, EyeOff, Code } from 'lucide-react';
+import { Shield, Crown, User, KeyRound, ArrowLeft, Mail, Users, Eye, EyeOff } from 'lucide-react';
 import { getUsers, updateUser, updateClan, getClans, addClan } from '@/lib/store';
 
-type LoginMode = 'user' | 'admin' | 'superadmin' | 'register-player' | 'register-leader' | 'register-dev' | 'forgot' | 'register-select';
+type LoginMode = 'user' | 'admin' | 'superadmin' | 'register-player' | 'register-leader' | 'forgot' | 'register-select';
 
 export default function LoginPage() {
   const { login, register } = useAuth();
@@ -33,7 +33,7 @@ export default function LoginPage() {
 
   const clans = getClans();
 
-  const isRegisterMode = mode === 'register-player' || mode === 'register-leader' || mode === 'register-dev';
+  const isRegisterMode = mode === 'register-player' || mode === 'register-leader';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,15 +66,6 @@ export default function LoginPage() {
       return;
     }
 
-    if (mode === 'register-dev') {
-      try {
-        const u = register({ username, email, password, gameNick, whatsapp });
-        // Dev doesn't need a clan
-        login(email, password);
-        toast.success('Conta Dev criada com sucesso!');
-      } catch (err: any) { toast.error(err.message); }
-      return;
-    }
 
     if (mode === 'admin') {
       const user = login(email, password);
@@ -138,7 +129,6 @@ export default function LoginPage() {
     superadmin: { title: 'ADM CRIADOR', icon: Crown, color: 'text-gold' },
     'register-player': { title: 'REGISTRO JOGADOR', icon: User, color: 'text-foreground' },
     'register-leader': { title: 'REGISTRO LÍDER DE CLÃ', icon: Shield, color: 'text-primary' },
-    'register-dev': { title: 'REGISTRO DEV', icon: Code, color: 'text-accent-foreground' },
     'register-select': { title: 'CRIAR CONTA', icon: Users, color: 'text-foreground' },
     forgot: { title: 'RECUPERAR SENHA', icon: KeyRound, color: 'text-primary' },
   };
@@ -212,17 +202,6 @@ export default function LoginPage() {
               <div className="text-left">
                 <p className="font-heading text-sm text-primary">LÍDER DE CLÃ / LINE</p>
                 <p className="text-[10px] text-muted-foreground font-display">Criar e administrar seu próprio clã</p>
-              </div>
-            </button>
-
-            <button type="button" onClick={() => setMode('register-dev')}
-              className="w-full flex items-center gap-4 p-4 rounded-lg border border-border hover:border-accent/50 bg-secondary/50 hover:bg-secondary transition-all group">
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                <Code size={22} className="text-muted-foreground group-hover:text-accent-foreground transition-colors" />
-              </div>
-              <div className="text-left">
-                <p className="font-heading text-sm text-foreground">DEV</p>
-                <p className="text-[10px] text-muted-foreground font-display">Conta de desenvolvedor</p>
               </div>
             </button>
 
@@ -326,12 +305,6 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                {/* Dev: no extra fields */}
-                {mode === 'register-dev' && (
-                  <div className="border border-border rounded-lg p-3">
-                    <p className="text-[10px] text-muted-foreground font-display text-center">Conta de desenvolvedor — sem vínculo com clã</p>
-                  </div>
-                )}
 
                 <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className={inputClass} />
                 <div className="relative">
