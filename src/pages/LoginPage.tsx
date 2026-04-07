@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import nexusLogo from '@/assets/nexus7i-logo.png';
-import { Shield, Crown, User, KeyRound, ArrowLeft, Mail, Users, Eye, EyeOff, Code } from 'lucide-react';
+import { Shield, Crown, User, KeyRound, ArrowLeft, Mail, Users, Eye, EyeOff } from 'lucide-react';
 import { getUsers, updateUser, updateClan, getClans, addClan } from '@/lib/store';
 
 type LoginMode = 'user' | 'admin' | 'superadmin' | 'register-player' | 'register-leader' | 'forgot' | 'register-select';
