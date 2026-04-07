@@ -129,7 +129,6 @@ export default function LoginPage() {
     superadmin: { title: 'ADM CRIADOR', icon: Crown, color: 'text-gold' },
     'register-player': { title: 'REGISTRO JOGADOR', icon: User, color: 'text-foreground' },
     'register-leader': { title: 'REGISTRO LÍDER DE CLÃ', icon: Shield, color: 'text-primary' },
-    'register-dev': { title: 'REGISTRO DEV', icon: Code, color: 'text-accent-foreground' },
     'register-select': { title: 'CRIAR CONTA', icon: Users, color: 'text-foreground' },
     forgot: { title: 'RECUPERAR SENHA', icon: KeyRound, color: 'text-primary' },
   };
