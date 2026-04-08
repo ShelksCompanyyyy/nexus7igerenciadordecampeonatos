@@ -1,126 +1,77 @@
 <!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nexus7i Gerenciador De Campeonatos</title>
-    <meta name="description" content="App focado e criado para gerenciar campeonatos, xt e entre outros">
-    <meta name="author" content="Lovable" />
+<html lang="en">  
+  <head>  
+    <meta charset="UTF-8" />  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />  
+    <title>Nexus7i Gerenciador De Campeonatos</title>  
+    <meta name="description" content="App focado e criado para gerênciar campeonatos, xt e entre outros">  
+    <meta name="author" content="Lovable" />  
 
-    <!-- Open Graph / Social Media -->
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9c8cc6ae-1558-4a5f-af6e-554f08034ec1/id-preview-9a292c52--1f12af8b-4622-4be4-963a-793bd629ab6a.lovable.app-1775514187978.png">
+    <meta property="og:type" content="website" />  
+    <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9c8cc6ae-1558-4a5f-af6e-554f08034ec1/id-preview-9a292c52--1f12af8b-4622-4be4-963a-793bd629ab6a.lovable.app-1775514187978.png">  
+
+    <meta name="twitter:card" content="summary_large_image" />  
+    <meta name="twitter:site" content="@Lovable" />  
+    <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9c8cc6ae-1558-4a5f-af6e-554f08034ec1/id-preview-9a292c52--1f12af8b-4622-4be4-963a-793bd629ab6a.lovable.app-1775514187978.png">  
+
     <meta property="og:title" content="Nexus7i Gerenciador De Campeonatos">
-    <meta property="og:description" content="App focado e criado para gerenciar campeonatos, xt e entre outros">
+    <meta name="twitter:title" content="Nexus7i Gerenciador De Campeonatos">  
+    <meta property="og:description" content="App focado e criado para gerênciar campeonatos, xt e entre outros">  
+    <meta name="twitter:description" content="App focado e criado para gerênciar campeonatos, xt e entre outros">  
+  </head>    
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
-    <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9c8cc6ae-1558-4a5f-af6e-554f08034ec1/id-preview-9a292c52--1f12af8b-4622-4be4-963a-793bd629ab6a.lovable.app-1775514187978.png">
-    <meta name="twitter:title" content="Nexus7i Gerenciador De Campeonatos">
-    <meta name="twitter:description" content="App focado e criado para gerenciar campeonatos, xt e entre outros">
+  <body>  
+    <div id="root"></div>  
+    <script type="module" src="/src/main.tsx"></script>  
 
-    <style>
-      body { font-family: Arial, sans-serif; background: #121212; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; }
-      #root { width: 100%; max-width: 400px; text-align: center; }
-      input { width: 90%; padding: 10px; margin: 5px 0; border-radius: 5px; border: none; }
-      button { padding: 10px 20px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; background: #1e88e5; color: #fff; }
-      #painel { margin-top: 20px; }
-    </style>
-  </head>
-
-  <body>
-    <div id="root">
-      <!-- Área de autenticação -->
-      <div id="auth">
-        <h2>Login / Cadastro</h2>
-        <input type="text" id="nick" placeholder="Nick" /><br/>
-        <input type="email" id="email" placeholder="Email" /><br/>
-        <input type="password" id="senha" placeholder="Senha" /><br/>
-        <button onclick="cadastrar()">Cadastrar</button>
-        <button onclick="login()">Login</button>
-        <p id="mensagem"></p>
-      </div>
-
-      <!-- Painel do usuário logado -->
-      <div id="painel" style="display:none">
-        <h1 id="boasvindas"></h1>
-        <button onclick="logout()">Sair</button>
-      </div>
-    </div>
-
+    <!-- Seu código Supabase corrigido para rodar e não aparecer como texto -->
     <script type="module">
-      import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+      import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
       const client = createClient(
         "https://cnktlbsvtoobbftoqtka.supabase.co",
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNua3RsYnN2dG9vYmJmdG9xdGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTQ0NjEsImV4cCI6MjA5MTE3MDQ2MX0.HJTapkPU8HXYOsXbNfLJwjwsWm9q4gdkU0464Uc_vXg"
       );
 
-      const mensagem = document.getElementById("mensagem");
-
       async function cadastrar() {
         const email = document.getElementById("email").value;
         const senha = document.getElementById("senha").value;
         const nick = document.getElementById("nick").value;
 
-        mensagem.innerText = "Criando conta...";
-
         const { data, error } = await client.auth.signUp({ email, password: senha });
-
-        if (error) {
-          mensagem.innerText = "Erro: " + error.message;
-          return;
-        }
+        if (error) { alert(error.message); return; }
 
         const userId = data.user?.id;
-        if (!userId) {
-          mensagem.innerText = "Confirme seu email antes de continuar!";
-          return;
-        }
+        if (!userId) { alert("Confirme seu email antes de continuar!"); return; }
 
         await client.from("usuarios").insert([{ id: userId, Nome: nick, Gmail: email, Clã: "Nexus7i" }]);
-        mensagem.innerText = "Conta criada com sucesso! Verifique seu email.";
+        alert("Conta criada!");
       }
 
       async function login() {
         const email = document.getElementById("email").value;
         const senha = document.getElementById("senha").value;
 
-        mensagem.innerText = "Verificando login...";
-
         const { error } = await client.auth.signInWithPassword({ email, password: senha });
-
-        if (error) {
-          mensagem.innerText = "Erro: " + error.message;
-          return;
-        }
-
-        await carregarUsuario();
+        if (error) { alert(error.message); } 
+        else { carregarUsuario(); }
       }
 
       async function carregarUsuario() {
         const { data } = await client.auth.getUser();
+        if (!data.user) return;
 
-        if (!data.user) {
-          mensagem.innerText = "Nenhum usuário logado.";
-          return;
-        }
-
-        const { data: perfil, error } = await client
+        const { data: perfil } = await client
           .from("usuarios")
           .select("Nome")
           .eq("id", data.user.id)
           .single();
 
-        if (error || !perfil) {
-          mensagem.innerText = "Perfil não encontrado!";
-          return;
-        }
+        if (!perfil) { alert("Perfil não encontrado!"); return; }
 
         document.getElementById("auth").style.display = "none";
         document.getElementById("painel").style.display = "block";
         document.getElementById("boasvindas").innerText = "🎮 Bem-vindo, " + perfil.Nome;
-        mensagem.innerText = "";
       }
 
       async function logout() {
@@ -128,8 +79,7 @@
         location.reload();
       }
 
-      // Verifica se já existe um usuário logado ao abrir a página
       carregarUsuario();
     </script>
-  </body>
+  </body>  
 </html>
