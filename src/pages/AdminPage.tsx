@@ -186,7 +186,7 @@ function SuperAdminPanel() {
 // ==================== SUPER ADMIN CLAN MANAGE PANEL ====================
 function SuperClanManagePanel({ clanId, onRefresh }: { clanId: string; onRefresh: () => void }) {
   const [subTab, setSubTab] = useState<ClanTab>('members');
-  const { refreshUser } = useAuth();
+  const { refreshProfile } = useAuth();
 
   const clan = getClans().find(c => c.id === clanId);
   const clanUsers = getUsers().filter(u => u.clanId === clanId && u.role !== 'superadmin');
