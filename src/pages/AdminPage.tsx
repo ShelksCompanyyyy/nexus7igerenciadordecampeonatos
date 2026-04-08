@@ -234,7 +234,7 @@ function ClanAdminPanel({ currentUser }: { currentUser: User }) {
   const [tab, setTab] = useState<ClanTab>('dashboard');
   const [refresh, setRefresh] = useState(0);
   const r = () => setRefresh(p => p + 1);
-  const { refreshUser } = useAuth();
+  const { refreshProfile } = useAuth();
 
   const clanId = currentUser.clanId || '';
   const clan = getClans().find(c => c.id === clanId);
