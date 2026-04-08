@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { SHOP_ITEMS, NICK_COLORS, FRAMES, updateUser } from '@/lib/store';
+import { SHOP_ITEMS, NICK_COLORS, FRAMES } from '@/lib/store';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ShoppingBag, Coins, Palette, Frame, Award, Dices } from 'lucide-react';
 import type { ShopItem } from '@/lib/shopData';
@@ -8,44 +9,44 @@ import type { ShopItem } from '@/lib/shopData';
 type Category = 'all' | 'nick_color' | 'frame' | 'badge' | 'spin';
 
 export default function ShopPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [category, setCategory] = useState<Category>('all');
 
   const filtered = category === 'all' ? SHOP_ITEMS : SHOP_ITEMS.filter(i => i.category === category);
 
   const alreadyOwned = (item: ShopItem) => {
-    if (!user) return false;
-    if (item.category === 'nick_color') return user.nickColorId === item.id;
-    if (item.category === 'frame') return user.frameId === item.id;
-    if (item.category === 'badge') return user.badges?.includes(item.id);
+    if (!profile) return false;
+    if (item.category === 'nick_color') return profile.nick_color_id === item.id;
+    if (item.category === 'frame') return profile.frame_id === item.id;
+    if (item.category === 'badge') return profile.badges?.includes(item.id);
     return false;
   };
 
-  const handleBuy = (item: ShopItem) => {
-    if (!user) return;
+  const handleBuy = async (item: ShopItem) => {
+    if (!user || !profile) return;
     if (alreadyOwned(item)) {
       toast.error('Você já possui este item!');
       return;
     }
-    if ((user.gold || 0) < item.price) {
+    if ((profile.gold || 0) < item.price) {
       toast.error('Gold insuficiente!');
       return;
     }
-    const updates: any = { gold: (user.gold || 0) - item.price };
+    const updates: any = { gold: (profile.gold || 0) - item.price };
 
     if (item.category === 'nick_color') {
-      updates.nickColorId = item.id;
-      updates.coloredNick = true;
+      updates.nick_color_id = item.id;
+      updates.colored_nick = true;
     }
     if (item.category === 'frame') {
-      updates.frameId = item.id;
+      updates.frame_id = item.id;
     }
-    if (item.id.startsWith('badge_')) updates.badges = [...(user.badges || []), item.id];
-    if (item.id === 'extra_spin_1') updates.freeSpins = (user.freeSpins || 0) + 1;
-    if (item.id === 'extra_spin_5') updates.freeSpins = (user.freeSpins || 0) + 5;
+    if (item.id.startsWith('badge_')) updates.badges = [...(profile.badges || []), item.id];
+    if (item.id === 'extra_spin_1') updates.free_spins = (profile.free_spins || 0) + 1;
+    if (item.id === 'extra_spin_5') updates.free_spins = (profile.free_spins || 0) + 5;
 
-    updateUser(user.id, updates);
-    refreshUser();
+    await supabase.from('profiles').update(updates).eq('user_id', user.id);
+    await refreshProfile();
     toast.success(`${item.name} adquirido!`);
   };
 
@@ -63,10 +64,9 @@ export default function ShopPage() {
         <ShoppingBag size={28} /> LOJA
       </h1>
       <div className="flex items-center gap-2 text-gold font-heading">
-        <Coins size={20} /> Seu saldo: {user?.gold || 0}G
+        <Coins size={20} /> Seu saldo: {profile?.gold || 0}G
       </div>
 
-      {/* Category filter */}
       <div className="flex gap-2 flex-wrap">
         {categories.map(c => (
           <button key={c.id} onClick={() => setCategory(c.id)}
@@ -87,7 +87,6 @@ export default function ShopPage() {
 
           return (
             <div key={item.id} className={`bg-card rounded-lg neon-border p-5 flex flex-col ${owned ? 'opacity-60' : ''}`}>
-              {/* Preview */}
               {nickColor && (
                 <div className="mb-3 flex items-center gap-2">
                   <span className="font-heading text-sm" style={{
