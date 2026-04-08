@@ -23,11 +23,11 @@ type ClanTab = 'dashboard' | 'members' | 'teams' | 'matches' | 'training' | 'new
 const CHART_COLORS = ['hsl(0,100%,50%)', 'hsl(45,100%,50%)', 'hsl(120,70%,50%)', 'hsl(200,100%,50%)', 'hsl(280,100%,50%)', 'hsl(30,100%,50%)'];
 
 export default function AdminPage() {
-  const { user: currentUser, isSuperAdminUser, refreshUser } = useAuth();
+  const { user: currentUser, profile, role, isSuperAdminUser, refreshProfile } = useAuth();
   if (!currentUser) return null;
 
   if (isSuperAdminUser) return <SuperAdminPanel />;
-  if (currentUser.role === 'admin') return <ClanAdminPanel currentUser={currentUser} />;
+  if (role === 'admin') return <ClanAdminPanel currentUser={currentUser as any} />;
   return <div className="text-center text-muted-foreground p-12 font-display">Sem permissão</div>;
 }
 
