@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import { Shield, Crown, User, KeyRound, ArrowLeft, Mail, Users, Eye, EyeOff } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { getUsers, updateUser, updateClan, getClans, addClan } from '@/lib/store';
 
 type LoginMode = 'user' | 'admin' | 'superadmin' | 'register-player' | 'register-leader' | 'forgot' | 'register-select';
 
 export default function LoginPage() {
-  const { login, register, loading } = useAuth();
+  const { login, register } = useAuth();
   const [mode, setMode] = useState<LoginMode>('user');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,160 +22,104 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
   // Forgot password states
-  const [forgotStep, setForgotStep] = useState<'email' | 'newpass'>('email');
+  const [forgotStep, setForgotStep] = useState<'email' | 'code' | 'newpass'>('email');
+  const [recoveryCode, setRecoveryCode] = useState('');
+  const [generatedCode, setGeneratedCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [recoveryUserId, setRecoveryUserId] = useState('');
 
-  // Clans from Supabase
-  const [clans, setClans] = useState<{ id: string; name: string; admin_code: string | null }[]>([]);
-
-  useEffect(() => {
-    supabase.from('clans').select('id, name, admin_code').then(({ data }) => {
-      if (data) setClans(data);
-    });
-  }, []);
+  const clans = getClans();
 
   const isRegisterMode = mode === 'register-player' || mode === 'register-leader';
-  const isLoginMode = mode === 'user' || mode === 'admin' || mode === 'superadmin';
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitting) return;
-    setSubmitting(true);
+    if (mode === 'forgot') {
+      handleForgotPassword();
+      return;
+    }
 
-    try {
-      if (mode === 'forgot') {
-        await handleForgotPassword();
-        return;
-      }
-
-      if (mode === 'register-player') {
+    if (mode === 'register-player') {
+      try {
         if (!selectedClanId) { toast.error('Selecione seu clã'); return; }
-        const result = await register({
-          username, email, password, gameNick, whatsapp,
-          clanId: selectedClanId, role: 'user',
-        });
-        if (result.error) { toast.error(result.error); return; }
+        const u = register({ username, email, password, gameNick, whatsapp });
+        updateUser(u.id, { clanId: selectedClanId });
+        login(email, password);
         toast.success('Conta de jogador criada com sucesso!');
-        return;
-      }
+      } catch (err: any) { toast.error(err.message); }
+      return;
+    }
 
-      if (mode === 'register-leader') {
+    if (mode === 'register-leader') {
+      try {
         if (!newClanName.trim()) { toast.error('Digite o nome do clã'); return; }
-        if (!newClanAdminCode.trim() || newClanAdminCode.length < 4) {
-          toast.error('Crie um código de admin com no mínimo 4 caracteres'); return;
-        }
-        // Register user first as admin
-        const result = await register({
-          username, email, password, gameNick, whatsapp, role: 'admin',
-        });
-        if (result.error) { toast.error(result.error); return; }
-
-        // Wait for session to be established, then create clan
-        // The trigger will create the profile. We need to update clan after.
-        const waitForUser = async (): Promise<string | null> => {
-          for (let i = 0; i < 10; i++) {
-            const { data } = await supabase.auth.getUser();
-            if (data.user) return data.user.id;
-            await new Promise(r => setTimeout(r, 500));
-          }
-          return null;
-        };
-
-        const userId = await waitForUser();
-        if (!userId) { toast.error('Erro ao criar conta. Tente fazer login.'); return; }
-
-        // Create clan
-        const { data: clanData, error: clanError } = await supabase.from('clans').insert({
-          name: newClanName.trim(),
-          owner_id: userId,
-          admin_code: newClanAdminCode.trim(),
-          description: '',
-        }).select('id').single();
-
-        if (clanError) { toast.error('Erro ao criar clã: ' + clanError.message); return; }
-
-        // Update profile with clan_id
-        await supabase.from('profiles').update({ clan_id: clanData.id }).eq('user_id', userId);
-
-        // Update role to admin
-        await supabase.from('user_roles').update({ role: 'admin' as any }).eq('user_id', userId);
-
+        if (!newClanAdminCode.trim() || newClanAdminCode.length < 4) { toast.error('Crie um código de admin com no mínimo 4 caracteres'); return; }
+        const u = register({ username, email, password, gameNick, whatsapp });
+        const clan = addClan({ name: newClanName.trim(), description: '', ownerId: u.id, division: 'Livre', wins: 0, losses: 0, createdAt: new Date().toISOString(), adminCode: newClanAdminCode.trim() });
+        updateUser(u.id, { clanId: clan.id, role: 'admin' });
+        login(email, password);
         toast.success('Clã criado e conta de Líder registrada!');
-        return;
-      }
+      } catch (err: any) { toast.error(err.message); }
+      return;
+    }
 
-      // Login modes
-      if (mode === 'superadmin') {
-        const result = await login(email, password);
-        if (result.error) { toast.error('Email ou senha incorretos'); return; }
-        // Check role after login
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData.user) {
-          const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', userData.user.id);
-          if (!roles?.some(r => r.role === 'superadmin')) {
-            toast.error('Credenciais de ADM Criador inválidas');
-            await supabase.auth.signOut();
+
+    if (mode === 'admin') {
+      const user = login(email, password);
+      if (user) {
+        if (user.role !== 'admin' && user.role !== 'superadmin') {
+          toast.error('Esta conta não tem permissão de Admin');
+          return;
+        }
+        if (user.role === 'admin') {
+          const clan = clans.find(c => c.id === user.clanId);
+          if (!clan || clan.adminCode !== clanAdminCode) {
+            toast.error('Código de admin do clã inválido');
             return;
           }
         }
-        toast.success('Bem-vindo, ADM Criador!');
-        return;
-      }
-
-      if (mode === 'admin') {
-        const result = await login(email, password);
-        if (result.error) { toast.error('Email ou senha incorretos'); return; }
-
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData.user) {
-          const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', userData.user.id);
-          if (!roles?.some(r => r.role === 'admin' || r.role === 'superadmin')) {
-            toast.error('Esta conta não tem permissão de Admin');
-            await supabase.auth.signOut();
-            return;
-          }
-          // Check admin code for clan admins (not superadmin)
-          if (roles?.some(r => r.role === 'admin') && !roles?.some(r => r.role === 'superadmin')) {
-            const { data: profileData } = await supabase.from('profiles').select('clan_id').eq('user_id', userData.user.id).maybeSingle();
-            if (profileData?.clan_id) {
-              const clan = clans.find(c => c.id === profileData.clan_id);
-              if (!clan || clan.admin_code !== clanAdminCode) {
-                toast.error('Código de admin do clã inválido');
-                await supabase.auth.signOut();
-                return;
-              }
-            }
-          }
-        }
-        toast.success('Bem-vindo, Admin!');
-        return;
-      }
-
-      // Regular user login
-      const result = await login(email, password);
-      if (result.error) {
+        toast.success(`Bem-vindo, ${user.username}!`);
+      } else {
         toast.error('Email ou senha incorretos');
-        return;
       }
-      toast.success('Bem-vindo!');
-    } finally {
-      setSubmitting(false);
+    } else {
+      const user = login(email, password);
+      if (user) {
+        if (mode === 'superadmin' && user.role !== 'superadmin') {
+          toast.error('Credenciais de ADM Criador inválidas');
+          return;
+        }
+        toast.success(`Bem-vindo, ${user.username}!`);
+      } else {
+        toast.error('Email ou senha incorretos');
+      }
     }
   };
 
-  const handleForgotPassword = async () => {
+  const handleForgotPassword = () => {
     if (forgotStep === 'email') {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      if (error) { toast.error(error.message); return; }
-      toast.success(`Link de recuperação enviado para ${email}. Verifique sua caixa de entrada.`);
-      setMode('user');
-      setForgotStep('email');
+      const users = getUsers();
+      const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+      if (!found) { toast.error('Email não encontrado'); return; }
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedCode(code);
+      setRecoveryUserId(found.id);
+      setForgotStep('code');
+      toast.success(`Código de recuperação enviado para ${email}`, { description: `(Simulado) Seu código é: ${code}`, duration: 15000 });
+    } else if (forgotStep === 'code') {
+      if (recoveryCode !== generatedCode) { toast.error('Código incorreto'); return; }
+      setForgotStep('newpass');
+      toast.success('Código verificado! Digite sua nova senha.');
+    } else if (forgotStep === 'newpass') {
+      if (newPassword.length < 4) { toast.error('Senha deve ter no mínimo 4 caracteres'); return; }
+      if (newPassword !== confirmPassword) { toast.error('As senhas não coincidem'); return; }
+      updateUser(recoveryUserId, { password: newPassword });
+      toast.success('Senha alterada com sucesso! Faça login.');
+      setMode('user'); setForgotStep('email'); setEmail(''); setPassword('');
+      setRecoveryCode(''); setNewPassword(''); setConfirmPassword('');
     }
   };
 
@@ -192,13 +136,7 @@ export default function LoginPage() {
   const current = modeConfig[mode];
   const inputClass = "w-full p-3 bg-secondary rounded border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none text-foreground font-display";
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
+  const isLoginMode = mode === 'user' || mode === 'admin' || mode === 'superadmin';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
@@ -213,7 +151,7 @@ export default function LoginPage() {
           <p className="text-muted-foreground font-display text-lg tracking-wider">E-SPORTS</p>
         </div>
 
-        {/* Login tabs */}
+        {/* Login tabs - only show when in login modes */}
         {isLoginMode && (
           <div className="flex gap-2 mb-4 animate-slide-up" style={{ animationDelay: '0.1s' }}>
             {([
@@ -237,7 +175,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* REGISTER SELECT */}
+        {/* REGISTER SELECT - Choose registration type */}
         {mode === 'register-select' && (
           <div className="space-y-3 rounded-lg p-6 bg-card/80 backdrop-blur-xl border border-border animate-slide-up" style={{ animationDelay: '0.2s' }}>
             <div className="flex items-center justify-center gap-2 mb-4">
@@ -287,19 +225,44 @@ export default function LoginPage() {
             {mode === 'superadmin' && <p className="text-xs text-center text-gold/60 font-display">Acesso exclusivo do criador da plataforma</p>}
             {mode === 'admin' && <p className="text-xs text-center text-primary/60 font-display">Acesso para administradores de clã</p>}
 
-            {/* FORGOT PASSWORD */}
+            {/* FORGOT PASSWORD FLOW */}
             {mode === 'forgot' && (
               <>
-                <p className="text-xs text-center text-muted-foreground font-display">
-                  Digite o email da sua conta para receber o link de recuperação
-                </p>
-                <div className="relative">
-                  <Mail size={16} className="absolute left-3 top-3.5 text-muted-foreground" />
-                  <input type="email" placeholder="Seu email" value={email} onChange={e => setEmail(e.target.value)} required className={`${inputClass} pl-10`} />
-                </div>
-                <button type="submit" disabled={submitting}
-                  className="w-full py-3 font-heading text-sm rounded gradient-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-50">
-                  {submitting ? 'ENVIANDO...' : 'ENVIAR LINK'}
+                {forgotStep === 'email' && (
+                  <>
+                    <p className="text-xs text-center text-muted-foreground font-display">Digite o email da sua conta para receber o código de recuperação</p>
+                    <div className="relative">
+                      <Mail size={16} className="absolute left-3 top-3.5 text-muted-foreground" />
+                      <input type="email" placeholder="Seu email" value={email} onChange={e => setEmail(e.target.value)} required className={`${inputClass} pl-10`} />
+                    </div>
+                  </>
+                )}
+                {forgotStep === 'code' && (
+                  <>
+                    <p className="text-xs text-center text-muted-foreground font-display">Digite o código de 6 dígitos enviado para <span className="text-primary">{email}</span></p>
+                    <input type="text" placeholder="Código de 6 dígitos" value={recoveryCode} onChange={e => setRecoveryCode(e.target.value)} required maxLength={6}
+                      className={`${inputClass} text-center tracking-[0.5em] text-lg`} />
+                  </>
+                )}
+                {forgotStep === 'newpass' && (
+                  <>
+                    <p className="text-xs text-center text-muted-foreground font-display">Crie sua nova senha</p>
+                    <div className="relative">
+                      <input type={showNewPassword ? 'text' : 'password'} placeholder="Nova senha" value={newPassword} onChange={e => setNewPassword(e.target.value)} required className={`${inputClass} pr-10`} />
+                      <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-3.5 text-muted-foreground hover:text-foreground">
+                        {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input type={showConfirmPassword ? 'text' : 'password'} placeholder="Confirmar nova senha" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className={`${inputClass} pr-10`} />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-3.5 text-muted-foreground hover:text-foreground">
+                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </>
+                )}
+                <button type="submit" className="w-full py-3 font-heading text-sm rounded gradient-primary text-primary-foreground hover:opacity-90 transition-all">
+                  {forgotStep === 'email' ? 'ENVIAR CÓDIGO' : forgotStep === 'code' ? 'VERIFICAR' : 'ALTERAR SENHA'}
                 </button>
                 <button type="button" onClick={() => { setMode('user'); setForgotStep('email'); }}
                   className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground text-xs font-display transition-colors">
@@ -315,12 +278,14 @@ export default function LoginPage() {
                 <input type="text" placeholder="Nick do Jogo" value={gameNick} onChange={e => setGameNick(e.target.value)} required className={inputClass} />
                 <input type="text" placeholder="WhatsApp" value={whatsapp} onChange={e => setWhatsapp(e.target.value)} required className={inputClass} />
 
+                {/* Player: select clan */}
                 {mode === 'register-player' && (
                   <div className="border border-border rounded-lg p-3 space-y-3">
                     <div className="flex items-center gap-2 text-xs font-heading text-foreground">
                       <Users size={14} /> SELECIONE SEU CLÃ
                     </div>
-                    <select value={selectedClanId} onChange={e => setSelectedClanId(e.target.value)} className={`${inputClass} text-sm`}>
+                    <select value={selectedClanId} onChange={e => setSelectedClanId(e.target.value)}
+                      className={`${inputClass} text-sm`}>
                       <option value="">Selecione o clã</option>
                       {clans.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
@@ -328,6 +293,7 @@ export default function LoginPage() {
                   </div>
                 )}
 
+                {/* Leader: create clan */}
                 {mode === 'register-leader' && (
                   <div className="border border-primary/30 rounded-lg p-3 space-y-3">
                     <div className="flex items-center gap-2 text-xs font-heading text-primary">
@@ -339,17 +305,17 @@ export default function LoginPage() {
                   </div>
                 )}
 
+
                 <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className={inputClass} />
                 <div className="relative">
-                  <input type={showPassword ? 'text' : 'password'} placeholder="Senha (mín. 6 caracteres)" value={password} onChange={e => setPassword(e.target.value)} required className={`${inputClass} pr-10`} />
+                  <input type={showPassword ? 'text' : 'password'} placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required className={`${inputClass} pr-10`} />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3.5 text-muted-foreground hover:text-foreground">
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
 
-                <button type="submit" disabled={submitting}
-                  className="w-full py-3 font-heading text-sm rounded gradient-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-50">
-                  {submitting ? 'REGISTRANDO...' : 'REGISTRAR'}
+                <button type="submit" className="w-full py-3 font-heading text-sm rounded gradient-primary text-primary-foreground hover:opacity-90 transition-all">
+                  REGISTRAR
                 </button>
 
                 <button type="button" onClick={() => setMode('register-select')}
@@ -379,14 +345,14 @@ export default function LoginPage() {
                     className={`${inputClass} border-primary/30`} />
                 )}
 
-                <button type="submit" disabled={submitting} className={`w-full py-3 font-heading text-sm rounded transition-all disabled:opacity-50 ${
+                <button type="submit" className={`w-full py-3 font-heading text-sm rounded transition-all ${
                   mode === 'superadmin'
                     ? 'bg-gradient-to-r from-gold/80 to-gold text-background hover:from-gold hover:to-gold/90 shadow-[0_0_20px_hsl(45,100%,50%,0.3)]'
                     : mode === 'admin'
                     ? 'gradient-primary text-primary-foreground box-glow hover:box-glow-lg'
                     : 'gradient-primary text-primary-foreground hover:opacity-90'
                 }`}>
-                  {submitting ? 'ENTRANDO...' : 'ENTRAR'}
+                  ENTRAR
                 </button>
 
                 {(mode === 'user' || mode === 'admin') && (

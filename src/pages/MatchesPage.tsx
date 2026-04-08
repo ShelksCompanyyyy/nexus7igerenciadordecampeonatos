@@ -3,8 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Swords, Clock, CheckCircle } from 'lucide-react';
 
 export default function MatchesPage() {
-  const { profile } = useAuth();
-  const clanId = profile?.clan_id || '';
+  const { user } = useAuth();
+  const clanId = user?.clanId || '';
   const matches = getMatches().filter(m => m.clanId === clanId);
   const teams = getTeams().filter(t => t.clanId === clanId);
   const upcoming = matches.filter(m => m.status === 'upcoming');

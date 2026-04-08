@@ -5,7 +5,7 @@ import { MessageSquare, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ChatPage() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [messages, setMessages] = useState(getChatMessages());
   const [text, setText] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -23,7 +23,7 @@ export default function ChatPage() {
     if (!text.trim() || !user) return;
     addChatMessage({
       userId: user.id,
-      username: profile?.game_nick || profile?.username || 'Anônimo',
+      username: user.gameNick || user.username,
       message: text.trim(),
       timestamp: new Date().toISOString(),
     });

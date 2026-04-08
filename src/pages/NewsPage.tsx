@@ -3,8 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Newspaper, Clock } from 'lucide-react';
 
 export default function NewsPage() {
-  const { profile } = useAuth();
-  const clanId = profile?.clan_id || '';
+  const { user } = useAuth();
+  const clanId = user?.clanId || '';
   const news = [...getNews().filter(n => n.clanId === clanId)].reverse();
 
   return (

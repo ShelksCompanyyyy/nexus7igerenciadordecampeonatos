@@ -8,8 +8,8 @@ type Tab = 'players' | 'teams' | 'mvp' | 'gold' | 'clans';
 export default function RankingPage() {
   const [tab, setTab] = useState<Tab>('players');
   const [viewingClanId, setViewingClanId] = useState<string | null>(null);
-  const { profile } = useAuth();
-  const clanId = profile?.clan_id || '';
+  const { user } = useAuth();
+  const clanId = user?.clanId || '';
   const users = getUsers().filter(u => u.role !== 'superadmin' && u.clanId === clanId);
   const teams = getTeams().filter(t => t.clanId === clanId);
   const allClans = getClans();

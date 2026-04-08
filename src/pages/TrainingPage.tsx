@@ -3,8 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Target, Calendar, Clock } from 'lucide-react';
 
 export default function TrainingPage() {
-  const { profile } = useAuth();
-  const clanId = profile?.clan_id || '';
+  const { user } = useAuth();
+  const clanId = user?.clanId || '';
   const trainings = getTrainings().filter(t => t.clanId === clanId);
   const teams = getTeams().filter(t => t.clanId === clanId);
   const scheduled = trainings.filter(t => t.status === 'scheduled');

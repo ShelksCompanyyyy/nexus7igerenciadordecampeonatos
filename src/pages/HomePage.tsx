@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import heroBg from '@/assets/hero-bg.jpg';
 import { Trophy, Users, Swords, Dices, Target, Newspaper, Zap, BookOpen } from 'lucide-react';
-import { getUsers, getMatches, getTeams, getClanById } from '@/lib/store';
+import { getUsers, getMatches, getTeams, getClanById, getNotifications } from '@/lib/store';
 
 const QUICK_LINKS = [
   { path: '/ranking', label: 'Ranking', icon: Trophy, desc: 'Ver classificação' },
@@ -15,8 +15,8 @@ const QUICK_LINKS = [
 ];
 
 export default function HomePage() {
-  const { profile } = useAuth();
-  const clanId = profile?.clan_id || '';
+  const { user } = useAuth();
+  const clanId = user?.clanId || '';
   const clan = clanId ? getClanById(clanId) : null;
   const users = getUsers().filter(u => u.clanId === clanId);
   const matches = getMatches().filter(m => m.clanId === clanId);
@@ -25,7 +25,8 @@ export default function HomePage() {
   const topKiller = [...users].sort((a, b) => b.kills - a.kills)[0];
   const upcomingMatches = matches.filter(m => m.status === 'upcoming').slice(0, 3);
 
-  const isNewUser = profile ? (new Date().getTime() - new Date(profile.created_at).getTime()) < 1000 * 60 * 60 * 24 * 3 : false;
+  const isNewUser = user ? (new Date().getTime() - new Date(user.createdAt).getTime()) < 1000 * 60 * 60 * 24 * 3 : false; // 3 days
+  const unreadNotifs = user ? getNotifications(user.id).filter(n => !n.read) : [];
 
   return (
     <div className="space-y-8 animate-slide-up">
@@ -46,6 +47,23 @@ export default function HomePage() {
         </Link>
       )}
 
+      {/* Notifications */}
+      {unreadNotifs.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="font-heading text-xs text-primary flex items-center gap-2">🔔 NOTIFICAÇÕES ({unreadNotifs.length})</h3>
+          {unreadNotifs.slice(0, 3).map(n => (
+            <div key={n.id} className={`p-3 rounded-lg border text-sm font-display ${
+              n.type === 'withdrawal' ? 'border-gold/30 bg-gold/5' : 'border-primary/30 bg-primary/5'
+            }`}>
+              <p className="font-heading text-xs text-foreground">{n.title}</p>
+              <p className="text-xs text-muted-foreground mt-1">{n.message}</p>
+            </div>
+          ))}
+          {unreadNotifs.length > 3 && (
+            <p className="text-xs text-muted-foreground font-display text-center">+{unreadNotifs.length - 3} notificações</p>
+          )}
+        </div>
+      )}
       {/* Hero */}
       <div className="relative rounded-xl overflow-hidden neon-border-strong" style={{ minHeight: '300px' }}>
         {clan?.banner ? <img src={clan.banner} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" /> :
@@ -58,7 +76,7 @@ export default function HomePage() {
           <p className="text-lg md:text-xl font-display text-foreground/80 tracking-[0.3em] mt-1">E-SPORTS</p>
           <div className="flex items-center gap-2 mt-4 text-muted-foreground text-sm font-display">
             <Zap size={14} className="text-primary" />
-            <span>Bem-vindo, <span className="text-primary">{profile?.username}</span></span>
+            <span>Bem-vindo, <span className="text-primary">{user?.username}</span></span>
             <Zap size={14} className="text-primary" />
           </div>
         </div>

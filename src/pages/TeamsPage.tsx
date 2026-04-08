@@ -5,8 +5,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Users, ChevronLeft, Target, Trophy } from 'lucide-react';
 
 export default function TeamsPage() {
-  const { profile } = useAuth();
-  const clanId = profile?.clan_id || '';
+  const { user } = useAuth();
+  const clanId = user?.clanId || '';
   const teams = getTeams().filter(t => t.clanId === clanId);
   const users = getUsers().filter(u => u.clanId === clanId);
   const navigate = useNavigate();
@@ -43,8 +43,8 @@ export default function TeamsPage() {
 
 export function TeamDetailPage() {
   const { id } = useParams();
-  const { profile } = useAuth();
-  const clanId = profile?.clan_id || '';
+  const { user } = useAuth();
+  const clanId = user?.clanId || '';
   const teams = getTeams().filter(t => t.clanId === clanId);
   const users = getUsers().filter(u => u.clanId === clanId);
   const navigate = useNavigate();
