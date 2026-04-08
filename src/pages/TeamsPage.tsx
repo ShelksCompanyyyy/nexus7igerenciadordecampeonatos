@@ -43,8 +43,8 @@ export default function TeamsPage() {
 
 export function TeamDetailPage() {
   const { id } = useParams();
-  const { user } = useAuth();
-  const clanId = user?.clanId || '';
+  const { profile } = useAuth();
+  const clanId = profile?.clan_id || '';
   const teams = getTeams().filter(t => t.clanId === clanId);
   const users = getUsers().filter(u => u.clanId === clanId);
   const navigate = useNavigate();
