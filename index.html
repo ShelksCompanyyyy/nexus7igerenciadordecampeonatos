@@ -1,177 +1,104 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nexus7i Gerenciador De Campeonatos</title>
-    <meta name="description" content="App focado e criado para gerenciar campeonatos, xt e entre outros">
-    <meta name="author" content="Lovable" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus7i Gerenciador De Campeonatos</title>
+  <meta name="description" content="App focado e criado para gerênciar campeonatos, xt e entre outros">
+  <meta name="author" content="Lovable" />
 
-    <!-- Open Graph / Social Media -->
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9c8cc6ae-1558-4a5f-af6e-554f08034ec1/id-preview-9a292c52--1f12af8b-4622-4be4-963a-793bd629ab6a.lovable.app-1775514187978.png">
-    <meta property="og:title" content="Nexus7i Gerenciador De Campeonatos">
-    <meta property="og:description" content="App focado e criado para gerenciar campeonatos, xt e entre outros">
+  <!-- Open Graph / Twitter -->
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9c8cc6ae-1558-4a5f-af6e-554f08034ec1/id-preview-9a292c52--1f12af8b-4622-4be4-963a-793bd629ab6a.lovable.app-1775514187978.png">
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@Lovable" />
+  <meta property="og:title" content="Nexus7i Gerenciador De Campeonatos">
+  <meta name="twitter:title" content="Nexus7i Gerenciador De Campeonatos">
+  <meta property="og:description" content="App focado e criado para gerênciar campeonatos, xt e entre outros">
+  <meta name="twitter:description" content="App focado e criado para gerênciar campeonatos, xt e entre outros">
+  
+  <style>
+    body { font-family: Arial, sans-serif; background: #121212; color: #fff; text-align: center; padding: 50px; }
+    #painel { display: none; }
+    input { padding: 8px; margin: 5px; border-radius: 5px; border: 1px solid #ccc; }
+    button { padding: 10px 20px; margin: 5px; border-radius: 5px; border: none; background: #ff6600; color: #fff; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div id="auth">
+    <h1>Nexus7i - Login / Cadastro</h1>
+    <input type="text" id="nick" placeholder="Nick (para cadastro)" /><br/>
+    <input type="email" id="email" placeholder="Email" /><br/>
+    <input type="password" id="senha" placeholder="Senha" /><br/>
+    <button onclick="cadastrar()">Cadastrar</button>
+    <button onclick="login()">Login</button>
+  </div>
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
-    <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9c8cc6ae-1558-4a5f-af6e-554f08034ec1/id-preview-9a292c52--1f12af8b-4622-4be4-963a-793bd629ab6a.lovable.app-1775514187978.png">
-    <meta name="twitter:title" content="Nexus7i Gerenciador De Campeonatos">
-    <meta name="twitter:description" content="App focado e criado para gerenciar campeonatos, xt e entre outros">
-  </head>
+  <div id="painel">
+    <h1 id="boasvindas"></h1>
+    <button onclick="logout()">Sair</button>
+  </div>
 
-  <body>
-    <div id="root">
-      <!-- Aqui você pode adicionar a estrutura de login / painel -->
-      <div id="auth">
-        <input type="text" id="nick" placeholder="Nick" /><br/>
-        <input type="email" id="email" placeholder="Email" /><br/>
-        <input type="password" id="senha" placeholder="Senha" /><br/>
-        <button onclick="cadastrar()">Cadastrar</button>
-        <button onclick="login()">Login</button>
-      </div>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-      <div id="painel" style="display:none">
-        <h1 id="boasvindas"></h1>
-        <button onclick="logout()">Sair</button>
-      </div>
-    </div>
+    const client = createClient(
+      "https://cnktlbsvtoobbftoqtka.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNua3RsYnN2dG9vYmJmdG9xdGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTQ0NjEsImV4cCI6MjA5MTE3MDQ2MX0.HJTapkPU8HXYOsXbNfLJwjwsWm9q4gdkU0464Uc_vXg"
+    );
 
-    <script type="module" src="/src/main.tsx"></script>
+    async function cadastrar() {
+      const email = document.getElementById("email").value;
+      const senha = document.getElementById("senha").value;
+      const nick = document.getElementById("nick").value;
 
-    <!-- Script Supabase -->
-    <script type="module">
-      import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+      if (!email || !senha || !nick) { alert("Preencha todos os campos"); return; }
 
-      const client = createClient(
-        "https://cnktlbsvtoobbftoqtka.supabase.co",
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNua3RsYnN2dG9vYmJmdG9xdGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTQ0NjEsImV4cCI6MjA5MTE3MDQ2MX0.HJTapkPU8HXYOsXbNfLJwjwsWm9q4gdkU0464Uc_vXg"
-      );
+      const { data, error } = await client.auth.signUp({ email, password: senha });
 
-      async function cadastrar() {
-        const email = document.getElementById("email").value;
-        const senha = document.getElementById("senha").value;
-        const nick = document.getElementById("nick").value;
+      if (error) { alert(error.message); return; }
 
-        const { data, error } = await client.auth.signUp({
-          email,
-          password: senha
-        });
+      const userId = data.user?.id;
+      if (!userId) { alert("Confirme seu email antes de continuar!"); return; }
 
-        if (error) {
-          alert(error.message);
-          return;
-        }
+      await client.from("usuarios").insert([{ id: userId, Nome: nick, Gmail: email, Clã: "Nexus7i" }]);
+      alert("Conta criada!");
+    }
 
-        const userId = data.user?.id;
+    async function login() {
+      const email = document.getElementById("email").value;
+      const senha = document.getElementById("senha").value;
 
-        if (!userId) {
-          alert("Confirme seu email antes de continuar!");
-          return;
-        }
+      if (!email || !senha) { alert("Preencha todos os campos"); return; }
 
-        await client.from("usuarios").insert([
-          {
-            id: userId,
-            Nome: nick,
-            Gmail: email,
-            Clã: "Nexus7i"
-          }
-        ]);
+      const { error } = await client.auth.signInWithPassword({ email, password: senha });
+      if (error) { alert(error.message); } 
+      else { carregarUsuario(); }
+    }
 
-        alert("Conta criada!");
-      }
+    async function carregarUsuario() {
+      const { data } = await client.auth.getUser();
+      if (!data.user) return;
 
-      async function login() {
-        const email = document.getElementById("email").value;
-        const senha = document.getElementById("senha").value;
+      const { data: perfil } = await client
+        .from("usuarios")
+        .select("Nome")
+        .eq("id", data.user.id)
+        .single();
 
-        const { error } = await client.auth.signInWithPassword({
-          email,
-          password: senha
-        });
+      if (!perfil) { alert("Perfil não encontrado!"); return; }
 
-        if (error) {
-          alert(error.message);
-        } else {
-          carregarUsuario();
-        }
-      }
+      document.getElementById("auth").style.display = "none";
+      document.getElementById("painel").style.display = "block";
+      document.getElementById("boasvindas").innerText = "🎮 Bem-vindo, " + perfil.Nome;
+    }
 
-      async function carregarUsuario() {
-        const { data } = await client.auth.getUser();
+    async function logout() {
+      await client.auth.signOut();
+      location.reload();
+    }
 
-        if (!data.user) return;
-
-        const { data: perfil } = await client
-          .from("usuarios")
-          .select("Nome")
-          .eq("id", data.user.id)
-          .single();
-
-        if (!perfil) {
-          alert("Perfil não encontrado!");
-          return;
-        }
-
-        document.getElementById("auth").style.display = "none";
-        document.getElementById("painel").style.display = "block";
-
-        document.getElementById("boasvindas").innerText =
-          "🎮 Bem-vindo, " + perfil.Nome;
-      }
-
-      async function logout() {
-        await client.auth.signOut();
-        location.reload();
-      }
-
-      carregarUsuario();
-    </script>
-  </body>
-</html>
-  const { error } = await client.auth.signInWithPassword({
-    email,
-    password: senha
-  });
-
-  if (error) {
-    alert(error.message);
-  } else {
     carregarUsuario();
-  }
-}
-
-async function carregarUsuario() {
-  const { data } = await client.auth.getUser();
-
-  if (!data.user) return;
-
-  const { data: perfil } = await client
-    .from("usuarios")
-    .select("Nome")
-    .eq("id", data.user.id)
-    .single();
-
-  if (!perfil) {
-    alert("Perfil não encontrado!");
-    return;
-  }
-
-  document.getElementById("auth").style.display = "none";
-  document.getElementById("painel").style.display = "block";
-
-  document.getElementById("boasvindas").innerText =
-    "🎮 Bem-vindo, " + perfil.Nome;
-}
-
-async function logout() {
-  await client.auth.signOut();
-  location.reload();
-}
-<!-- teste github pages -->)
-carregarUsuario();
-</script>
-
+  </script>
 </body>
 </html>
