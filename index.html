@@ -1,135 +1,71 @@
-```html
-<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nexus7i Gerenciador De Campeonatos</title>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login + Salvar</title>
+</head>
+<body>
 
-    <style>
-      body { font-family: Arial, sans-serif; background: #121212; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; }
-      #root { width: 100%; max-width: 400px; text-align: center; }
-      input { width: 90%; padding: 10px; margin: 5px 0; border-radius: 5px; border: none; }
-      button { padding: 10px 20px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; background: #1e88e5; color: #fff; }
-      #painel { margin-top: 20px; }
-    </style>
-  </head>
+  <h2>Login</h2>
+  <input id="email" placeholder="Email"><br>
+  <input id="senha" type="password" placeholder="Senha"><br>
+  <button onclick="login()">Entrar</button>
 
-  <body>
-    <div id="root">
+  <h2>Perfil</h2>
+  <input id="nome" placeholder="Nome"><br>
+  <input id="cla" placeholder="Clã"><br>
+  <button onclick="salvar()">Salvar Perfil</button>
 
-      <!-- LOGIN -->
-      <div id="auth">
-        <h2>Login / Cadastro</h2>
-        <input type="text" id="nick" placeholder="Nick" /><br/>
-        <input type="email" id="email" placeholder="Email" /><br/>
-        <input type="password" id="senha" placeholder="Senha" /><br/>
-        <button onclick="cadastrar()">Cadastrar</button>
-        <button onclick="login()">Login</button>
-        <p id="mensagem"></p>
-      </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-      <!-- PAINEL -->
-      <div id="painel" style="display:none">
-        <h1 id="boasvindas"></h1>
-        <button onclick="logout()">Sair</button>
-      </div>
-    </div>
+  <script>
+    const supabase = window.supabase.createClient(
+      "https://cnktlbsvtoobbftoqtka.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNua3RsYnN2dG9vYmJmdG9xdGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTQ0NjEsImV4cCI6MjA5MTE3MDQ2MX0.HJTapkPU8HXYOsXbNfLJwjwsWm9q4gdkU0464Uc_vXg"
+    );
 
-    <script type="module">
-      import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+    async function login() {
+      const email = document.getElementById("email").value;
+      const senha = document.getElementById("senha").value;
 
-      const client = createClient(
-        "https://cnktlbsvtoobbftoqtka.supabase.co",
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNua3RsYnN2dG9vYmJmdG9xdGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTQ0NjEsImV4cCI6MjA5MTE3MDQ2MX0.HJTapkPU8HXYOsXbNfLJwjwsWm9q4gdkU0464Uc_vXg"
-      );
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: senha
+      });
 
-      const mensagem = document.getElementById("mensagem");
+      if (error) {
+        alert("Erro no login: " + error.message);
+      } else {
+        alert("Login feito!");
+      }
+    }
 
-      async function cadastrar() {
-        const email = document.getElementById("email").value;
-        const senha = document.getElementById("senha").value;
-        const nick = document.getElementById("nick").value;
+    async function salvar() {
+      const { data: { user } } = await supabase.auth.getUser();
 
-        mensagem.innerText = "Criando conta...";
+      if (!user) {
+        alert("Você precisa logar primeiro!");
+        return;
+      }
 
-        const { data, error } = await client.auth.signUp({
-          email,
-          password: senha
+      const nome = document.getElementById("nome").value;
+      const cla = document.getElementById("cla").value;
+
+      const { error } = await supabase
+        .from('usuarios')
+        .insert({
+          id: user.id,
+          nome: nome,
+          gmail: user.email,
+          cla: cla
         });
 
-        if (error) {
-          mensagem.innerText = "Erro: " + error.message;
-          return;
-        }
-
-        const userId = data.user?.id;
-
-        if (!userId) {
-          mensagem.innerText = "Confirme seu email antes de continuar!";
-          return;
-        }
-
-        await client.from("usuarios").insert([
-          {
-            id: userId,
-            nome: nick,
-            gmail: email,
-            cla: "Nexus7i"
-          }
-        ]);
-
-        mensagem.innerText = "Conta criada com sucesso!";
+      if (error) {
+        alert("Erro ao salvar: " + error.message);
+      } else {
+        alert("Perfil salvo!");
       }
+    }
+  </script>
 
-      async function login() {
-        const email = document.getElementById("email").value;
-        const senha = document.getElementById("senha").value;
-
-        mensagem.innerText = "Entrando...";
-
-        const { error } = await client.auth.signInWithPassword({
-          email,
-          password: senha
-        });
-
-        if (error) {
-          mensagem.innerText = "Erro: " + error.message;
-          return;
-        }
-
-        await carregarUsuario();
-      }
-
-      async function carregarUsuario() {
-        const { data } = await client.auth.getUser();
-
-        if (!data.user) return;
-
-        const { data: perfil, error } = await client
-          .from("usuarios")
-          .select("nome")
-          .eq("id", data.user.id)
-          .single();
-
-        if (error || !perfil) {
-          mensagem.innerText = "Perfil não encontrado!";
-          return;
-        }
-
-        document.getElementById("auth").style.display = "none";
-        document.getElementById("painel").style.display = "block";
-        document.getElementById("boasvindas").innerText =
-          "🎮 Bem-vindo, " + perfil.nome;
-      }
-
-      async function logout() {
-        await client.auth.signOut();
-        location.reload();
-      }
-
-      carregarUsuario();
-    </script>
-  </body>
+</body>
 </html>
-```
