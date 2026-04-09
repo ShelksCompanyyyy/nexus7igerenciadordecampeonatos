@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { getTeams, getUsers } from '@/lib/store';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTeams, useProfiles } from '@/hooks/useSupabaseData';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Users, ChevronLeft, Target, Trophy } from 'lucide-react';
 
 export default function TeamsPage() {
   const { user } = useAuth();
   const clanId = user?.clanId || '';
-  const teams = getTeams().filter(t => t.clanId === clanId);
-  const users = getUsers().filter(u => u.clanId === clanId);
+  const { data: allTeams } = useTeams();
+  const { data: allUsers } = useProfiles();
+  const teams = allTeams.filter(t => t.clanId === clanId);
+  const users = allUsers.filter(u => u.clanId === clanId);
   const navigate = useNavigate();
 
   return (
@@ -16,7 +18,7 @@ export default function TeamsPage() {
       <h1 className="text-2xl font-heading text-primary text-glow">LINES / TIMES</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {teams.map(team => {
-          const teamPlayers = users.filter(u => team.players.includes(u.id));
+          const teamPlayers = users.filter(u => team.players.includes(u.userId));
           return (
             <button key={team.id} onClick={() => navigate(`/teams/${team.id}`)}
               className="p-5 bg-card rounded-lg border border-border hover:neon-border transition-all text-left group">
@@ -45,14 +47,16 @@ export function TeamDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const clanId = user?.clanId || '';
-  const teams = getTeams().filter(t => t.clanId === clanId);
-  const users = getUsers().filter(u => u.clanId === clanId);
+  const { data: allTeams } = useTeams();
+  const { data: allUsers } = useProfiles();
+  const teams = allTeams.filter(t => t.clanId === clanId);
+  const users = allUsers.filter(u => u.clanId === clanId);
   const navigate = useNavigate();
   const team = teams.find(t => t.id === id);
 
   if (!team) return <div className="text-center text-muted-foreground p-12">Time não encontrado</div>;
 
-  const teamPlayers = users.filter(u => team.players.includes(u.id));
+  const teamPlayers = users.filter(u => team.players.includes(u.userId));
 
   return (
     <div className="space-y-6 animate-slide-up">
