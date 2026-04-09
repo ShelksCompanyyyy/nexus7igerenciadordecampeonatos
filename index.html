@@ -7,217 +7,258 @@
 
 <style>
 body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #0a0a0a;
-    color: white;
+    margin:0;
+    font-family: 'Segoe UI', sans-serif;
+    background: radial-gradient(circle at top, #0a0a0a, #000);
+    color:white;
+    overflow-x:hidden;
+}
+
+/* PARTICULAS */
+canvas {
+    position:fixed;
+    top:0;
+    left:0;
+    z-index:-1;
 }
 
 /* HEADER */
 header {
-    background: black;
-    padding: 15px;
-    text-align: center;
-    border-bottom: 2px solid red;
+    text-align:center;
+    padding:20px;
 }
 
 header h1 {
-    color: red;
-    text-shadow: 0 0 10px red;
+    color:#ff0000;
+    text-shadow:0 0 20px red, 0 0 40px red;
 }
 
 /* MENU */
 nav {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    background: #111;
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:10px;
 }
 
 nav button {
-    background: transparent;
-    border: none;
-    color: white;
-    padding: 15px;
-    cursor: pointer;
-    transition: 0.3s;
+    background:#111;
+    border:1px solid red;
+    color:white;
+    padding:10px 15px;
+    cursor:pointer;
+    border-radius:10px;
+    transition:0.3s;
 }
 
 nav button:hover {
-    color: red;
-    text-shadow: 0 0 10px red;
+    background:red;
+    box-shadow:0 0 20px red;
 }
 
 /* SEÇÕES */
 .section {
-    display: none;
-    padding: 20px;
+    display:none;
+    padding:20px;
 }
 
 .active {
-    display: block;
+    display:block;
 }
 
 /* CARDS */
 .card {
-    background: #111;
-    border: 1px solid red;
-    padding: 15px;
-    margin: 10px 0;
-    border-radius: 10px;
+    background:rgba(20,20,20,0.8);
+    border:1px solid red;
+    padding:15px;
+    margin:10px 0;
+    border-radius:15px;
+    box-shadow:0 0 10px rgba(255,0,0,0.3);
+    transition:0.3s;
+}
+
+.card:hover {
+    transform:scale(1.03);
+    box-shadow:0 0 20px red;
 }
 
 /* BOTÕES */
 .btn {
-    background: red;
-    border: none;
-    padding: 10px;
-    color: white;
-    cursor: pointer;
-    margin-top: 10px;
+    background:red;
+    border:none;
+    padding:10px;
+    color:white;
+    cursor:pointer;
+    border-radius:10px;
+    transition:0.3s;
+}
+
+.btn:hover {
+    box-shadow:0 0 20px red;
 }
 
 /* CHAT */
 #chatBox {
-    height: 200px;
-    overflow-y: auto;
-    background: black;
-    padding: 10px;
-    border: 1px solid red;
+    height:200px;
+    overflow-y:auto;
+    background:black;
+    padding:10px;
+    border-radius:10px;
+    border:1px solid red;
 }
 
 /* ROLETA */
-#roleta {
-    text-align: center;
-    margin-top: 20px;
+#roletaAnim {
+    width:150px;
+    height:150px;
+    border-radius:50%;
+    border:5px solid red;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:auto;
+    font-size:25px;
+    animation:pulse 1.5s infinite;
 }
 
+@keyframes pulse {
+    0% { box-shadow:0 0 5px red; }
+    50% { box-shadow:0 0 30px red; }
+    100% { box-shadow:0 0 5px red; }
+}
 </style>
 </head>
 
 <body>
 
+<canvas id="particles"></canvas>
+
 <header>
-    <h1>Nexus7i E-Sports</h1>
+<h1>Nexus7i E-Sports</h1>
 </header>
 
 <nav>
-    <button onclick="show('home')">Home</button>
-    <button onclick="show('ranking')">Ranking</button>
-    <button onclick="show('times')">Times</button>
-    <button onclick="show('xtreino')">X-Treinos</button>
-    <button onclick="show('campeonato')">Campeonato</button>
-    <button onclick="show('chat')">Chat</button>
-    <button onclick="show('roleta')">Roleta</button>
-    <button onclick="show('perfil')">Perfil</button>
+<button onclick="show('home')">Home</button>
+<button onclick="show('ranking')">Ranking</button>
+<button onclick="show('xtreino')">X-Treinos</button>
+<button onclick="show('chat')">Chat</button>
+<button onclick="show('roleta')">Roleta</button>
+<button onclick="show('perfil')">Perfil</button>
 </nav>
 
-<!-- HOME -->
 <div id="home" class="section active">
-    <h2>Bem-vindo ao Nexus7i</h2>
-    <div class="card">🔥 Melhor jogador da semana</div>
-    <div class="card">🏆 Próximos jogos</div>
+<h2>🔥 Destaques</h2>
+<div class="card">Melhor jogador da semana</div>
+<div class="card">Próximos campeonatos</div>
 </div>
 
-<!-- RANKING -->
 <div id="ranking" class="section">
-    <h2>Ranking de Times</h2>
-    <div class="card">Time Alpha - 10 vitórias</div>
-    <div class="card">Time Beta - 8 vitórias</div>
+<h2>🏆 Ranking</h2>
+<div class="card">Time Alpha</div>
+<div class="card">Time Beta</div>
 </div>
 
-<!-- TIMES -->
-<div id="times" class="section">
-    <h2>Times</h2>
-    <div class="card">Time Alpha</div>
-    <div class="card">Time Beta</div>
-</div>
-
-<!-- X-TREINOS -->
 <div id="xtreino" class="section">
-    <h2>X-Treinos</h2>
-    <div class="card">
-        Time Alpha<br>
-        Dia: Sexta<br>
-        Hora: 20:00
-    </div>
+<h2>📅 X-Treinos</h2>
+<div class="card">Sexta - 20:00 - Time Alpha</div>
 </div>
 
-<!-- CAMPEONATO -->
-<div id="campeonato" class="section">
-    <h2>Chaveamento</h2>
-
-    <div class="card">
-        <b>Quartas</b><br>
-        Alpha vs Beta
-    </div>
-
-    <div class="card">
-        <b>Semifinal</b><br>
-        ---
-    </div>
-
-</div>
-
-<!-- CHAT -->
 <div id="chat" class="section">
-    <h2>Chat Geral</h2>
-
-    <div id="chatBox"></div>
-
-    <input type="text" id="msg" placeholder="Digite...">
-    <button class="btn" onclick="sendMsg()">Enviar</button>
+<h2>💬 Chat</h2>
+<div id="chatBox"></div>
+<input id="msg">
+<button class="btn" onclick="sendMsg()">Enviar</button>
 </div>
 
-<!-- ROLETA -->
 <div id="roleta" class="section">
-    <h2>Roleta</h2>
-
-    <button class="btn" onclick="girar()">Girar</button>
-    <p id="resultado"></p>
+<h2>🎰 Roleta</h2>
+<div id="roletaAnim">🎰</div>
+<button class="btn" onclick="girar()">Girar</button>
+<p id="res"></p>
 </div>
 
-<!-- PERFIL -->
 <div id="perfil" class="section">
-    <h2>Perfil</h2>
-    <div class="card">ID: <span id="userId"></span></div>
+<h2>👤 Perfil</h2>
+<div class="card">ID: <span id="uid"></span></div>
+<div class="card">Gold: <span id="gold"></span></div>
 </div>
 
 <script>
 
-/* TROCAR TELA */
+/* NAVEGAÇÃO */
 function show(id){
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
+document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+document.getElementById(id).classList.add('active');
 }
 
-/* CHAT SIMPLES */
+/* CHAT */
 function sendMsg(){
-    let msg = document.getElementById("msg").value;
-    if(msg === "") return;
-
-    let box = document.getElementById("chatBox");
-    box.innerHTML += "<p>"+msg+"</p>";
-    document.getElementById("msg").value = "";
+let m=document.getElementById("msg").value;
+if(!m) return;
+chatBox.innerHTML+="<p>"+m+"</p>";
+msg.value="";
 }
 
-/* ROLETA */
+/* ROLETA ANIMADA */
 function girar(){
-    let premios = [5,10,15,20,100,250,500];
-    let resultado = premios[Math.floor(Math.random()*premios.length)];
-
-    document.getElementById("resultado").innerText = "Você ganhou "+resultado+"G";
+let roleta=document.getElementById("roletaAnim");
+roleta.innerText="...";
+roleta.style.transform="rotate(720deg)";
+setTimeout(()=>{
+let premios=[5,10,15,20,100,250,500];
+let r=premios[Math.floor(Math.random()*premios.length)];
+gold+=r;
+localStorage.setItem("gold",gold);
+document.getElementById("gold").innerText=gold;
+document.getElementById("res").innerText="Ganhou "+r+"G";
+roleta.innerText="🎰";
+roleta.style.transform="rotate(0deg)";
+},2000);
 }
 
-/* ID ÚNICO */
-let id = localStorage.getItem("id");
-
+/* ID */
+let id=localStorage.getItem("id");
 if(!id){
-    id = "ID-" + Math.floor(Math.random()*1000000);
-    localStorage.setItem("id", id);
+id="ID-"+Math.floor(Math.random()*999999);
+localStorage.setItem("id",id);
+}
+uid.innerText=id;
+
+/* GOLD */
+let gold=parseInt(localStorage.getItem("gold")||0);
+document.getElementById("gold").innerText=gold;
+
+/* PARTICULAS */
+const canvas = document.getElementById("particles");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let particles = [];
+
+for(let i=0;i<100;i++){
+particles.push({
+x:Math.random()*canvas.width,
+y:Math.random()*canvas.height,
+vx:Math.random()*1-0.5,
+vy:Math.random()*1-0.5
+});
 }
 
-document.getElementById("userId").innerText = id;
+function animate(){
+ctx.clearRect(0,0,canvas.width,canvas.height);
+particles.forEach(p=>{
+p.x+=p.vx;
+p.y+=p.vy;
+
+ctx.fillStyle="red";
+ctx.fillRect(p.x,p.y,2,2);
+});
+requestAnimationFrame(animate);
+}
+
+animate();
 
 </script>
 
