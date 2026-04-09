@@ -1,18 +1,29 @@
 import { useState } from 'react';
-import { getUsers, getTeams, getClans, getClanById } from '@/lib/store';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfiles, useTeams, useClans } from '@/hooks/useSupabaseData';
+import { fetchClanById } from '@/lib/supabaseStore';
 import { Trophy, Target, Zap, Users, ChevronRight, ArrowLeft } from 'lucide-react';
+import type { SbClan } from '@/lib/supabaseStore';
+import { useEffect } from 'react';
 
 type Tab = 'players' | 'teams' | 'mvp' | 'gold' | 'clans';
 
 export default function RankingPage() {
   const [tab, setTab] = useState<Tab>('players');
   const [viewingClanId, setViewingClanId] = useState<string | null>(null);
+  const [viewClan, setViewClan] = useState<SbClan | null>(null);
   const { user } = useAuth();
   const clanId = user?.clanId || '';
-  const users = getUsers().filter(u => u.role !== 'superadmin' && u.clanId === clanId);
-  const teams = getTeams().filter(t => t.clanId === clanId);
-  const allClans = getClans();
+  const { data: allUsers } = useProfiles();
+  const { data: allTeams } = useTeams();
+  const { data: allClans } = useClans();
+
+  const users = allUsers.filter(u => u.role !== 'superadmin' && u.clanId === clanId);
+  const teams = allTeams.filter(t => t.clanId === clanId);
+
+  useEffect(() => {
+    if (viewingClanId) fetchClanById(viewingClanId).then(setViewClan);
+  }, [viewingClanId]);
 
   const sortedPlayers = [...users].sort((a, b) => {
     const kdA = a.deaths > 0 ? a.kills / a.deaths : a.kills;
@@ -31,11 +42,9 @@ export default function RankingPage() {
     { id: 'clans', label: 'Clãs', icon: Users },
   ];
 
-  // Clan detail view
   if (viewingClanId) {
-    const clan = getClanById(viewingClanId);
-    const clanMembers = getUsers().filter(u => u.clanId === viewingClanId && u.role !== 'superadmin');
-    const clanTeams = getTeams().filter(t => t.clanId === viewingClanId);
+    const clanMembers = allUsers.filter(u => u.clanId === viewingClanId && u.role !== 'superadmin');
+    const clanTeams = allTeams.filter(t => t.clanId === viewingClanId);
     return (
       <div className="space-y-6 animate-slide-up">
         <button onClick={() => setViewingClanId(null)}
@@ -44,20 +53,19 @@ export default function RankingPage() {
         </button>
         <div className="bg-card rounded-lg neon-border p-6">
           <div className="flex items-center gap-4 mb-4">
-            {clan?.logo ? (
-              <img src={clan.logo} alt={clan.name} className="w-16 h-16 rounded-full object-cover border-2 border-primary/50" />
+            {viewClan?.logo ? (
+              <img src={viewClan.logo} alt={viewClan.name} className="w-16 h-16 rounded-full object-cover border-2 border-primary/50" />
             ) : (
               <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-xl">
-                {clan?.name?.[0]?.toUpperCase()}
+                {viewClan?.name?.[0]?.toUpperCase()}
               </div>
             )}
             <div>
-              <h2 className="text-xl font-heading text-primary text-glow">{clan?.name}</h2>
+              <h2 className="text-xl font-heading text-primary text-glow">{viewClan?.name}</h2>
               <p className="text-sm text-muted-foreground font-display">{clanMembers.length} membros · {clanTeams.length} times</p>
             </div>
           </div>
         </div>
-
         <h3 className="font-heading text-sm text-primary">MEMBROS ({clanMembers.length})</h3>
         <div className="bg-card rounded-lg neon-border overflow-hidden">
           <table className="w-full text-sm font-display">
@@ -76,7 +84,6 @@ export default function RankingPage() {
           </table>
           {clanMembers.length === 0 && <p className="p-6 text-center text-muted-foreground font-display">Nenhum membro</p>}
         </div>
-
         {clanTeams.length > 0 && (
           <>
             <h3 className="font-heading text-sm text-primary">TIMES ({clanTeams.length})</h3>
@@ -103,9 +110,7 @@ export default function RankingPage() {
             className={`px-4 py-2 rounded font-heading text-xs flex items-center gap-2 transition-all ${
               tab === t.id ? 'gradient-primary text-primary-foreground box-glow-sm' : 'bg-secondary text-muted-foreground hover:text-foreground'
             }`}
-          >
-            <t.icon size={14} /> {t.label}
-          </button>
+          ><t.icon size={14} /> {t.label}</button>
         ))}
       </div>
 
@@ -136,9 +141,7 @@ export default function RankingPage() {
       {tab === 'teams' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {sortedTeams.map((team, i) => (
-            <div key={team.id}
-              className={`p-4 bg-card rounded-lg border transition-all text-left ${i < 3 ? 'neon-border' : 'border-border'}`}
-            >
+            <div key={team.id} className={`p-4 bg-card rounded-lg border transition-all text-left ${i < 3 ? 'neon-border' : 'border-border'}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className={`font-heading text-lg ${i < 3 ? 'text-primary text-glow-sm' : 'text-muted-foreground'}`}>#{i + 1}</span>
@@ -199,8 +202,8 @@ export default function RankingPage() {
       {tab === 'clans' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {allClans.map(clan => {
-            const memberCount = getUsers().filter(u => u.clanId === clan.id && u.role !== 'superadmin').length;
-            const teamCount = getTeams().filter(t => t.clanId === clan.id).length;
+            const memberCount = allUsers.filter(u => u.clanId === clan.id && u.role !== 'superadmin').length;
+            const teamCount = allTeams.filter(t => t.clanId === clan.id).length;
             return (
               <button key={clan.id} onClick={() => setViewingClanId(clan.id)}
                 className="p-4 bg-card rounded-lg border border-border hover:neon-border transition-all text-left group">

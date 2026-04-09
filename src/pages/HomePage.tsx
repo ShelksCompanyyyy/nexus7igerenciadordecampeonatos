@@ -3,7 +3,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import heroBg from '@/assets/hero-bg.jpg';
 import { Trophy, Users, Swords, Dices, Target, Newspaper, Zap, BookOpen } from 'lucide-react';
-import { getUsers, getMatches, getTeams, getClanById, getNotifications } from '@/lib/store';
+import { useProfiles, useMatches, useTeams, useNotifications } from '@/hooks/useSupabaseData';
+import { fetchClanById } from '@/lib/supabaseStore';
+import { useState, useEffect } from 'react';
+import type { SbClan } from '@/lib/supabaseStore';
 
 const QUICK_LINKS = [
   { path: '/ranking', label: 'Ranking', icon: Trophy, desc: 'Ver classificação' },
@@ -17,20 +20,28 @@ const QUICK_LINKS = [
 export default function HomePage() {
   const { user } = useAuth();
   const clanId = user?.clanId || '';
-  const clan = clanId ? getClanById(clanId) : null;
-  const users = getUsers().filter(u => u.clanId === clanId);
-  const matches = getMatches().filter(m => m.clanId === clanId);
-  const teams = getTeams().filter(t => t.clanId === clanId);
+  const { data: allUsers } = useProfiles();
+  const { data: allMatches } = useMatches();
+  const { data: allTeams } = useTeams();
+  const { data: unreadNotifsRaw } = useNotifications(user?.userId);
+  const [clan, setClan] = useState<SbClan | null>(null);
+
+  useEffect(() => {
+    if (clanId) fetchClanById(clanId).then(setClan);
+  }, [clanId]);
+
+  const users = allUsers.filter(u => u.clanId === clanId);
+  const matches = allMatches.filter(m => m.clanId === clanId);
+  const teams = allTeams.filter(t => t.clanId === clanId);
   const topMvp = [...users].sort((a, b) => b.mvps - a.mvps)[0];
   const topKiller = [...users].sort((a, b) => b.kills - a.kills)[0];
   const upcomingMatches = matches.filter(m => m.status === 'upcoming').slice(0, 3);
+  const unreadNotifs = unreadNotifsRaw.filter(n => !n.read);
 
-  const isNewUser = user ? (new Date().getTime() - new Date(user.createdAt).getTime()) < 1000 * 60 * 60 * 24 * 3 : false; // 3 days
-  const unreadNotifs = user ? getNotifications(user.id).filter(n => !n.read) : [];
+  const isNewUser = user ? (new Date().getTime() - new Date(user.createdAt).getTime()) < 1000 * 60 * 60 * 24 * 3 : false;
 
   return (
     <div className="space-y-8 animate-slide-up">
-      {/* Tutorial Banner */}
       {isNewUser && (
         <Link to="/tutorial" className="block bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 border border-primary/40 rounded-xl p-5 hover:border-primary/60 transition-all group animate-slide-up">
           <div className="flex items-center gap-4">
@@ -47,7 +58,6 @@ export default function HomePage() {
         </Link>
       )}
 
-      {/* Notifications */}
       {unreadNotifs.length > 0 && (
         <div className="space-y-2">
           <h3 className="font-heading text-xs text-primary flex items-center gap-2">🔔 NOTIFICAÇÕES ({unreadNotifs.length})</h3>
@@ -64,7 +74,7 @@ export default function HomePage() {
           )}
         </div>
       )}
-      {/* Hero */}
+
       <div className="relative rounded-xl overflow-hidden neon-border-strong" style={{ minHeight: '300px' }}>
         {clan?.banner ? <img src={clan.banner} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" /> :
           <img src={heroBg} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />}
@@ -82,7 +92,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Quick Links */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {QUICK_LINKS.map(link => (
           <Link key={link.path} to={link.path}
@@ -94,7 +103,6 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-card rounded-lg neon-border p-5">
           <h3 className="font-heading text-xs text-primary mb-3 flex items-center gap-2"><Trophy size={14} /> TOP MVP</h3>
@@ -132,7 +140,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Upcoming Matches */}
       {upcomingMatches.length > 0 && (
         <div className="bg-card rounded-lg neon-border p-5">
           <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2"><Swords size={16} /> PRÓXIMOS JOGOS</h3>
@@ -155,7 +162,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Prizes */}
       <div className="bg-card rounded-lg neon-border p-5">
         <h3 className="font-heading text-sm text-primary mb-2 flex items-center gap-2"><Trophy size={16} /> PREMIAÇÃO DO CAMPEONATO</h3>
         <p className="text-xs text-muted-foreground font-display mb-4">Premiação para o campeonato de Lines contra Lines</p>

@@ -1,12 +1,14 @@
-import { getMatches, getTeams } from '@/lib/store';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMatches, useTeams } from '@/hooks/useSupabaseData';
 import { Swords, Clock, CheckCircle } from 'lucide-react';
 
 export default function MatchesPage() {
   const { user } = useAuth();
   const clanId = user?.clanId || '';
-  const matches = getMatches().filter(m => m.clanId === clanId);
-  const teams = getTeams().filter(t => t.clanId === clanId);
+  const { data: allMatches } = useMatches();
+  const { data: allTeams } = useTeams();
+  const matches = allMatches.filter(m => m.clanId === clanId);
+  const teams = allTeams.filter(t => t.clanId === clanId);
   const upcoming = matches.filter(m => m.status === 'upcoming');
   const completed = matches.filter(m => m.status === 'completed');
 

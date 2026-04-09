@@ -1,11 +1,12 @@
-import { getNews } from '@/lib/store';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNews } from '@/hooks/useSupabaseData';
 import { Newspaper, Clock } from 'lucide-react';
 
 export default function NewsPage() {
   const { user } = useAuth();
   const clanId = user?.clanId || '';
-  const news = [...getNews().filter(n => n.clanId === clanId)].reverse();
+  const { data: allNews } = useNews();
+  const news = [...allNews.filter(n => n.clanId === clanId)].reverse();
 
   return (
     <div className="space-y-6 animate-slide-up">
