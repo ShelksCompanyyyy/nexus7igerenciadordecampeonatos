@@ -1,266 +1,186 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nexus7i E-Sports</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus7i E-Sports</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Reset básico */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Orbitron', sans-serif;
+        }
 
-<style>
-body {
-    margin:0;
-    font-family: 'Segoe UI', sans-serif;
-    background: radial-gradient(circle at top, #0a0a0a, #000);
-    color:white;
-    overflow-x:hidden;
-}
+        body {
+            background: #0a0a0a url('https://i.imgur.com/3ZcXrUo.png') no-repeat center top;
+            background-size: cover;
+            color: #fff;
+        }
 
-/* PARTICULAS */
-canvas {
-    position:fixed;
-    top:0;
-    left:0;
-    z-index:-1;
-}
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            background: rgba(0,0,0,0.8);
+            border-bottom: 2px solid #ff0055;
+        }
 
-/* HEADER */
-header {
-    text-align:center;
-    padding:20px;
-}
+        header h1 {
+            font-size: 2rem;
+            color: #ff0055;
+        }
 
-header h1 {
-    color:#ff0000;
-    text-shadow:0 0 20px red, 0 0 40px red;
-}
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 25px;
+        }
 
-/* MENU */
-nav {
-    display:flex;
-    justify-content:center;
-    flex-wrap:wrap;
-    gap:10px;
-}
+        nav ul li a {
+            text-decoration: none;
+            color: #fff;
+            font-weight: bold;
+            transition: 0.3s;
+        }
 
-nav button {
-    background:#111;
-    border:1px solid red;
-    color:white;
-    padding:10px 15px;
-    cursor:pointer;
-    border-radius:10px;
-    transition:0.3s;
-}
+        nav ul li a:hover {
+            color: #ff0055;
+        }
 
-nav button:hover {
-    background:red;
-    box-shadow:0 0 20px red;
-}
+        main {
+            padding: 50px 40px;
+        }
 
-/* SEÇÕES */
-.section {
-    display:none;
-    padding:20px;
-}
+        .section {
+            margin-bottom: 60px;
+        }
 
-.active {
-    display:block;
-}
+        .section h2 {
+            color: #ff0055;
+            margin-bottom: 20px;
+            border-left: 5px solid #ff0055;
+            padding-left: 10px;
+        }
 
-/* CARDS */
-.card {
-    background:rgba(20,20,20,0.8);
-    border:1px solid red;
-    padding:15px;
-    margin:10px 0;
-    border-radius:15px;
-    box-shadow:0 0 10px rgba(255,0,0,0.3);
-    transition:0.3s;
-}
+        .card-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
 
-.card:hover {
-    transform:scale(1.03);
-    box-shadow:0 0 20px red;
-}
+        .card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid #ff0055;
+            border-radius: 15px;
+            padding: 20px;
+            flex: 1 1 250px;
+            transition: transform 0.3s;
+        }
 
-/* BOTÕES */
-.btn {
-    background:red;
-    border:none;
-    padding:10px;
-    color:white;
-    cursor:pointer;
-    border-radius:10px;
-    transition:0.3s;
-}
+        .card:hover {
+            transform: scale(1.05);
+        }
 
-.btn:hover {
-    box-shadow:0 0 20px red;
-}
+        footer {
+            background: rgba(0,0,0,0.9);
+            padding: 20px 40px;
+            text-align: center;
+            border-top: 2px solid #ff0055;
+            margin-top: 50px;
+        }
 
-/* CHAT */
-#chatBox {
-    height:200px;
-    overflow-y:auto;
-    background:black;
-    padding:10px;
-    border-radius:10px;
-    border:1px solid red;
-}
+        /* Botões futuristas */
+        .btn {
+            background: #ff0055;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
 
-/* ROLETA */
-#roletaAnim {
-    width:150px;
-    height:150px;
-    border-radius:50%;
-    border:5px solid red;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    margin:auto;
-    font-size:25px;
-    animation:pulse 1.5s infinite;
-}
+        .btn:hover {
+            background: #ff3399;
+        }
 
-@keyframes pulse {
-    0% { box-shadow:0 0 5px red; }
-    50% { box-shadow:0 0 30px red; }
-    100% { box-shadow:0 0 5px red; }
-}
-</style>
+        /* Responsivo */
+        @media(max-width: 768px){
+            header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .card-container {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
-
 <body>
+    <header>
+        <h1>Nexus7i E-Sports</h1>
+        <nav>
+            <ul>
+                <li><a href="#home">Início</a></li>
+                <li><a href="#news">Novidades</a></li>
+                <li><a href="#shop">Loja</a></li>
+                <li><a href="#contact">Contato</a></li>
+            </ul>
+        </nav>
+    </header>
 
-<canvas id="particles"></canvas>
+    <main>
+        <section id="home" class="section">
+            <h2>Bem-vindo</h2>
+            <p>Entre no mundo competitivo gamer com a plataforma Nexus7i E-Sports, tudo em tempo real.</p>
+        </section>
 
-<header>
-<h1>Nexus7i E-Sports</h1>
-</header>
+        <section id="news" class="section">
+            <h2>Novidades</h2>
+            <div class="card-container">
+                <div class="card">
+                    <h3>Torneio do mês</h3>
+                    <p>Participe do campeonato exclusivo com prêmios incríveis.</p>
+                    <button class="btn">Inscreva-se</button>
+                </div>
+                <div class="card">
+                    <h3>Atualizações do App</h3>
+                    <p>Novas funcionalidades para melhorar sua experiência gamer.</p>
+                    <button class="btn">Atualizar</button>
+                </div>
+            </div>
+        </section>
 
-<nav>
-<button onclick="show('home')">Home</button>
-<button onclick="show('ranking')">Ranking</button>
-<button onclick="show('xtreino')">X-Treinos</button>
-<button onclick="show('chat')">Chat</button>
-<button onclick="show('roleta')">Roleta</button>
-<button onclick="show('perfil')">Perfil</button>
-</nav>
+        <section id="shop" class="section">
+            <h2>Loja</h2>
+            <div class="card-container">
+                <div class="card">
+                    <h3>Spin 10x</h3>
+                    <p>Valor: 300 Nxs</p>
+                    <button class="btn">Comprar</button>
+                </div>
+                <div class="card">
+                    <h3>Nick Neon</h3>
+                    <p>Valor: 120 Nxs</p>
+                    <button class="btn">Comprar</button>
+                </div>
+            </div>
+        </section>
 
-<div id="home" class="section active">
-<h2>🔥 Destaques</h2>
-<div class="card">Melhor jogador da semana</div>
-<div class="card">Próximos campeonatos</div>
-</div>
+        <section id="contact" class="section">
+            <h2>Contato</h2>
+            <p>Fale com a equipe Nexus7i E-Sports via WhatsApp ou e-mail.</p>
+        </section>
+    </main>
 
-<div id="ranking" class="section">
-<h2>🏆 Ranking</h2>
-<div class="card">Time Alpha</div>
-<div class="card">Time Beta</div>
-</div>
-
-<div id="xtreino" class="section">
-<h2>📅 X-Treinos</h2>
-<div class="card">Sexta - 20:00 - Time Alpha</div>
-</div>
-
-<div id="chat" class="section">
-<h2>💬 Chat</h2>
-<div id="chatBox"></div>
-<input id="msg">
-<button class="btn" onclick="sendMsg()">Enviar</button>
-</div>
-
-<div id="roleta" class="section">
-<h2>🎰 Roleta</h2>
-<div id="roletaAnim">🎰</div>
-<button class="btn" onclick="girar()">Girar</button>
-<p id="res"></p>
-</div>
-
-<div id="perfil" class="section">
-<h2>👤 Perfil</h2>
-<div class="card">ID: <span id="uid"></span></div>
-<div class="card">Gold: <span id="gold"></span></div>
-</div>
-
-<script>
-
-/* NAVEGAÇÃO */
-function show(id){
-document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-document.getElementById(id).classList.add('active');
-}
-
-/* CHAT */
-function sendMsg(){
-let m=document.getElementById("msg").value;
-if(!m) return;
-chatBox.innerHTML+="<p>"+m+"</p>";
-msg.value="";
-}
-
-/* ROLETA ANIMADA */
-function girar(){
-let roleta=document.getElementById("roletaAnim");
-roleta.innerText="...";
-roleta.style.transform="rotate(720deg)";
-setTimeout(()=>{
-let premios=[5,10,15,20,100,250,500];
-let r=premios[Math.floor(Math.random()*premios.length)];
-gold+=r;
-localStorage.setItem("gold",gold);
-document.getElementById("gold").innerText=gold;
-document.getElementById("res").innerText="Ganhou "+r+"G";
-roleta.innerText="🎰";
-roleta.style.transform="rotate(0deg)";
-},2000);
-}
-
-/* ID */
-let id=localStorage.getItem("id");
-if(!id){
-id="ID-"+Math.floor(Math.random()*999999);
-localStorage.setItem("id",id);
-}
-uid.innerText=id;
-
-/* GOLD */
-let gold=parseInt(localStorage.getItem("gold")||0);
-document.getElementById("gold").innerText=gold;
-
-/* PARTICULAS */
-const canvas = document.getElementById("particles");
-const ctx = canvas.getContext("2d");
-
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-let particles = [];
-
-for(let i=0;i<100;i++){
-particles.push({
-x:Math.random()*canvas.width,
-y:Math.random()*canvas.height,
-vx:Math.random()*1-0.5,
-vy:Math.random()*1-0.5
-});
-}
-
-function animate(){
-ctx.clearRect(0,0,canvas.width,canvas.height);
-particles.forEach(p=>{
-p.x+=p.vx;
-p.y+=p.vy;
-
-ctx.fillStyle="red";
-ctx.fillRect(p.x,p.y,2,2);
-});
-requestAnimationFrame(animate);
-}
-
-animate();
-
-</script>
-
+    <footer>
+        <p>&copy; 2026 Nexus7i E-Sports. Todos os direitos reservados.</p>
+    </footer>
 </body>
 </html>
