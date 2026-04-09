@@ -1,14 +1,12 @@
+import { getTrainings, getTeams } from '@/lib/store';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTrainings, useTeams } from '@/hooks/useSupabaseData';
 import { Target, Calendar, Clock } from 'lucide-react';
 
 export default function TrainingPage() {
   const { user } = useAuth();
   const clanId = user?.clanId || '';
-  const { data: allTrainings } = useTrainings();
-  const { data: allTeams } = useTeams();
-  const trainings = allTrainings.filter(t => t.clanId === clanId);
-  const teams = allTeams.filter(t => t.clanId === clanId);
+  const trainings = getTrainings().filter(t => t.clanId === clanId);
+  const teams = getTeams().filter(t => t.clanId === clanId);
   const scheduled = trainings.filter(t => t.status === 'scheduled');
   const completed = trainings.filter(t => t.status === 'completed');
 

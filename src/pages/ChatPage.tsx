@@ -1,34 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchChatMessages, addChatMessage as addMsg, clearChatMessages as clearMsgs, fetchProfileByUserId } from '@/lib/supabaseStore';
-import { getFrameStyle, getNickColor } from '@/lib/shopData';
+import { getChatMessages, addChatMessage, clearChatMessages, getUserById, getFrameStyle, getNickColor } from '@/lib/store';
 import { MessageSquare, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { SbChatMessage, Profile } from '@/lib/supabaseStore';
 
 export default function ChatPage() {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<SbChatMessage[]>([]);
+  const [messages, setMessages] = useState(getChatMessages());
   const [text, setText] = useState('');
-  const [profileCache, setProfileCache] = useState<Map<string, Profile>>(new Map());
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const loadMessages = async () => {
-    const msgs = await fetchChatMessages();
-    setMessages(msgs);
-    // Cache profiles
-    const uniqueUserIds = [...new Set(msgs.map(m => m.userId))];
-    for (const uid of uniqueUserIds) {
-      if (!profileCache.has(uid)) {
-        const p = await fetchProfileByUserId(uid);
-        if (p) setProfileCache(prev => new Map(prev).set(uid, p));
-      }
-    }
-  };
-
   useEffect(() => {
-    loadMessages();
-    const interval = setInterval(loadMessages, 3000);
+    const interval = setInterval(() => setMessages(getChatMessages()), 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -36,21 +19,26 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!text.trim() || !user) return;
-    await addMsg({ userId: user.userId, username: user.gameNick || user.username, message: text.trim() });
+    addChatMessage({
+      userId: user.id,
+      username: user.gameNick || user.username,
+      message: text.trim(),
+      timestamp: new Date().toISOString(),
+    });
     setText('');
-    await loadMessages();
+    setMessages(getChatMessages());
   };
 
-  const handleClear = async () => {
-    await clearMsgs();
+  const handleClear = () => {
+    clearChatMessages();
     setMessages([]);
     toast.success('Chat limpo!');
   };
 
   const renderAvatar = (msgUserId: string, username: string) => {
-    const msgUser = profileCache.get(msgUserId);
+    const msgUser = getUserById(msgUserId);
     const frameStyle = msgUser?.frameId ? getFrameStyle(msgUser.frameId) : null;
     return (
       <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-xs flex-shrink-0"
@@ -63,8 +51,9 @@ export default function ChatPage() {
   };
 
   const renderUsername = (msgUserId: string, username: string) => {
-    const msgUser = profileCache.get(msgUserId);
+    const msgUser = getUserById(msgUserId);
     const nickColor = msgUser?.nickColorId ? getNickColor(msgUser.nickColorId) : null;
+
     const nameStyle: React.CSSProperties = {};
     if (nickColor) {
       if (nickColor.startsWith('linear')) {
@@ -76,6 +65,7 @@ export default function ChatPage() {
         nameStyle.textShadow = `0 0 8px ${nickColor}`;
       }
     }
+
     return (
       <div className="flex items-center gap-1.5 flex-wrap">
         <p className="text-xs font-heading mb-1" style={nameStyle}>{username}</p>
@@ -128,11 +118,11 @@ export default function ChatPage() {
             </div>
           )}
           {messages.map(msg => (
-            <div key={msg.id} className={`flex gap-3 ${msg.userId === user?.userId ? 'flex-row-reverse' : ''}`}>
+            <div key={msg.id} className={`flex gap-3 ${msg.userId === user?.id ? 'flex-row-reverse' : ''}`}>
               {renderAvatar(msg.userId, msg.username)}
-              <div className={`max-w-[70%] ${msg.userId === user?.userId ? 'text-right' : ''}`}>
+              <div className={`max-w-[70%] ${msg.userId === user?.id ? 'text-right' : ''}`}>
                 {renderUsername(msg.userId, msg.username)}
-                <div className={`p-3 rounded-lg ${msg.userId === user?.userId ? 'bg-primary/20 neon-border' : 'bg-secondary'}`}>
+                <div className={`p-3 rounded-lg ${msg.userId === user?.id ? 'bg-primary/20 neon-border' : 'bg-secondary'}`}>
                   <p className="text-sm text-foreground font-display">{msg.message}</p>
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">{new Date(msg.timestamp).toLocaleTimeString('pt-BR')}</p>

@@ -1,141 +1,176 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEXUS7i</title>
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nexus7i Gerenciador De Campeonatos</title>
+    <meta name="description" content="App focado e criado para gerenciar campeonatos, xt e entre outros">
+    <meta name="author" content="Lovable" />
 
-<style>
-body {
-    margin: 0;
-    font-family: Arial;
-    background: black;
-    color: white;
-}
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9c8cc6ae-1558-4a5f-af6e-554f08034ec1/id-preview-9a292c52--1f12af8b-4622-4be4-963a-793bd629ab6a.lovable.app-1775514187978.png">
+    <meta property="og:title" content="Nexus7i Gerenciador De Campeonatos">
+    <meta property="og:description" content="App focado e criado para gerenciar campeonatos, xt e entre outros">
 
-.header {
-    display: flex;
-    justify-content: space-between;
-    padding: 15px;
-    background: #0a0a0a;
-}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@Lovable" />
+    <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9c8cc6ae-1558-4a5f-af6e-554f08034ec1/id-preview-9a292c52--1f12af8b-4622-4be4-963a-793bd629ab6a.lovable.app-1775514187978.png">
+    <meta name="twitter:title" content="Nexus7i Gerenciador De Campeonatos">
+    <meta name="twitter:description" content="App focado e criado para gerenciar campeonatos, xt e entre outros">
+  </head>
 
-.logo { color: red; }
+  <body>
+    <div id="root">
+      <!-- Aqui você pode adicionar a estrutura de login / painel -->
+      <div id="auth">
+        <input type="text" id="nick" placeholder="Nick" /><br/>
+        <input type="email" id="email" placeholder="Email" /><br/>
+        <input type="password" id="senha" placeholder="Senha" /><br/>
+        <button onclick="cadastrar()">Cadastrar</button>
+        <button onclick="login()">Login</button>
+      </div>
 
-.menu {
-    position: fixed;
-    left: -250px;
-    top: 0;
-    width: 250px;
-    height: 100%;
-    background: #050505;
-    transition: 0.3s;
-}
-
-.menu a {
-    display: block;
-    padding: 15px;
-    color: #aaa;
-}
-
-.menu.active { left: 0; }
-
-.page {
-    display: none;
-    padding: 15px;
-}
-
-.page.active {
-    display: block;
-}
-
-.card {
-    background: #0a0a0a;
-    border: 1px solid red;
-    padding: 20px;
-    border-radius: 10px;
-    margin-bottom: 15px;
-}
-</style>
-</head>
-
-<body>
-
-<div class="header">
-    <div class="logo">NEXUS7i</div>
-    <div onclick="toggleMenu()">☰</div>
-</div>
-
-<div class="menu" id="menu">
-    <a onclick="go('home')">Home</a>
-    <a onclick="go('ranking')">Ranking</a>
-    <a onclick="go('roleta')">Roleta</a>
-    <a onclick="go('perfil')">Perfil</a>
-    <a onclick="go('admin')">Admin</a>
-</div>
-
-<!-- PÁGINAS -->
-
-<div id="home" class="page active">
-    <div class="card">
-        <h2>Bem-vindo</h2>
-        <p>NEXUS7i E-Sports</p>
+      <div id="painel" style="display:none">
+        <h1 id="boasvindas"></h1>
+        <button onclick="logout()">Sair</button>
+      </div>
     </div>
-</div>
 
-<div id="ranking" class="page">
-    <div class="card">
-        <h2>Ranking</h2>
-        <p>Em breve...</p>
-    </div>
-</div>
+    <script type="module" src="/src/main.tsx"></script>
 
-<div id="roleta" class="page">
-    <div class="card">
-        <h2>Roleta</h2>
-        <button onclick="girar()">Girar</button>
-        <p id="resultado"></p>
-    </div>
-</div>
+    <!-- Script Supabase -->
+    <script type="module">
+      import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-<div id="perfil" class="page">
-    <div class="card">
-        <h2>Perfil</h2>
-        <p>Kills: 0</p>
-        <p>KD: 0.00</p>
-    </div>
-</div>
+      const client = createClient(
+        "https://cnktlbsvtoobbftoqtka.supabase.co",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNua3RsYnN2dG9vYmJmdG9xdGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTQ0NjEsImV4cCI6MjA5MTE3MDQ2MX0.HJTapkPU8HXYOsXbNfLJwjwsWm9q4gdkU0464Uc_vXg"
+      );
 
-<div id="admin" class="page">
-    <div class="card">
-        <h2>ADM</h2>
-        <button onclick="darGold()">Dar 100G</button>
-        <p id="gold"></p>
-    </div>
-</div>
+      async function cadastrar() {
+        const email = document.getElementById("email").value;
+        const senha = document.getElementById("senha").value;
+        const nick = document.getElementById("nick").value;
 
-<script>
-function toggleMenu() {
-    document.getElementById("menu").classList.toggle("active");
+        const { data, error } = await client.auth.signUp({
+          email,
+          password: senha
+        });
+
+        if (error) {
+          alert(error.message);
+          return;
+        }
+
+        const userId = data.user?.id;
+
+        if (!userId) {
+          alert("Confirme seu email antes de continuar!");
+          return;
+        }
+
+        await client.from("usuarios").insert([
+          {
+            id: userId,
+            Nome: nick,
+            Gmail: email,
+            Clã: "Nexus7i"
+          }
+        ]);
+
+        alert("Conta criada!");
+      }
+
+      async function login() {
+        const email = document.getElementById("email").value;
+        const senha = document.getElementById("senha").value;
+
+        const { error } = await client.auth.signInWithPassword({
+          email,
+          password: senha
+        });
+
+        if (error) {
+          alert(error.message);
+        } else {
+          carregarUsuario();
+        }
+      }
+
+      async function carregarUsuario() {
+        const { data } = await client.auth.getUser();
+
+        if (!data.user) return;
+
+        const { data: perfil } = await client
+          .from("usuarios")
+          .select("Nome")
+          .eq("id", data.user.id)
+          .single();
+
+        if (!perfil) {
+          alert("Perfil não encontrado!");
+          return;
+        }
+
+        document.getElementById("auth").style.display = "none";
+        document.getElementById("painel").style.display = "block";
+
+        document.getElementById("boasvindas").innerText =
+          "🎮 Bem-vindo, " + perfil.Nome;
+      }
+
+      async function logout() {
+        await client.auth.signOut();
+        location.reload();
+      }
+
+      carregarUsuario();
+    </script>
+  </body>
+</html>
+  const { error } = await client.auth.signInWithPassword({
+    email,
+    password: senha
+  });
+
+  if (error) {
+    alert(error.message);
+  } else {
+    carregarUsuario();
+  }
 }
 
-function go(page) {
-    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-    document.getElementById(page).classList.add("active");
+async function carregarUsuario() {
+  const { data } = await client.auth.getUser();
+
+  if (!data.user) return;
+
+  const { data: perfil } = await client
+    .from("usuarios")
+    .select("Nome")
+    .eq("id", data.user.id)
+    .single();
+
+  if (!perfil) {
+    alert("Perfil não encontrado!");
+    return;
+  }
+
+  document.getElementById("auth").style.display = "none";
+  document.getElementById("painel").style.display = "block";
+
+  document.getElementById("boasvindas").innerText =
+    "🎮 Bem-vindo, " + perfil.Nome;
 }
 
-function girar() {
-    let premios = [5, 10, 20, 100];
-    let premio = premios[Math.floor(Math.random()*premios.length)];
-    document.getElementById("resultado").innerText = "Ganhou " + premio + "G";
+async function logout() {
+  await client.auth.signOut();
+  location.reload();
 }
 
-let saldo = 0;
-
-function darGold() {
-    saldo += 100;
-    document.getElementById("gold").innerText = "Saldo: " + saldo + "G";
-}
+carregarUsuario();
 </script>
 
 </body>

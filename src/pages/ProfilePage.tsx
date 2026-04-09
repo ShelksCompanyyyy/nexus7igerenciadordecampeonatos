@@ -1,8 +1,6 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTeams } from '@/hooks/useSupabaseData';
-import { updateProfile } from '@/lib/supabaseStore';
-import { getFrameStyle, getNickColor } from '@/lib/shopData';
+import { getTeams, getFrameStyle, getNickColor, updateUser } from '@/lib/store';
 import { UserCircle, Copy, Trophy, Target, Zap, Shield, Award, Camera, Edit, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -13,11 +11,11 @@ export default function ProfilePage() {
   const [editUsername, setEditUsername] = useState('');
   const [editGameNick, setEditGameNick] = useState('');
   const [editWhatsapp, setEditWhatsapp] = useState('');
-  const { data: allTeams } = useTeams();
 
   if (!user) return null;
 
-  const userTeam = allTeams.find(t => t.players.includes(user.userId));
+  const teams = getTeams();
+  const userTeam = teams.find(t => t.players.includes(user.id));
   const kd = user.deaths > 0 ? (user.kills / user.deaths).toFixed(2) : user.kills.toFixed(2);
   const frameStyle = user.frameId ? getFrameStyle(user.frameId) : null;
   const nickColor = user.nickColorId ? getNickColor(user.nickColorId) : null;
@@ -27,15 +25,18 @@ export default function ProfilePage() {
     toast.success('ID copiado!');
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { toast.error('Imagem muito grande (máx 2MB)'); return; }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Imagem muito grande (máx 2MB)');
+      return;
+    }
     const reader = new FileReader();
-    reader.onload = async () => {
+    reader.onload = () => {
       const dataUrl = reader.result as string;
-      await updateProfile(user.id, { avatar: dataUrl });
-      await refreshUser();
+      updateUser(user.id, { avatar: dataUrl });
+      refreshUser();
       toast.success('Foto de perfil atualizada!');
     };
     reader.readAsDataURL(file);
@@ -48,10 +49,13 @@ export default function ProfilePage() {
     setEditing(true);
   };
 
-  const saveProfile = async () => {
-    if (!editUsername.trim() || !editGameNick.trim()) { toast.error('Preencha todos os campos'); return; }
-    await updateProfile(user.id, { username: editUsername, gameNick: editGameNick, whatsapp: editWhatsapp });
-    await refreshUser();
+  const saveProfile = () => {
+    if (!editUsername.trim() || !editGameNick.trim()) {
+      toast.error('Preencha todos os campos');
+      return;
+    }
+    updateUser(user.id, { username: editUsername, gameNick: editGameNick, whatsapp: editWhatsapp });
+    refreshUser();
     setEditing(false);
     toast.success('Perfil atualizado!');
   };
@@ -71,11 +75,15 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6 animate-slide-up max-w-2xl mx-auto">
       <div className="bg-card rounded-lg neon-border-strong p-6 text-center">
+        {/* Avatar with upload */}
         <div className="relative inline-block mb-4">
           <div className="w-24 h-24 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-3xl"
             style={frameStyle ? { border: frameStyle.border, boxShadow: frameStyle.boxShadow } : undefined}>
-            {user.avatar ? <img src={user.avatar} alt="" className="w-full h-full rounded-full object-cover" /> :
-              user.gameNick?.[0]?.toUpperCase() || user.username[0]?.toUpperCase()}
+            {user.avatar ? (
+              <img src={user.avatar} alt="" className="w-full h-full rounded-full object-cover" />
+            ) : (
+              user.gameNick?.[0]?.toUpperCase() || user.username[0]?.toUpperCase()
+            )}
           </div>
           <button onClick={() => fileInputRef.current?.click()}
             className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/80 transition-colors shadow-lg">
@@ -84,6 +92,7 @@ export default function ProfilePage() {
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
         </div>
 
+        {/* Name / Edit */}
         {editing ? (
           <div className="space-y-3 max-w-xs mx-auto">
             <input value={editUsername} onChange={e => setEditUsername(e.target.value)} placeholder="Username"
@@ -126,7 +135,9 @@ export default function ProfilePage() {
                     'hsl(var(--primary) / 0.3)',
                   color: '#fff',
                   border: '1px solid rgba(255,255,255,0.2)',
-                }}>{b.replace('badge_', '').toUpperCase()}</span>
+                }}>
+                {b.replace('badge_', '').toUpperCase()}
+              </span>
             ))}
           </div>
         )}
