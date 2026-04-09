@@ -1,186 +1,268 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus7i E-Sports</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        /* Reset básico */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Orbitron', sans-serif;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus7i E-Sports</title>
 
-        body {
-            background: #0a0a0a url('https://i.imgur.com/3ZcXrUo.png') no-repeat center top;
-            background-size: cover;
-            color: #fff;
-        }
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 40px;
-            background: rgba(0,0,0,0.8);
-            border-bottom: 2px solid #ff0055;
-        }
-
-        header h1 {
-            font-size: 2rem;
-            color: #ff0055;
-        }
-
-        nav ul {
-            list-style: none;
-            display: flex;
-            gap: 25px;
-        }
-
-        nav ul li a {
-            text-decoration: none;
-            color: #fff;
-            font-weight: bold;
-            transition: 0.3s;
-        }
-
-        nav ul li a:hover {
-            color: #ff0055;
-        }
-
-        main {
-            padding: 50px 40px;
-        }
-
-        .section {
-            margin-bottom: 60px;
-        }
-
-        .section h2 {
-            color: #ff0055;
-            margin-bottom: 20px;
-            border-left: 5px solid #ff0055;
-            padding-left: 10px;
-        }
-
-        .card-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-
-        .card {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid #ff0055;
-            border-radius: 15px;
-            padding: 20px;
-            flex: 1 1 250px;
-            transition: transform 0.3s;
-        }
-
-        .card:hover {
-            transform: scale(1.05);
-        }
-
-        footer {
-            background: rgba(0,0,0,0.9);
-            padding: 20px 40px;
-            text-align: center;
-            border-top: 2px solid #ff0055;
-            margin-top: 50px;
-        }
-
-        /* Botões futuristas */
-        .btn {
-            background: #ff0055;
-            color: #fff;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
-        }
-
-        .btn:hover {
-            background: #ff3399;
-        }
-
-        /* Responsivo */
-        @media(max-width: 768px){
-            header {
-                flex-direction: column;
-                gap: 15px;
-            }
-
-            .card-container {
-                flex-direction: column;
-            }
-        }
-    </style>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Orbitron', sans-serif;}
+body{background:#000;color:#fff;}
+.container{padding:20px;max-width:500px;margin:auto;}
+.card{background:#0d0d0d;padding:15px;border-radius:14px;border:1px solid rgba(255,0,0,0.3);margin-bottom:15px;}
+.btn{background:red;border:none;padding:10px;color:#fff;border-radius:10px;width:100%;margin-top:5px;}
+.input{width:100%;padding:10px;margin:5px 0;background:#1a1a1a;border:none;color:#fff;border-radius:8px;}
+.chat{height:200px;overflow:auto;border:1px solid #222;padding:10px;margin-bottom:5px;}
+.msg{margin-bottom:6px;}
+</style>
 </head>
+
 <body>
-    <header>
-        <h1>Nexus7i E-Sports</h1>
-        <nav>
-            <ul>
-                <li><a href="#home">Início</a></li>
-                <li><a href="#news">Novidades</a></li>
-                <li><a href="#shop">Loja</a></li>
-                <li><a href="#contact">Contato</a></li>
-            </ul>
-        </nav>
-    </header>
+<div class="container">
 
-    <main>
-        <section id="home" class="section">
-            <h2>Bem-vindo</h2>
-            <p>Entre no mundo competitivo gamer com a plataforma Nexus7i E-Sports, tudo em tempo real.</p>
-        </section>
+<!-- LOGIN -->
+<div class="card">
+<input class="input" id="email" placeholder="Email">
+<input class="input" id="senha" type="password" placeholder="Senha">
+<button class="btn" onclick="login()">LOGIN</button>
+<button class="btn" onclick="register()">REGISTRAR</button>
+</div>
 
-        <section id="news" class="section">
-            <h2>Novidades</h2>
-            <div class="card-container">
-                <div class="card">
-                    <h3>Torneio do mês</h3>
-                    <p>Participe do campeonato exclusivo com prêmios incríveis.</p>
-                    <button class="btn">Inscreva-se</button>
-                </div>
-                <div class="card">
-                    <h3>Atualizações do App</h3>
-                    <p>Novas funcionalidades para melhorar sua experiência gamer.</p>
-                    <button class="btn">Atualizar</button>
-                </div>
-            </div>
-        </section>
+<!-- PERFIL -->
+<div class="card">
+<h3>👤 Perfil</h3>
+<p id="nick"></p>
+<p id="saldo"></p>
+</div>
 
-        <section id="shop" class="section">
-            <h2>Loja</h2>
-            <div class="card-container">
-                <div class="card">
-                    <h3>Spin 10x</h3>
-                    <p>Valor: 300 Nxs</p>
-                    <button class="btn">Comprar</button>
-                </div>
-                <div class="card">
-                    <h3>Nick Neon</h3>
-                    <p>Valor: 120 Nxs</p>
-                    <button class="btn">Comprar</button>
-                </div>
-            </div>
-        </section>
+<!-- ROLETA -->
+<div class="card">
+<h3>🎯 Roleta</h3>
+<button class="btn" onclick="girar()">GIRAR</button>
+</div>
 
-        <section id="contact" class="section">
-            <h2>Contato</h2>
-            <p>Fale com a equipe Nexus7i E-Sports via WhatsApp ou e-mail.</p>
-        </section>
-    </main>
+<!-- LOJA -->
+<div class="card">
+<h3>🛒 Loja</h3>
+<button id="item10" class="btn" onclick="comprar('10giros',300)">10 SPINS - 300 NXS</button>
+<button id="item5" class="btn" onclick="comprar('5giros',150)">5 SPINS - 150 NXS</button>
+<button id="itemNick" class="btn" onclick="comprar('nickvermelho',120)">NICK VERMELHO - 120 NXS</button>
+</div>
 
-    <footer>
-        <p>&copy; 2026 Nexus7i E-Sports. Todos os direitos reservados.</p>
-    </footer>
+<!-- CHAT GLOBAL -->
+<div class="card">
+<h3>💬 Chat Global</h3>
+<div id="chatBox" class="chat"></div>
+<input class="input" id="msg">
+<button class="btn" onclick="enviarMsg()">ENVIAR</button>
+</div>
+
+<!-- AMIGOS -->
+<div class="card">
+<h3>👥 Amigos</h3>
+<input class="input" id="friendId" placeholder="ID do amigo">
+<button class="btn" onclick="addFriend()">Adicionar</button>
+<div id="friendsList"></div>
+</div>
+
+<!-- CHAT PRIVADO -->
+<div class="card">
+<h3>💬 Chat Privado</h3>
+<div id="chatPrivado" class="chat"></div>
+<input class="input" id="msgPrivado">
+<button class="btn" onclick="enviarPrivado()">ENVIAR</button>
+</div>
+
+<!-- CW -->
+<div class="card">
+<h3>⚔️ CW</h3>
+<button class="btn" onclick="criarCW()">Procurar CW</button>
+<div id="cwList"></div>
+</div>
+
+<!-- MISSÕES -->
+<div class="card">
+<h3>🎯 Missão</h3>
+<button class="btn" onclick="missao()">Ganhar +50 NXS</button>
+</div>
+
+</div>
+
+<script>
+const supabase = window.supabase.createClient(
+"https://cnktlbsvtoobbftoqtka.supabase.co",
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNua3RsYnN2dG9vYmJmdG9xdGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTQ0NjEsImV4cCI6MjA5MTE3MDQ2MX0.HJTapkPU8HXYOsXbNfLJwjwsWm9q4gdkU0464Uc_vXg"
+);
+
+let user;
+let currentFriend = null;
+
+// AUTH
+async function register(){
+let { data } = await supabase.auth.signUp({ email: email.value, password: senha.value });
+await supabase.from('users').insert({ id:data.user.id, gold:0, giros:3, items:[], nick:email.value });
+alert('Conta criada');
+}
+
+async function login(){
+let { data } = await supabase.auth.signInWithPassword({ email: email.value, password: senha.value });
+user = data.user;
+carregar();
+}
+
+// LOAD
+async function carregar(){
+let { data } = await supabase.from('users').select('*').eq('id', user.id).single();
+nick.innerText = data.nick;
+saldo.innerText = data.gold + ' NXS';
+renderItens(data);
+carregarAmigos();
+}
+
+// ROLETA
+async function girar(){
+let { data } = await supabase.from('users').select('*').eq('id', user.id).single();
+if(data.giros <= 0) return alert('Sem giros');
+
+let ganho = Math.random()>0.7?100:20;
+
+await supabase.from('users').update({
+gold:data.gold+ganho,
+giros:data.giros-1
+}).eq('id', user.id);
+
+carregar();
+}
+
+// LOJA
+function renderItens(data){
+if(data.items?.includes('nickvermelho')){
+itemNick.innerText = "COMPRADO";
+itemNick.disabled = true;
+}
+}
+
+async function comprar(tipo, preco){
+let { data } = await supabase.from('users').select('*').eq('id', user.id).single();
+
+if(data.items?.includes(tipo)) return alert('Já comprado');
+if(data.gold < preco) return alert('Sem saldo');
+
+let itens = [...(data.items||[]), tipo];
+
+await supabase.from('users').update({
+gold:data.gold-preco,
+items:itens
+}).eq('id', user.id);
+
+carregar();
+}
+
+// CHAT GLOBAL
+async function enviarMsg(){
+await supabase.from('chat').insert({
+user_id:user.id,
+msg:msg.value,
+nick:nick.innerText
+});
+msg.value='';
+}
+
+async function carregarChat(){
+let { data } = await supabase.from('chat').select('*');
+chatBox.innerHTML='';
+data.forEach(m=>{
+chatBox.innerHTML += `<div class="msg"><b>${m.nick}</b>: ${m.msg}</div>`;
+});
+}
+setInterval(carregarChat,2000);
+
+// AMIGOS
+async function addFriend(){
+await supabase.from('friends').insert({
+user_id:user.id,
+friend_id:friendId.value
+});
+carregarAmigos();
+}
+
+async function carregarAmigos(){
+let { data } = await supabase.from('friends').select('*').eq('user_id', user.id);
+friendsList.innerHTML='';
+data.forEach(f=>{
+friendsList.innerHTML += `<button onclick="abrirChat('${f.friend_id}')">${f.friend_id}</button>`;
+});
+}
+
+// CHAT PRIVADO
+function abrirChat(friend){
+currentFriend = friend;
+carregarChatPrivado();
+}
+
+async function enviarPrivado(){
+if(!currentFriend) return alert('Selecione amigo');
+
+await supabase.from('chat_privado').insert({
+user1:user.id,
+user2:currentFriend,
+msg:msgPrivado.value
+});
+
+msgPrivado.value='';
+}
+
+async function carregarChatPrivado(){
+if(!currentFriend) return;
+
+let { data } = await supabase.from('chat_privado').select('*');
+
+chatPrivado.innerHTML='';
+
+data.forEach(m=>{
+if(
+(m.user1===user.id && m.user2===currentFriend) ||
+(m.user2===user.id && m.user1===currentFriend)
+){
+chatPrivado.innerHTML += `<div class="msg">${m.msg}</div>`;
+}
+});
+}
+setInterval(carregarChatPrivado,2000);
+
+// CW
+async function criarCW(){
+await supabase.from('cw').insert({ user_id:user.id, status:'open' });
+}
+
+async function carregarCW(){
+let { data } = await supabase.from('cw').select('*').eq('status','open');
+cwList.innerHTML='';
+data.forEach(c=>{
+if(c.user_id !== user.id){
+cwList.innerHTML += `<button onclick="aceitarCW('${c.id}')">Aceitar CW</button>`;
+}
+});
+}
+setInterval(carregarCW,3000);
+
+async function aceitarCW(id){
+await supabase.from('cw').update({ status:'matched' }).eq('id',id);
+alert('CW iniciado');
+}
+
+// MISSÃO
+async function missao(){
+let { data } = await supabase.from('users').select('*').eq('id', user.id).single();
+await supabase.from('users').update({
+gold:data.gold+50
+}).eq('id', user.id);
+carregar();
+}
+
+</script>
 </body>
 </html>
