@@ -2,75 +2,161 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>App Supabase</title>
+  <title>Meu App</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background: #1e293b;
+      padding: 30px;
+      border-radius: 15px;
+      width: 300px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 8px;
+      background: #38bdf8;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0ea5e9;
+    }
+
+    #status {
+      margin-top: 15px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    hr {
+      margin: 20px 0;
+      border: 1px solid #334155;
+    }
+  </style>
 </head>
 <body>
 
+<div class="container">
+
   <h2>Login</h2>
-  <input id="email" placeholder="Email"><br><br>
-  <input id="senha" type="password" placeholder="Senha"><br><br>
+  <input id="email" placeholder="Email">
+  <input id="senha" type="password" placeholder="Senha">
+
+  <button onclick="cadastrar()">Cadastrar</button>
   <button onclick="login()">Entrar</button>
 
   <hr>
 
   <h2>Perfil</h2>
-  <input id="nome" placeholder="Nome"><br><br>
-  <input id="cla" placeholder="Clã"><br><br>
+  <input id="nome" placeholder="Nome">
+  <input id="cla" placeholder="Clã">
+
   <button onclick="salvar()">Salvar Perfil</button>
 
   <p id="status"></p>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</div>
 
-  <script>
-    const supabase = window.supabase.createClient(
-      "https://cnktlbsvtoobbftoqtka.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNua3RsYnN2dG9vYmJmdG9xdGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTQ0NjEsImV4cCI6MjA5MTE3MDQ2MX0.HJTapkPU8HXYOsXbNfLJwjwsWm9q4gdkU0464Uc_vXg"
-    );
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    async function login() {
-      const email = document.getElementById("email").value;
-      const senha = document.getElementById("senha").value;
+<script>
+  const supabase = window.supabase.createClient(
+    "https://cnktlbsvtoobbftoqtka.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNua3RsYnN2dG9vYmJmdG9xdGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTQ0NjEsImV4cCI6MjA5MTE3MDQ2MX0.HJTapkPU8HXYOsXbNfLJwjwsWm9q4gdkU0464Uc_vXg"
+  );
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: senha
+  async function cadastrar() {
+    const email = document.getElementById("email").value;
+    const senha = document.getElementById("senha").value;
+
+    const { error } = await supabase.auth.signUp({
+      email: email,
+      password: senha
+    });
+
+    if (error) {
+      status("Erro: " + error.message);
+    } else {
+      status("Conta criada! Faça login.");
+    }
+  }
+
+  async function login() {
+    const email = document.getElementById("email").value;
+    const senha = document.getElementById("senha").value;
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: senha
+    });
+
+    if (error) {
+      status("Erro no login: " + error.message);
+    } else {
+      status("Login realizado!");
+    }
+  }
+
+  async function salvar() {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      status("Faça login primeiro!");
+      return;
+    }
+
+    const nome = document.getElementById("nome").value;
+    const cla = document.getElementById("cla").value;
+
+    const { error } = await supabase
+      .from('usuarios')
+      .upsert({
+        id: user.id,
+        nome: nome,
+        gmail: user.email,
+        cla: cla
       });
 
-      if (error) {
-        document.getElementById("status").innerText = "Erro: " + error.message;
-      } else {
-        document.getElementById("status").innerText = "Login feito!";
-      }
+    if (error) {
+      status("Erro ao salvar: " + error.message);
+    } else {
+      status("Perfil salvo com sucesso!");
     }
+  }
 
-    async function salvar() {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        document.getElementById("status").innerText = "Faça login primeiro!";
-        return;
-      }
-
-      const nome = document.getElementById("nome").value;
-      const cla = document.getElementById("cla").value;
-
-      const { error } = await supabase
-        .from('usuarios')
-        .upsert({
-          id: user.id,
-          nome: nome,
-          gmail: user.email,
-          cla: cla
-        });
-
-      if (error) {
-        document.getElementById("status").innerText = "Erro ao salvar: " + error.message;
-      } else {
-        document.getElementById("status").innerText = "Perfil salvo com sucesso!";
-      }
-    }
-  </script>
+  function status(msg) {
+    document.getElementById("status").innerText = msg;
+  }
+</script>
 
 </body>
 </html>
