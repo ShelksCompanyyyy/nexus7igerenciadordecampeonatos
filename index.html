@@ -1,162 +1,135 @@
-<!DOCTYPE html>
+```html
+<!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Meu App</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nexus7i Gerenciador De Campeonatos</title>
 
-  <style>
-    body {
-      font-family: Arial;
-      background: #0f172a;
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
+    <style>
+      body { font-family: Arial, sans-serif; background: #121212; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; }
+      #root { width: 100%; max-width: 400px; text-align: center; }
+      input { width: 90%; padding: 10px; margin: 5px 0; border-radius: 5px; border: none; }
+      button { padding: 10px 20px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; background: #1e88e5; color: #fff; }
+      #painel { margin-top: 20px; }
+    </style>
+  </head>
 
-    .container {
-      background: #1e293b;
-      padding: 30px;
-      border-radius: 15px;
-      width: 300px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.5);
-    }
+  <body>
+    <div id="root">
 
-    h2 {
-      text-align: center;
-    }
+      <!-- LOGIN -->
+      <div id="auth">
+        <h2>Login / Cadastro</h2>
+        <input type="text" id="nick" placeholder="Nick" /><br/>
+        <input type="email" id="email" placeholder="Email" /><br/>
+        <input type="password" id="senha" placeholder="Senha" /><br/>
+        <button onclick="cadastrar()">Cadastrar</button>
+        <button onclick="login()">Login</button>
+        <p id="mensagem"></p>
+      </div>
 
-    input {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      border-radius: 8px;
-      border: none;
-    }
+      <!-- PAINEL -->
+      <div id="painel" style="display:none">
+        <h1 id="boasvindas"></h1>
+        <button onclick="logout()">Sair</button>
+      </div>
+    </div>
 
-    button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 15px;
-      border: none;
-      border-radius: 8px;
-      background: #38bdf8;
-      color: black;
-      font-weight: bold;
-      cursor: pointer;
-    }
+    <script type="module">
+      import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-    button:hover {
-      background: #0ea5e9;
-    }
+      const client = createClient(
+        "https://cnktlbsvtoobbftoqtka.supabase.co",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNua3RsYnN2dG9vYmJmdG9xdGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTQ0NjEsImV4cCI6MjA5MTE3MDQ2MX0.HJTapkPU8HXYOsXbNfLJwjwsWm9q4gdkU0464Uc_vXg"
+      );
 
-    #status {
-      margin-top: 15px;
-      text-align: center;
-      font-size: 14px;
-    }
+      const mensagem = document.getElementById("mensagem");
 
-    hr {
-      margin: 20px 0;
-      border: 1px solid #334155;
-    }
-  </style>
-</head>
-<body>
+      async function cadastrar() {
+        const email = document.getElementById("email").value;
+        const senha = document.getElementById("senha").value;
+        const nick = document.getElementById("nick").value;
 
-<div class="container">
+        mensagem.innerText = "Criando conta...";
 
-  <h2>Login</h2>
-  <input id="email" placeholder="Email">
-  <input id="senha" type="password" placeholder="Senha">
+        const { data, error } = await client.auth.signUp({
+          email,
+          password: senha
+        });
 
-  <button onclick="cadastrar()">Cadastrar</button>
-  <button onclick="login()">Entrar</button>
+        if (error) {
+          mensagem.innerText = "Erro: " + error.message;
+          return;
+        }
 
-  <hr>
+        const userId = data.user?.id;
 
-  <h2>Perfil</h2>
-  <input id="nome" placeholder="Nome">
-  <input id="cla" placeholder="Clã">
+        if (!userId) {
+          mensagem.innerText = "Confirme seu email antes de continuar!";
+          return;
+        }
 
-  <button onclick="salvar()">Salvar Perfil</button>
+        await client.from("usuarios").insert([
+          {
+            id: userId,
+            nome: nick,
+            gmail: email,
+            cla: "Nexus7i"
+          }
+        ]);
 
-  <p id="status"></p>
+        mensagem.innerText = "Conta criada com sucesso!";
+      }
 
-</div>
+      async function login() {
+        const email = document.getElementById("email").value;
+        const senha = document.getElementById("senha").value;
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        mensagem.innerText = "Entrando...";
 
-<script>
-  const supabase = window.supabase.createClient(
-    "https://cnktlbsvtoobbftoqtka.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNua3RsYnN2dG9vYmJmdG9xdGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTQ0NjEsImV4cCI6MjA5MTE3MDQ2MX0.HJTapkPU8HXYOsXbNfLJwjwsWm9q4gdkU0464Uc_vXg"
-  );
+        const { error } = await client.auth.signInWithPassword({
+          email,
+          password: senha
+        });
 
-  async function cadastrar() {
-    const email = document.getElementById("email").value;
-    const senha = document.getElementById("senha").value;
+        if (error) {
+          mensagem.innerText = "Erro: " + error.message;
+          return;
+        }
 
-    const { error } = await supabase.auth.signUp({
-      email: email,
-      password: senha
-    });
+        await carregarUsuario();
+      }
 
-    if (error) {
-      status("Erro: " + error.message);
-    } else {
-      status("Conta criada! Faça login.");
-    }
-  }
+      async function carregarUsuario() {
+        const { data } = await client.auth.getUser();
 
-  async function login() {
-    const email = document.getElementById("email").value;
-    const senha = document.getElementById("senha").value;
+        if (!data.user) return;
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: senha
-    });
+        const { data: perfil, error } = await client
+          .from("usuarios")
+          .select("nome")
+          .eq("id", data.user.id)
+          .single();
 
-    if (error) {
-      status("Erro no login: " + error.message);
-    } else {
-      status("Login realizado!");
-    }
-  }
+        if (error || !perfil) {
+          mensagem.innerText = "Perfil não encontrado!";
+          return;
+        }
 
-  async function salvar() {
-    const { data: { user } } = await supabase.auth.getUser();
+        document.getElementById("auth").style.display = "none";
+        document.getElementById("painel").style.display = "block";
+        document.getElementById("boasvindas").innerText =
+          "🎮 Bem-vindo, " + perfil.nome;
+      }
 
-    if (!user) {
-      status("Faça login primeiro!");
-      return;
-    }
+      async function logout() {
+        await client.auth.signOut();
+        location.reload();
+      }
 
-    const nome = document.getElementById("nome").value;
-    const cla = document.getElementById("cla").value;
-
-    const { error } = await supabase
-      .from('usuarios')
-      .upsert({
-        id: user.id,
-        nome: nome,
-        gmail: user.email,
-        cla: cla
-      });
-
-    if (error) {
-      status("Erro ao salvar: " + error.message);
-    } else {
-      status("Perfil salvo com sucesso!");
-    }
-  }
-
-  function status(msg) {
-    document.getElementById("status").innerText = msg;
-  }
-</script>
-
-</body>
+      carregarUsuario();
+    </script>
+  </body>
 </html>
+```
