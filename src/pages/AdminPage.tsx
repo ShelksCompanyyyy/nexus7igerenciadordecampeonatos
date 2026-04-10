@@ -23,11 +23,11 @@ type ClanTab = 'dashboard' | 'members' | 'teams' | 'matches' | 'training' | 'new
 const CHART_COLORS = ['hsl(0,100%,50%)', 'hsl(45,100%,50%)', 'hsl(120,70%,50%)', 'hsl(200,100%,50%)', 'hsl(280,100%,50%)', 'hsl(30,100%,50%)'];
 
 export default function AdminPage() {
-  const { user: currentUser, isSuperAdminUser, refreshUser } = useAuth();
-  if (!currentUser) return null;
+  const { user: currentUser, profile, isSuperAdminUser, role, refreshProfile } = useAuth();
+  if (!currentUser || !profile) return null;
 
   if (isSuperAdminUser) return <SuperAdminPanel />;
-  if (currentUser.role === 'admin') return <ClanAdminPanel currentUser={currentUser} />;
+  if (role === 'admin') return <ClanAdminPanel clanId={profile.clan_id || ''} currentUserId={currentUser.id} />;
   return <div className="text-center text-muted-foreground p-12 font-display">Sem permissão</div>;
 }
 
@@ -186,7 +186,7 @@ function SuperAdminPanel() {
 // ==================== SUPER ADMIN CLAN MANAGE PANEL ====================
 function SuperClanManagePanel({ clanId, onRefresh }: { clanId: string; onRefresh: () => void }) {
   const [subTab, setSubTab] = useState<ClanTab>('members');
-  const { refreshUser } = useAuth();
+  const { refreshProfile } = useAuth();
 
   const clan = getClans().find(c => c.id === clanId);
   const clanUsers = getUsers().filter(u => u.clanId === clanId && u.role !== 'superadmin');
@@ -230,13 +230,11 @@ function SuperClanManagePanel({ clanId, onRefresh }: { clanId: string; onRefresh
 }
 
 // ==================== CLAN ADMIN PANEL ====================
-function ClanAdminPanel({ currentUser }: { currentUser: User }) {
+function ClanAdminPanel({ clanId, currentUserId }: { clanId: string; currentUserId: string }) {
   const [tab, setTab] = useState<ClanTab>('dashboard');
   const [refresh, setRefresh] = useState(0);
   const r = () => setRefresh(p => p + 1);
-  const { refreshUser } = useAuth();
-
-  const clanId = currentUser.clanId || '';
+  const { refreshProfile } = useAuth();
   const clan = getClans().find(c => c.id === clanId);
   const clanUsers = getUsers().filter(u => u.clanId === clanId && u.role !== 'superadmin');
   const clanTeams = getTeams().filter(t => t.clanId === clanId);
