@@ -1,63 +1,178 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { User, getCurrentUser, setCurrentUser, loginUser, registerUser, isAdmin, isSuperAdmin, getUserById } from '@/lib/store';
+import { supabase } from '@/integrations/supabase/client';
+import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
+
+export interface Profile {
+  id: string;
+  user_id: string;
+  unique_id: string;
+  username: string;
+  email: string;
+  game_nick: string;
+  whatsapp: string | null;
+  avatar: string | null;
+  gold: number;
+  free_spins: number;
+  clan_id: string | null;
+  team_id: string | null;
+  badges: string[];
+  colored_nick: boolean;
+  nick_color_id: string | null;
+  frame_id: string | null;
+  kills: number;
+  deaths: number;
+  assists: number;
+  mvps: number;
+  matches_played: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AppRole = 'user' | 'admin' | 'superadmin';
 
 interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => User | null;
-  register: (data: { username: string; email: string; password: string; gameNick: string; whatsapp: string }) => User;
-  logout: () => void;
+  user: SupabaseUser | null;
+  profile: Profile | null;
+  role: AppRole;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ error: string | null }>;
+  register: (data: {
+    username: string;
+    email: string;
+    password: string;
+    gameNick: string;
+    whatsapp: string;
+    clanId?: string;
+    role?: AppRole;
+  }) => Promise<{ error: string | null; userId?: string }>;
+  logout: () => Promise<void>;
   isLoggedIn: boolean;
   isAdminUser: boolean;
   isSuperAdminUser: boolean;
-  refreshUser: () => void;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(getCurrentUser());
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [role, setRole] = useState<AppRole>('user');
+  const [loading, setLoading] = useState(true);
 
-  const refreshUser = useCallback(() => {
-    const cur = getCurrentUser();
-    if (cur) {
-      const fresh = getUserById(cur.id);
-      if (fresh) {
-        setCurrentUser(fresh);
-        setUser(fresh);
-        return;
-      }
+  const fetchProfile = useCallback(async (userId: string) => {
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (profileData) {
+      setProfile(profileData as Profile);
     }
-    setUser(cur);
+
+    const { data: roleData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .single();
+
+    if (roleData) {
+      setRole(roleData.role as AppRole);
+    }
   }, []);
 
-  const login = useCallback((email: string, password: string) => {
-    const u = loginUser(email, password);
-    if (u) { setCurrentUser(u); setUser(u); }
-    return u;
+  const refreshProfile = useCallback(async () => {
+    if (user) {
+      await fetchProfile(user.id);
+    }
+  }, [user, fetchProfile]);
+
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          setUser(session.user);
+          // Use setTimeout to avoid Supabase client deadlock
+          setTimeout(() => fetchProfile(session.user.id), 0);
+        } else {
+          setUser(null);
+          setProfile(null);
+          setRole('user');
+        }
+        setLoading(false);
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser(session.user);
+        fetchProfile(session.user.id);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [fetchProfile]);
+
+  const login = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: error.message };
+    return { error: null };
   }, []);
 
-  const register = useCallback((data: { username: string; email: string; password: string; gameNick: string; whatsapp: string }) => {
-    const u = registerUser(data);
-    setCurrentUser(u);
-    setUser(u);
-    return u;
+  const register = useCallback(async (data: {
+    username: string;
+    email: string;
+    password: string;
+    gameNick: string;
+    whatsapp: string;
+    clanId?: string;
+    role?: AppRole;
+  }) => {
+    const { data: authData, error } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: {
+          username: data.username,
+          game_nick: data.gameNick,
+          whatsapp: data.whatsapp,
+          clan_id: data.clanId || null,
+          role: data.role || 'user',
+        },
+      },
+    });
+
+    if (error) return { error: error.message };
+    return { error: null, userId: authData.user?.id };
   }, []);
 
-  const logout = useCallback(() => {
-    setCurrentUser(null);
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
     setUser(null);
+    setProfile(null);
+    setRole('user');
   }, []);
+
+  const isAdminUser = role === 'admin' || role === 'superadmin';
+  const isSuperAdminUser = role === 'superadmin';
 
   return (
     <AuthContext.Provider value={{
       user,
+      profile,
+      role,
+      loading,
       login,
       register,
       logout,
-      isLoggedIn: !!user,
-      isAdminUser: user?.role === 'admin' || user?.role === 'superadmin',
-      isSuperAdminUser: user?.role === 'superadmin',
-      refreshUser,
+      isLoggedIn: !!user && !!profile,
+      isAdminUser,
+      isSuperAdminUser,
+      refreshProfile,
     }}>
       {children}
     </AuthContext.Provider>
