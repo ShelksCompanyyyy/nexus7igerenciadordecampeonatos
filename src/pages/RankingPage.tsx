@@ -5,6 +5,59 @@ import { Trophy, Target, Zap, Users, ChevronRight, ArrowLeft } from 'lucide-reac
 
 type Tab = 'players' | 'teams' | 'mvp' | 'gold' | 'clans';
 
+function ClanDetailView({ clanId, onBack }: { clanId: string; onBack: () => void }) {
+  const [clan, setClan] = useState<any>(null);
+  const [clanMembers, setClanMembers] = useState<any[]>([]);
+  const [clanTeams, setClanTeams] = useState<any[]>([]);
+
+  useEffect(() => {
+    supabase.from('clans').select('*').eq('id', clanId).single().then(({ data }) => setClan(data));
+    supabase.from('profiles').select('*').eq('clan_id', clanId).then(({ data }) => setClanMembers(data || []));
+    supabase.from('teams').select('*').eq('clan_id', clanId).then(({ data }) => setClanTeams(data || []));
+  }, [clanId]);
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      <button onClick={onBack} className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-display text-sm transition-colors">
+        <ArrowLeft size={16} /> Voltar aos Clãs
+      </button>
+      <div className="bg-card rounded-lg neon-border p-6">
+        <div className="flex items-center gap-4 mb-4">
+          {clan?.logo ? (
+            <img src={clan.logo} alt={clan.name} className="w-16 h-16 rounded-full object-cover border-2 border-primary/50" />
+          ) : (
+            <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-xl">
+              {clan?.name?.[0]?.toUpperCase()}
+            </div>
+          )}
+          <div>
+            <h2 className="text-xl font-heading text-primary text-glow">{clan?.name}</h2>
+            <p className="text-sm text-muted-foreground font-display">{clanMembers.length} membros · {clanTeams.length} times</p>
+          </div>
+        </div>
+      </div>
+      <h3 className="font-heading text-sm text-primary">MEMBROS ({clanMembers.length})</h3>
+      <div className="bg-card rounded-lg neon-border overflow-hidden">
+        <table className="w-full text-sm font-display">
+          <thead><tr className="border-b border-border text-muted-foreground text-xs font-heading">
+            <th className="p-3 text-left">JOGADOR</th><th className="p-3">K/D</th><th className="p-3">MVPs</th>
+          </tr></thead>
+          <tbody>
+            {clanMembers.map(p => (
+              <tr key={p.id} className="border-b border-border/50 hover:bg-primary/5 transition-colors">
+                <td className="p-3 text-foreground">{p.game_nick || p.username}</td>
+                <td className="p-3 text-center text-primary font-heading">{(p.deaths || 0) > 0 ? ((p.kills || 0) / (p.deaths || 1)).toFixed(2) : (p.kills || 0).toFixed(2)}</td>
+                <td className="p-3 text-center text-foreground">{p.mvps || 0}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {clanMembers.length === 0 && <p className="p-6 text-center text-muted-foreground font-display">Nenhum membro</p>}
+      </div>
+    </div>
+  );
+}
+
 export default function RankingPage() {
   const [tab, setTab] = useState<Tab>('players');
   const [viewingClanId, setViewingClanId] = useState<string | null>(null);
@@ -41,57 +94,7 @@ export default function RankingPage() {
   ];
 
   if (viewingClanId) {
-    const clan = allClans.find(c => c.id === viewingClanId);
-    const [clanMembers, setClanMembers] = useState<any[]>([]);
-    const [clanTeams, setClanTeams] = useState<any[]>([]);
-
-    useEffect(() => {
-      supabase.from('profiles').select('*').eq('clan_id', viewingClanId).then(({ data }) => setClanMembers(data || []));
-      supabase.from('teams').select('*').eq('clan_id', viewingClanId).then(({ data }) => setClanTeams(data || []));
-    }, [viewingClanId]);
-
-    return (
-      <div className="space-y-6 animate-slide-up">
-        <button onClick={() => setViewingClanId(null)}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-display text-sm transition-colors">
-          <ArrowLeft size={16} /> Voltar aos Clãs
-        </button>
-        <div className="bg-card rounded-lg neon-border p-6">
-          <div className="flex items-center gap-4 mb-4">
-            {clan?.logo ? (
-              <img src={clan.logo} alt={clan.name} className="w-16 h-16 rounded-full object-cover border-2 border-primary/50" />
-            ) : (
-              <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-xl">
-                {clan?.name?.[0]?.toUpperCase()}
-              </div>
-            )}
-            <div>
-              <h2 className="text-xl font-heading text-primary text-glow">{clan?.name}</h2>
-              <p className="text-sm text-muted-foreground font-display">{clanMembers.length} membros · {clanTeams.length} times</p>
-            </div>
-          </div>
-        </div>
-
-        <h3 className="font-heading text-sm text-primary">MEMBROS ({clanMembers.length})</h3>
-        <div className="bg-card rounded-lg neon-border overflow-hidden">
-          <table className="w-full text-sm font-display">
-            <thead><tr className="border-b border-border text-muted-foreground text-xs font-heading">
-              <th className="p-3 text-left">JOGADOR</th><th className="p-3">K/D</th><th className="p-3">MVPs</th>
-            </tr></thead>
-            <tbody>
-              {clanMembers.map(p => (
-                <tr key={p.id} className="border-b border-border/50 hover:bg-primary/5 transition-colors">
-                  <td className="p-3 text-foreground">{p.game_nick || p.username}</td>
-                  <td className="p-3 text-center text-primary font-heading">{(p.deaths || 0) > 0 ? ((p.kills || 0) / (p.deaths || 1)).toFixed(2) : (p.kills || 0).toFixed(2)}</td>
-                  <td className="p-3 text-center text-foreground">{p.mvps || 0}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {clanMembers.length === 0 && <p className="p-6 text-center text-muted-foreground font-display">Nenhum membro</p>}
-        </div>
-      </div>
-    );
+    return <ClanDetailView clanId={viewingClanId} onBack={() => setViewingClanId(null)} />;
   }
 
   return (

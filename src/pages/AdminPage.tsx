@@ -336,7 +336,7 @@ function ClanAdminPanel({ clanId, currentUserId }: { clanId: string; currentUser
       {tab === 'teams' && <ClanTeamsTab clanTeams={clanTeams} clanUsers={clanUsers} clanId={clanId} onRefresh={r} />}
       {tab === 'matches' && <ClanMatchesTab clanMatches={clanMatches} clanTeams={clanTeams} clanUsers={clanUsers} clanId={clanId} onRefresh={r} />}
       {tab === 'training' && <ClanTrainingTab clanTrainings={clanTrainings} clanTeams={clanTeams} clanId={clanId} onRefresh={r} />}
-      {tab === 'news' && <ClanNewsTab clanNews={clanNews} clanId={clanId} currentUserId={currentUser.id} onRefresh={r} />}
+      {tab === 'news' && <ClanNewsTab clanNews={clanNews} clanId={clanId} currentUserId={currentUserId} onRefresh={r} />}
       {tab === 'settings' && <ClanSettingsTab clan={clan} onRefresh={r} />}
     </div>
   );
