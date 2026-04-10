@@ -1,61 +1,65 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getTeams, getFrameStyle, getNickColor, updateUser } from '@/lib/store';
+import { supabase } from '@/integrations/supabase/client';
+import { getFrameStyle, getNickColor } from '@/lib/shopData';
 import { UserCircle, Copy, Trophy, Target, Zap, Shield, Award, Camera, Edit, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ProfilePage() {
-  const { user, refreshUser } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
   const [editUsername, setEditUsername] = useState('');
   const [editGameNick, setEditGameNick] = useState('');
   const [editWhatsapp, setEditWhatsapp] = useState('');
 
-  if (!user) return null;
+  if (!user || !profile) return null;
 
-  const teams = getTeams();
-  const userTeam = teams.find(t => t.players.includes(user.id));
-  const kd = user.deaths > 0 ? (user.kills / user.deaths).toFixed(2) : user.kills.toFixed(2);
-  const frameStyle = user.frameId ? getFrameStyle(user.frameId) : null;
-  const nickColor = user.nickColorId ? getNickColor(user.nickColorId) : null;
+  const kd = (profile.deaths || 0) > 0 ? ((profile.kills || 0) / (profile.deaths || 1)).toFixed(2) : (profile.kills || 0).toFixed(2);
+  const frameStyle = profile.frame_id ? getFrameStyle(profile.frame_id) : null;
+  const nickColor = profile.nick_color_id ? getNickColor(profile.nick_color_id) : null;
 
   const copyId = () => {
-    navigator.clipboard.writeText(user.uniqueId || user.id);
+    navigator.clipboard.writeText(profile.unique_id || user.id);
     toast.success('ID copiado!');
   };
 
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
       toast.error('Imagem muito grande (máx 2MB)');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      updateUser(user.id, { avatar: dataUrl });
-      refreshUser();
-      toast.success('Foto de perfil atualizada!');
-    };
-    reader.readAsDataURL(file);
+
+    const filePath = `${user.id}/avatar.${file.name.split('.').pop()}`;
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+    if (uploadError) { toast.error('Erro ao enviar imagem'); return; }
+
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    await supabase.from('profiles').update({ avatar: publicUrl }).eq('user_id', user.id);
+    await refreshProfile();
+    toast.success('Foto de perfil atualizada!');
   };
 
   const startEditing = () => {
-    setEditUsername(user.username);
-    setEditGameNick(user.gameNick);
-    setEditWhatsapp(user.whatsapp);
+    setEditUsername(profile.username);
+    setEditGameNick(profile.game_nick);
+    setEditWhatsapp(profile.whatsapp || '');
     setEditing(true);
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     if (!editUsername.trim() || !editGameNick.trim()) {
       toast.error('Preencha todos os campos');
       return;
     }
-    updateUser(user.id, { username: editUsername, gameNick: editGameNick, whatsapp: editWhatsapp });
-    refreshUser();
+    await supabase.from('profiles').update({
+      username: editUsername,
+      game_nick: editGameNick,
+      whatsapp: editWhatsapp,
+    }).eq('user_id', user.id);
+    await refreshProfile();
     setEditing(false);
     toast.success('Perfil atualizado!');
   };
@@ -75,14 +79,13 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6 animate-slide-up max-w-2xl mx-auto">
       <div className="bg-card rounded-lg neon-border-strong p-6 text-center">
-        {/* Avatar with upload */}
         <div className="relative inline-block mb-4">
           <div className="w-24 h-24 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-3xl"
             style={frameStyle ? { border: frameStyle.border, boxShadow: frameStyle.boxShadow } : undefined}>
-            {user.avatar ? (
-              <img src={user.avatar} alt="" className="w-full h-full rounded-full object-cover" />
+            {profile.avatar ? (
+              <img src={profile.avatar} alt="" className="w-full h-full rounded-full object-cover" />
             ) : (
-              user.gameNick?.[0]?.toUpperCase() || user.username[0]?.toUpperCase()
+              profile.game_nick?.[0]?.toUpperCase() || profile.username[0]?.toUpperCase()
             )}
           </div>
           <button onClick={() => fileInputRef.current?.click()}
@@ -92,7 +95,6 @@ export default function ProfilePage() {
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
         </div>
 
-        {/* Name / Edit */}
         {editing ? (
           <div className="space-y-3 max-w-xs mx-auto">
             <input value={editUsername} onChange={e => setEditUsername(e.target.value)} placeholder="Username"
@@ -109,23 +111,23 @@ export default function ProfilePage() {
         ) : (
           <>
             <div className="flex items-center justify-center gap-2">
-              <h1 className={`text-2xl font-heading ${!nickColor && user.coloredNick ? 'text-primary text-glow' : 'text-foreground'}`}
+              <h1 className={`text-2xl font-heading ${!nickColor && profile.colored_nick ? 'text-primary text-glow' : 'text-foreground'}`}
                 style={nickColor ? nickStyle : undefined}>
-                {user.gameNick || user.username}
+                {profile.game_nick || profile.username}
               </h1>
               <button onClick={startEditing} className="text-muted-foreground hover:text-primary transition-colors"><Edit size={16} /></button>
             </div>
-            <p className="text-muted-foreground font-display text-sm">@{user.username}</p>
+            <p className="text-muted-foreground font-display text-sm">@{profile.username}</p>
           </>
         )}
 
         <div className="flex items-center justify-center gap-2 mt-2">
-          <span className="text-xs text-muted-foreground font-display">ID: #{user.uniqueId || user.id}</span>
+          <span className="text-xs text-muted-foreground font-display">ID: #{profile.unique_id}</span>
           <button onClick={copyId} className="text-primary hover:text-neon-glow"><Copy size={12} /></button>
         </div>
-        {user.badges.length > 0 && (
+        {profile.badges && profile.badges.length > 0 && (
           <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
-            {user.badges.map(b => (
+            {profile.badges.map(b => (
               <span key={b} className="px-2 py-1 rounded text-xs font-heading"
                 style={{
                   background: b === 'badge_legend' ? 'linear-gradient(135deg, #FFD700, #FF8C00)' :
@@ -142,16 +144,16 @@ export default function ProfilePage() {
           </div>
         )}
         <div className="flex items-center justify-center gap-4 mt-4 text-sm font-display">
-          <span className="text-gold">{user.gold}G</span>
-          <span className="text-primary">{user.freeSpins} Giros</span>
+          <span className="text-gold">{profile.gold || 0}G</span>
+          <span className="text-primary">{profile.free_spins || 0} Giros</span>
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Kills', value: user.kills, icon: Target },
-          { label: 'Mortes', value: user.deaths, icon: Zap },
-          { label: 'Assistências', value: user.assists, icon: Shield },
+          { label: 'Kills', value: profile.kills || 0, icon: Target },
+          { label: 'Mortes', value: profile.deaths || 0, icon: Zap },
+          { label: 'Assistências', value: profile.assists || 0, icon: Shield },
           { label: 'K/D', value: kd, icon: Award },
         ].map(stat => (
           <div key={stat.label} className="bg-card rounded-lg neon-border p-4 text-center">
@@ -163,9 +165,8 @@ export default function ProfilePage() {
       </div>
 
       <div className="bg-card rounded-lg neon-border p-5">
-        <h3 className="font-heading text-sm text-primary mb-3">MVPs: {user.mvps}</h3>
-        <h3 className="font-heading text-sm text-foreground mb-1">Time: {userTeam?.name || 'Sem time'}</h3>
-        <p className="text-xs text-muted-foreground font-display">Partidas: {user.matchesPlayed}</p>
+        <h3 className="font-heading text-sm text-primary mb-3">MVPs: {profile.mvps || 0}</h3>
+        <p className="text-xs text-muted-foreground font-display">Partidas: {profile.matches_played || 0}</p>
       </div>
     </div>
   );

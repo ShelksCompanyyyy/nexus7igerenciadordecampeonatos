@@ -1,12 +1,20 @@
-import { getTrainings, getTeams } from '@/lib/store';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Target, Calendar, Clock } from 'lucide-react';
 
 export default function TrainingPage() {
-  const { user } = useAuth();
-  const clanId = user?.clanId || '';
-  const trainings = getTrainings().filter(t => t.clanId === clanId);
-  const teams = getTeams().filter(t => t.clanId === clanId);
+  const { profile } = useAuth();
+  const clanId = profile?.clan_id || '';
+  const [trainings, setTrainings] = useState<any[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!clanId) return;
+    supabase.from('trainings').select('*').eq('clan_id', clanId).then(({ data }) => setTrainings(data || []));
+    supabase.from('teams').select('*').eq('clan_id', clanId).then(({ data }) => setTeams(data || []));
+  }, [clanId]);
+
   const scheduled = trainings.filter(t => t.status === 'scheduled');
   const completed = trainings.filter(t => t.status === 'completed');
 
@@ -23,14 +31,14 @@ export default function TrainingPage() {
         <div className="space-y-3">
           {scheduled.map(t => (
             <div key={t.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg">
-              <TeamName id={t.teamAId} />
+              <TeamName id={t.team_a_id} />
               <div className="flex flex-col items-center">
                 <span className="text-primary font-heading text-sm">VS</span>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground font-display">
-                  <Calendar size={12} /> {t.date} <Clock size={12} /> {t.time}
+                  <Calendar size={12} /> {t.training_date} <Clock size={12} /> {t.training_time}
                 </div>
               </div>
-              <TeamName id={t.teamBId} />
+              <TeamName id={t.team_b_id} />
             </div>
           ))}
           {scheduled.length === 0 && <p className="text-center text-muted-foreground text-sm font-display p-4">Nenhum treino agendado</p>}
@@ -42,13 +50,13 @@ export default function TrainingPage() {
           {completed.map(t => (
             <div key={t.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg">
               <div className="flex items-center gap-3">
-                <TeamName id={t.teamAId} />
-                <span className={`font-heading text-lg ${t.scoreA > t.scoreB ? 'text-success' : 'text-destructive'}`}>{t.scoreA}</span>
+                <TeamName id={t.team_a_id} />
+                <span className={`font-heading text-lg ${t.score_a > t.score_b ? 'text-success' : 'text-destructive'}`}>{t.score_a}</span>
               </div>
-              <span className="text-xs text-muted-foreground">{t.date}</span>
+              <span className="text-xs text-muted-foreground">{t.training_date}</span>
               <div className="flex items-center gap-3">
-                <span className={`font-heading text-lg ${t.scoreB > t.scoreA ? 'text-success' : 'text-destructive'}`}>{t.scoreB}</span>
-                <TeamName id={t.teamBId} />
+                <span className={`font-heading text-lg ${t.score_b > t.score_a ? 'text-success' : 'text-destructive'}`}>{t.score_b}</span>
+                <TeamName id={t.team_b_id} />
               </div>
             </div>
           ))}

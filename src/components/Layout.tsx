@@ -1,9 +1,9 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexus7i-logo.png';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, Settings, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell } from 'lucide-react';
-import { getNotifications, markAllNotificationsRead } from '@/lib/store';
+import { supabase } from '@/integrations/supabase/client';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Home', icon: Home },
@@ -24,11 +24,22 @@ const ADMIN_ITEMS = [
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, logout, isAdminUser } = useAuth();
+  const { user, profile, logout, isAdminUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const unreadCount = user ? getNotifications(user.id).filter(n => !n.read).length : 0;
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('notifications').select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id).eq('read', false)
+      .then(({ count }) => setUnreadCount(count || 0));
+  }, [user, location.pathname]);
+
+  const handleLogout = async () => {
+    await logout();
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -70,14 +81,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="p-4 border-t border-border">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-xs">
-              {user?.username?.[0]?.toUpperCase()}
+              {profile?.username?.[0]?.toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-display text-foreground truncate">{user?.username}</p>
-              <p className="text-xs text-gold font-display">{user?.gold}G</p>
+              <p className="text-sm font-display text-foreground truncate">{profile?.username}</p>
+              <p className="text-xs text-gold font-display">{profile?.gold || 0}G</p>
             </div>
           </div>
-          <button onClick={logout} className="flex items-center gap-2 text-muted-foreground hover:text-destructive text-sm font-display w-full px-3 py-2 rounded hover:bg-destructive/10 transition-all">
+          <button onClick={handleLogout} className="flex items-center gap-2 text-muted-foreground hover:text-destructive text-sm font-display w-full px-3 py-2 rounded hover:bg-destructive/10 transition-all">
             <LogOut size={16} /> Sair
           </button>
         </div>
@@ -91,8 +102,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <span className="font-heading text-xs text-primary">NEXUS7i</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-gold text-xs font-display">{user?.gold}G</span>
-            <button onClick={() => { if (user) { markAllNotificationsRead(user.id); } navigate('/'); }} className="relative text-foreground">
+            <span className="text-gold text-xs font-display">{profile?.gold || 0}G</span>
+            <button onClick={() => navigate('/')} className="relative text-foreground">
               <Bell size={20} />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full text-[9px] text-primary-foreground flex items-center justify-center font-heading animate-pulse">
@@ -129,7 +140,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {item.label}
               </Link>
             ))}
-            <button onClick={() => { logout(); setMobileOpen(false); }}
+            <button onClick={() => { handleLogout(); setMobileOpen(false); }}
               className="flex items-center gap-3 px-4 py-3 rounded-md font-display text-destructive w-full mt-4">
               <LogOut size={20} /> Sair
             </button>

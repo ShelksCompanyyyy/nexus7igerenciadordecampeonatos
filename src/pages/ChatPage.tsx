@@ -1,102 +1,47 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getChatMessages, addChatMessage, clearChatMessages, getUserById, getFrameStyle, getNickColor } from '@/lib/store';
+import { supabase } from '@/integrations/supabase/client';
+import { getFrameStyle, getNickColor } from '@/lib/shopData';
 import { MessageSquare, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ChatPage() {
-  const { user } = useAuth();
-  const [messages, setMessages] = useState(getChatMessages());
+  const { user, profile, isSuperAdminUser } = useAuth();
+  const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const fetchMessages = async () => {
+    const { data } = await supabase.from('chat_messages').select('*').order('created_at', { ascending: true }).limit(200);
+    setMessages(data || []);
+  };
+
   useEffect(() => {
-    const interval = setInterval(() => setMessages(getChatMessages()), 2000);
-    return () => clearInterval(interval);
+    fetchMessages();
+    const channel = supabase.channel('chat').on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, () => fetchMessages()).subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = () => {
-    if (!text.trim() || !user) return;
-    addChatMessage({
-      userId: user.id,
-      username: user.gameNick || user.username,
+  const handleSend = async () => {
+    if (!text.trim() || !user || !profile) return;
+    await supabase.from('chat_messages').insert({
+      user_id: user.id,
+      username: profile.game_nick || profile.username,
       message: text.trim(),
-      timestamp: new Date().toISOString(),
     });
     setText('');
-    setMessages(getChatMessages());
   };
 
-  const handleClear = () => {
-    clearChatMessages();
-    setMessages([]);
-    toast.success('Chat limpo!');
-  };
-
-  const renderAvatar = (msgUserId: string, username: string) => {
-    const msgUser = getUserById(msgUserId);
-    const frameStyle = msgUser?.frameId ? getFrameStyle(msgUser.frameId) : null;
-    return (
-      <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-xs flex-shrink-0"
-        style={frameStyle ? { border: frameStyle.border, boxShadow: frameStyle.boxShadow } : undefined}>
-        {msgUser?.avatar ? (
-          <img src={msgUser.avatar} alt={username} className="w-full h-full rounded-full object-cover" />
-        ) : username[0]?.toUpperCase()}
-      </div>
-    );
-  };
-
-  const renderUsername = (msgUserId: string, username: string) => {
-    const msgUser = getUserById(msgUserId);
-    const nickColor = msgUser?.nickColorId ? getNickColor(msgUser.nickColorId) : null;
-
-    const nameStyle: React.CSSProperties = {};
-    if (nickColor) {
-      if (nickColor.startsWith('linear')) {
-        nameStyle.backgroundImage = nickColor;
-        nameStyle.WebkitBackgroundClip = 'text';
-        nameStyle.WebkitTextFillColor = 'transparent';
-      } else {
-        nameStyle.color = nickColor;
-        nameStyle.textShadow = `0 0 8px ${nickColor}`;
-      }
-    }
-
-    return (
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <p className="text-xs font-heading mb-1" style={nameStyle}>{username}</p>
-        {msgUser?.frameId && (
-          <span className="px-1.5 py-0.5 rounded text-[8px] font-heading mb-1" style={{
-            background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.6))',
-            color: 'hsl(var(--primary-foreground))',
-            boxShadow: '0 0 6px hsl(var(--primary) / 0.5)',
-          }}>★ FRAME</span>
-        )}
-        {msgUser?.badges && msgUser.badges.length > 0 && (
-          <div className="flex gap-1 mb-1">
-            {msgUser.badges.map(b => (
-              <span key={b} className="px-1.5 py-0.5 rounded text-[8px] font-heading"
-                style={{
-                  background: b === 'badge_legend' ? 'linear-gradient(135deg, #FFD700, #FF8C00)' :
-                    b === 'badge_vip' ? 'linear-gradient(135deg, #BF00FF, #8B00FF)' :
-                    b === 'superadmin' ? 'linear-gradient(135deg, #FF0040, #FF6600)' :
-                    b === 'founder' ? 'linear-gradient(135deg, #FFD700, #FFA500)' :
-                    'hsl(var(--primary) / 0.3)',
-                  color: '#fff',
-                  textShadow: '0 0 4px rgba(0,0,0,0.5)',
-                  boxShadow: '0 0 8px rgba(255,255,255,0.1)',
-                }}>
-                {b.replace('badge_', '').toUpperCase()}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    );
+  const handleClear = async () => {
+    if (!isSuperAdminUser) { toast.error('Apenas ADM Criador pode limpar o chat'); return; }
+    // Only superadmin can delete all
+    const { error } = await supabase.from('chat_messages').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) toast.error('Erro ao limpar chat');
+    else { setMessages([]); toast.success('Chat limpo!'); }
   };
 
   return (
@@ -105,10 +50,12 @@ export default function ChatPage() {
         <h1 className="text-2xl font-heading text-primary text-glow flex items-center gap-3">
           <MessageSquare size={28} /> CHAT GERAL
         </h1>
-        <button onClick={handleClear}
-          className="flex items-center gap-2 px-3 py-2 rounded text-xs font-heading bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 transition-all">
-          <Trash2 size={14} /> Limpar Chat
-        </button>
+        {isSuperAdminUser && (
+          <button onClick={handleClear}
+            className="flex items-center gap-2 px-3 py-2 rounded text-xs font-heading bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 transition-all">
+            <Trash2 size={14} /> Limpar Chat
+          </button>
+        )}
       </div>
       <div className="flex-1 bg-card rounded-lg neon-border overflow-hidden flex flex-col">
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -118,14 +65,16 @@ export default function ChatPage() {
             </div>
           )}
           {messages.map(msg => (
-            <div key={msg.id} className={`flex gap-3 ${msg.userId === user?.id ? 'flex-row-reverse' : ''}`}>
-              {renderAvatar(msg.userId, msg.username)}
-              <div className={`max-w-[70%] ${msg.userId === user?.id ? 'text-right' : ''}`}>
-                {renderUsername(msg.userId, msg.username)}
-                <div className={`p-3 rounded-lg ${msg.userId === user?.id ? 'bg-primary/20 neon-border' : 'bg-secondary'}`}>
+            <div key={msg.id} className={`flex gap-3 ${msg.user_id === user?.id ? 'flex-row-reverse' : ''}`}>
+              <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-xs flex-shrink-0">
+                {msg.username[0]?.toUpperCase()}
+              </div>
+              <div className={`max-w-[70%] ${msg.user_id === user?.id ? 'text-right' : ''}`}>
+                <p className="text-xs font-heading mb-1">{msg.username}</p>
+                <div className={`p-3 rounded-lg ${msg.user_id === user?.id ? 'bg-primary/20 neon-border' : 'bg-secondary'}`}>
                   <p className="text-sm text-foreground font-display">{msg.message}</p>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">{new Date(msg.timestamp).toLocaleTimeString('pt-BR')}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{new Date(msg.created_at).toLocaleTimeString('pt-BR')}</p>
               </div>
             </div>
           ))}

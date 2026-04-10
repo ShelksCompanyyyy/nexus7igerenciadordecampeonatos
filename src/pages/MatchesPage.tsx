@@ -1,12 +1,20 @@
-import { getMatches, getTeams } from '@/lib/store';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Swords, Clock, CheckCircle } from 'lucide-react';
 
 export default function MatchesPage() {
-  const { user } = useAuth();
-  const clanId = user?.clanId || '';
-  const matches = getMatches().filter(m => m.clanId === clanId);
-  const teams = getTeams().filter(t => t.clanId === clanId);
+  const { profile } = useAuth();
+  const clanId = profile?.clan_id || '';
+  const [matches, setMatches] = useState<any[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!clanId) return;
+    supabase.from('matches').select('*').eq('clan_id', clanId).then(({ data }) => setMatches(data || []));
+    supabase.from('teams').select('*').eq('clan_id', clanId).then(({ data }) => setTeams(data || []));
+  }, [clanId]);
+
   const upcoming = matches.filter(m => m.status === 'upcoming');
   const completed = matches.filter(m => m.status === 'completed');
 
@@ -23,12 +31,12 @@ export default function MatchesPage() {
         <div className="space-y-3">
           {upcoming.map(m => (
             <div key={m.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg">
-              <TeamName id={m.teamAId} />
+              <TeamName id={m.team_a_id} />
               <div className="flex flex-col items-center">
                 <span className="text-primary font-heading text-sm">VS</span>
-                <span className="text-xs text-muted-foreground font-display">{m.date} • {m.time}</span>
+                <span className="text-xs text-muted-foreground font-display">{m.match_date} • {m.match_time}</span>
               </div>
-              <TeamName id={m.teamBId} />
+              <TeamName id={m.team_b_id} />
             </div>
           ))}
           {upcoming.length === 0 && <p className="text-center text-muted-foreground text-sm font-display">Nenhuma partida agendada</p>}
@@ -40,13 +48,13 @@ export default function MatchesPage() {
           {completed.map(m => (
             <div key={m.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg">
               <div className="flex items-center gap-3">
-                <TeamName id={m.teamAId} />
-                <span className={`font-heading text-lg ${m.scoreA > m.scoreB ? 'text-success' : 'text-destructive'}`}>{m.scoreA}</span>
+                <TeamName id={m.team_a_id} />
+                <span className={`font-heading text-lg ${m.score_a > m.score_b ? 'text-success' : 'text-destructive'}`}>{m.score_a}</span>
               </div>
-              <span className="text-muted-foreground font-display text-xs">{m.date}</span>
+              <span className="text-muted-foreground font-display text-xs">{m.match_date}</span>
               <div className="flex items-center gap-3">
-                <span className={`font-heading text-lg ${m.scoreB > m.scoreA ? 'text-success' : 'text-destructive'}`}>{m.scoreB}</span>
-                <TeamName id={m.teamBId} />
+                <span className={`font-heading text-lg ${m.score_b > m.score_a ? 'text-success' : 'text-destructive'}`}>{m.score_b}</span>
+                <TeamName id={m.team_b_id} />
               </div>
             </div>
           ))}

@@ -3,7 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import heroBg from '@/assets/hero-bg.jpg';
 import { Trophy, Users, Swords, Dices, Target, Newspaper, Zap, BookOpen } from 'lucide-react';
-import { getUsers, getMatches, getTeams, getClanById, getNotifications } from '@/lib/store';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const QUICK_LINKS = [
   { path: '/ranking', label: 'Ranking', icon: Trophy, desc: 'Ver classificação' },
@@ -15,22 +16,37 @@ const QUICK_LINKS = [
 ];
 
 export default function HomePage() {
-  const { user } = useAuth();
-  const clanId = user?.clanId || '';
-  const clan = clanId ? getClanById(clanId) : null;
-  const users = getUsers().filter(u => u.clanId === clanId);
-  const matches = getMatches().filter(m => m.clanId === clanId);
-  const teams = getTeams().filter(t => t.clanId === clanId);
-  const topMvp = [...users].sort((a, b) => b.mvps - a.mvps)[0];
-  const topKiller = [...users].sort((a, b) => b.kills - a.kills)[0];
+  const { profile, user } = useAuth();
+  const clanId = profile?.clan_id || '';
+  const [clan, setClan] = useState<any>(null);
+  const [members, setMembers] = useState<any[]>([]);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!clanId) return;
+    supabase.from('clans').select('*').eq('id', clanId).single().then(({ data }) => setClan(data));
+    supabase.from('profiles').select('*').eq('clan_id', clanId).then(({ data }) => setMembers(data || []));
+    supabase.from('matches').select('*').eq('clan_id', clanId).then(({ data }) => setMatches(data || []));
+    supabase.from('teams').select('*').eq('clan_id', clanId).then(({ data }) => setTeams(data || []));
+  }, [clanId]);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('notifications').select('*').eq('user_id', user.id).eq('read', false)
+      .order('created_at', { ascending: false }).limit(5)
+      .then(({ data }) => setNotifications(data || []));
+  }, [user]);
+
+  const topMvp = [...members].sort((a, b) => (b.mvps || 0) - (a.mvps || 0))[0];
+  const topKiller = [...members].sort((a, b) => (b.kills || 0) - (a.kills || 0))[0];
   const upcomingMatches = matches.filter(m => m.status === 'upcoming').slice(0, 3);
 
-  const isNewUser = user ? (new Date().getTime() - new Date(user.createdAt).getTime()) < 1000 * 60 * 60 * 24 * 3 : false; // 3 days
-  const unreadNotifs = user ? getNotifications(user.id).filter(n => !n.read) : [];
+  const isNewUser = profile ? (new Date().getTime() - new Date(profile.created_at).getTime()) < 1000 * 60 * 60 * 24 * 3 : false;
 
   return (
     <div className="space-y-8 animate-slide-up">
-      {/* Tutorial Banner */}
       {isNewUser && (
         <Link to="/tutorial" className="block bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 border border-primary/40 rounded-xl p-5 hover:border-primary/60 transition-all group animate-slide-up">
           <div className="flex items-center gap-4">
@@ -47,11 +63,10 @@ export default function HomePage() {
         </Link>
       )}
 
-      {/* Notifications */}
-      {unreadNotifs.length > 0 && (
+      {notifications.length > 0 && (
         <div className="space-y-2">
-          <h3 className="font-heading text-xs text-primary flex items-center gap-2">🔔 NOTIFICAÇÕES ({unreadNotifs.length})</h3>
-          {unreadNotifs.slice(0, 3).map(n => (
+          <h3 className="font-heading text-xs text-primary flex items-center gap-2">🔔 NOTIFICAÇÕES ({notifications.length})</h3>
+          {notifications.slice(0, 3).map(n => (
             <div key={n.id} className={`p-3 rounded-lg border text-sm font-display ${
               n.type === 'withdrawal' ? 'border-gold/30 bg-gold/5' : 'border-primary/30 bg-primary/5'
             }`}>
@@ -59,12 +74,9 @@ export default function HomePage() {
               <p className="text-xs text-muted-foreground mt-1">{n.message}</p>
             </div>
           ))}
-          {unreadNotifs.length > 3 && (
-            <p className="text-xs text-muted-foreground font-display text-center">+{unreadNotifs.length - 3} notificações</p>
-          )}
         </div>
       )}
-      {/* Hero */}
+
       <div className="relative rounded-xl overflow-hidden neon-border-strong" style={{ minHeight: '300px' }}>
         {clan?.banner ? <img src={clan.banner} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" /> :
           <img src={heroBg} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />}
@@ -76,13 +88,12 @@ export default function HomePage() {
           <p className="text-lg md:text-xl font-display text-foreground/80 tracking-[0.3em] mt-1">E-SPORTS</p>
           <div className="flex items-center gap-2 mt-4 text-muted-foreground text-sm font-display">
             <Zap size={14} className="text-primary" />
-            <span>Bem-vindo, <span className="text-primary">{user?.username}</span></span>
+            <span>Bem-vindo, <span className="text-primary">{profile?.username}</span></span>
             <Zap size={14} className="text-primary" />
           </div>
         </div>
       </div>
 
-      {/* Quick Links */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {QUICK_LINKS.map(link => (
           <Link key={link.path} to={link.path}
@@ -94,17 +105,16 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-card rounded-lg neon-border p-5">
           <h3 className="font-heading text-xs text-primary mb-3 flex items-center gap-2"><Trophy size={14} /> TOP MVP</h3>
           {topMvp ? (
             <div className="flex items-center gap-3">
               {topMvp.avatar ? <img src={topMvp.avatar} alt="" className="w-12 h-12 rounded-full object-cover" /> :
-                <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading">{topMvp.gameNick?.[0]?.toUpperCase()}</div>}
+                <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading">{topMvp.game_nick?.[0]?.toUpperCase()}</div>}
               <div>
-                <p className="font-display text-foreground">{topMvp.gameNick}</p>
-                <p className="text-primary text-sm font-heading">{topMvp.mvps} MVPs</p>
+                <p className="font-display text-foreground">{topMvp.game_nick}</p>
+                <p className="text-primary text-sm font-heading">{topMvp.mvps || 0} MVPs</p>
               </div>
             </div>
           ) : <p className="text-muted-foreground text-sm font-display">Nenhum MVP ainda</p>}
@@ -114,10 +124,10 @@ export default function HomePage() {
           {topKiller ? (
             <div className="flex items-center gap-3">
               {topKiller.avatar ? <img src={topKiller.avatar} alt="" className="w-12 h-12 rounded-full object-cover" /> :
-                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-foreground font-heading">{topKiller.gameNick?.[0]?.toUpperCase()}</div>}
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-foreground font-heading">{topKiller.game_nick?.[0]?.toUpperCase()}</div>}
               <div>
-                <p className="font-display text-foreground">{topKiller.gameNick}</p>
-                <p className="text-sm text-muted-foreground font-display">{topKiller.kills}K / {topKiller.deaths}D / {topKiller.assists}A</p>
+                <p className="font-display text-foreground">{topKiller.game_nick}</p>
+                <p className="text-sm text-muted-foreground font-display">{topKiller.kills || 0}K / {topKiller.deaths || 0}D / {topKiller.assists || 0}A</p>
               </div>
             </div>
           ) : <p className="text-muted-foreground text-sm font-display">Sem dados</p>}
@@ -125,27 +135,26 @@ export default function HomePage() {
         <div className="bg-card rounded-lg neon-border p-5">
           <h3 className="font-heading text-xs text-primary mb-3 flex items-center gap-2"><Zap size={14} /> ESTATÍSTICAS</h3>
           <div className="space-y-2 font-display text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Membros</span><span className="text-foreground">{users.length}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Membros</span><span className="text-foreground">{members.length}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Lines</span><span className="text-foreground">{teams.length}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Partidas</span><span className="text-foreground">{matches.length}</span></div>
           </div>
         </div>
       </div>
 
-      {/* Upcoming Matches */}
       {upcomingMatches.length > 0 && (
         <div className="bg-card rounded-lg neon-border p-5">
           <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2"><Swords size={16} /> PRÓXIMOS JOGOS</h3>
           <div className="space-y-3">
             {upcomingMatches.map(m => {
-              const tA = teams.find(t => t.id === m.teamAId);
-              const tB = teams.find(t => t.id === m.teamBId);
+              const tA = teams.find(t => t.id === m.team_a_id);
+              const tB = teams.find(t => t.id === m.team_b_id);
               return (
                 <div key={m.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
                   <span className="font-display text-foreground text-sm">{tA?.name || '???'}</span>
                   <div className="flex flex-col items-center">
                     <span className="text-primary font-heading text-xs">VS</span>
-                    <span className="text-[10px] text-muted-foreground">{m.date} {m.time}</span>
+                    <span className="text-[10px] text-muted-foreground">{m.match_date} {m.match_time}</span>
                   </div>
                   <span className="font-display text-foreground text-sm">{tB?.name || '???'}</span>
                 </div>
@@ -155,7 +164,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Prizes */}
       <div className="bg-card rounded-lg neon-border p-5">
         <h3 className="font-heading text-sm text-primary mb-2 flex items-center gap-2"><Trophy size={16} /> PREMIAÇÃO DO CAMPEONATO</h3>
         <p className="text-xs text-muted-foreground font-display mb-4">Premiação para o campeonato de Lines contra Lines</p>
