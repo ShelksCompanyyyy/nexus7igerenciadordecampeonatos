@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { getUsers, getTeams, getClans, getClanById } from '@/lib/store';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Trophy, Target, Zap, Users, ChevronRight, ArrowLeft } from 'lucide-react';
 
 type Tab = 'players' | 'teams' | 'mvp' | 'gold' | 'clans';
@@ -8,20 +8,29 @@ type Tab = 'players' | 'teams' | 'mvp' | 'gold' | 'clans';
 export default function RankingPage() {
   const [tab, setTab] = useState<Tab>('players');
   const [viewingClanId, setViewingClanId] = useState<string | null>(null);
-  const { user } = useAuth();
-  const clanId = user?.clanId || '';
-  const users = getUsers().filter(u => u.role !== 'superadmin' && u.clanId === clanId);
-  const teams = getTeams().filter(t => t.clanId === clanId);
-  const allClans = getClans();
+  const { profile } = useAuth();
+  const clanId = profile?.clan_id || '';
 
-  const sortedPlayers = [...users].sort((a, b) => {
-    const kdA = a.deaths > 0 ? a.kills / a.deaths : a.kills;
-    const kdB = b.deaths > 0 ? b.kills / b.deaths : b.kills;
+  const [members, setMembers] = useState<any[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [allClans, setAllClans] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (clanId) {
+      supabase.from('profiles').select('*').eq('clan_id', clanId).then(({ data }) => setMembers(data || []));
+      supabase.from('teams').select('*').eq('clan_id', clanId).then(({ data }) => setTeams(data || []));
+    }
+    supabase.from('clans').select('*').then(({ data }) => setAllClans(data || []));
+  }, [clanId]);
+
+  const sortedPlayers = [...members].sort((a, b) => {
+    const kdA = (a.deaths || 0) > 0 ? (a.kills || 0) / (a.deaths || 1) : (a.kills || 0);
+    const kdB = (b.deaths || 0) > 0 ? (b.kills || 0) / (b.deaths || 1) : (b.kills || 0);
     return kdB - kdA;
   });
-  const sortedMvp = [...users].sort((a, b) => b.mvps - a.mvps);
-  const sortedGold = [...users].sort((a, b) => b.gold - a.gold);
-  const sortedTeams = [...teams].sort((a, b) => b.wins - a.wins);
+  const sortedMvp = [...members].sort((a, b) => (b.mvps || 0) - (a.mvps || 0));
+  const sortedGold = [...members].sort((a, b) => (b.gold || 0) - (a.gold || 0));
+  const sortedTeams = [...teams].sort((a, b) => (b.wins || 0) - (a.wins || 0));
 
   const tabs: { id: Tab; label: string; icon: any }[] = [
     { id: 'players', label: 'Jogadores', icon: Target },
@@ -31,11 +40,16 @@ export default function RankingPage() {
     { id: 'clans', label: 'Clãs', icon: Users },
   ];
 
-  // Clan detail view
   if (viewingClanId) {
-    const clan = getClanById(viewingClanId);
-    const clanMembers = getUsers().filter(u => u.clanId === viewingClanId && u.role !== 'superadmin');
-    const clanTeams = getTeams().filter(t => t.clanId === viewingClanId);
+    const clan = allClans.find(c => c.id === viewingClanId);
+    const [clanMembers, setClanMembers] = useState<any[]>([]);
+    const [clanTeams, setClanTeams] = useState<any[]>([]);
+
+    useEffect(() => {
+      supabase.from('profiles').select('*').eq('clan_id', viewingClanId).then(({ data }) => setClanMembers(data || []));
+      supabase.from('teams').select('*').eq('clan_id', viewingClanId).then(({ data }) => setClanTeams(data || []));
+    }, [viewingClanId]);
+
     return (
       <div className="space-y-6 animate-slide-up">
         <button onClick={() => setViewingClanId(null)}
@@ -67,29 +81,15 @@ export default function RankingPage() {
             <tbody>
               {clanMembers.map(p => (
                 <tr key={p.id} className="border-b border-border/50 hover:bg-primary/5 transition-colors">
-                  <td className="p-3 text-foreground">{p.gameNick || p.username}</td>
-                  <td className="p-3 text-center text-primary font-heading">{p.deaths > 0 ? (p.kills / p.deaths).toFixed(2) : p.kills.toFixed(2)}</td>
-                  <td className="p-3 text-center text-foreground">{p.mvps}</td>
+                  <td className="p-3 text-foreground">{p.game_nick || p.username}</td>
+                  <td className="p-3 text-center text-primary font-heading">{(p.deaths || 0) > 0 ? ((p.kills || 0) / (p.deaths || 1)).toFixed(2) : (p.kills || 0).toFixed(2)}</td>
+                  <td className="p-3 text-center text-foreground">{p.mvps || 0}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           {clanMembers.length === 0 && <p className="p-6 text-center text-muted-foreground font-display">Nenhum membro</p>}
         </div>
-
-        {clanTeams.length > 0 && (
-          <>
-            <h3 className="font-heading text-sm text-primary">TIMES ({clanTeams.length})</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {clanTeams.map(team => (
-                <div key={team.id} className="p-4 bg-card rounded-lg border border-border">
-                  <p className="font-display text-foreground">{team.name}</p>
-                  <p className="text-xs text-muted-foreground">{team.players.length} jogadores · <span className="text-success">{team.wins}W</span> / <span className="text-destructive">{team.losses}L</span></p>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
       </div>
     );
   }
@@ -120,11 +120,11 @@ export default function RankingPage() {
               {sortedPlayers.map((p, i) => (
                 <tr key={p.id} className={`border-b border-border/50 hover:bg-primary/5 transition-colors ${i < 3 ? 'bg-primary/5' : ''}`}>
                   <td className="p-3"><span className={`font-heading ${i < 3 ? 'text-primary text-glow-sm' : 'text-muted-foreground'}`}>{i + 1}</span></td>
-                  <td className="p-3 text-foreground">{p.gameNick || p.username}</td>
-                  <td className="p-3 text-center text-foreground">{p.kills}</td>
-                  <td className="p-3 text-center text-foreground">{p.deaths}</td>
-                  <td className="p-3 text-center text-foreground">{p.assists}</td>
-                  <td className="p-3 text-center text-primary font-heading">{p.deaths > 0 ? (p.kills / p.deaths).toFixed(2) : p.kills.toFixed(2)}</td>
+                  <td className="p-3 text-foreground">{p.game_nick || p.username}</td>
+                  <td className="p-3 text-center text-foreground">{p.kills || 0}</td>
+                  <td className="p-3 text-center text-foreground">{p.deaths || 0}</td>
+                  <td className="p-3 text-center text-foreground">{p.assists || 0}</td>
+                  <td className="p-3 text-center text-primary font-heading">{(p.deaths || 0) > 0 ? ((p.kills || 0) / (p.deaths || 1)).toFixed(2) : (p.kills || 0).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -136,20 +136,17 @@ export default function RankingPage() {
       {tab === 'teams' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {sortedTeams.map((team, i) => (
-            <div key={team.id}
-              className={`p-4 bg-card rounded-lg border transition-all text-left ${i < 3 ? 'neon-border' : 'border-border'}`}
-            >
+            <div key={team.id} className={`p-4 bg-card rounded-lg border transition-all text-left ${i < 3 ? 'neon-border' : 'border-border'}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className={`font-heading text-lg ${i < 3 ? 'text-primary text-glow-sm' : 'text-muted-foreground'}`}>#{i + 1}</span>
                   <div>
                     <p className="font-display text-foreground">{team.name}</p>
-                    <p className="text-xs text-muted-foreground">{team.players.length} jogadores</p>
+                    <p className="text-xs text-muted-foreground">{(team.players || []).length} jogadores</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-display"><span className="text-success">{team.wins}W</span> / <span className="text-destructive">{team.losses}L</span></p>
-                  <p className="text-xs text-muted-foreground">{team.wins + team.losses > 0 ? ((team.wins / (team.wins + team.losses)) * 100).toFixed(0) : 0}% WR</p>
+                  <p className="text-sm font-display"><span className="text-success">{team.wins || 0}W</span> / <span className="text-destructive">{team.losses || 0}L</span></p>
                 </div>
               </div>
             </div>
@@ -168,8 +165,8 @@ export default function RankingPage() {
               {sortedMvp.map((p, i) => (
                 <tr key={p.id} className={`border-b border-border/50 ${i < 3 ? 'bg-primary/5' : ''}`}>
                   <td className="p-3"><span className={`font-heading ${i < 3 ? 'text-primary text-glow-sm' : 'text-muted-foreground'}`}>{i + 1}</span></td>
-                  <td className="p-3 text-foreground">{p.gameNick || p.username}</td>
-                  <td className="p-3 text-center text-primary font-heading">{p.mvps}</td>
+                  <td className="p-3 text-foreground">{p.game_nick || p.username}</td>
+                  <td className="p-3 text-center text-primary font-heading">{p.mvps || 0}</td>
                 </tr>
               ))}
             </tbody>
@@ -187,8 +184,8 @@ export default function RankingPage() {
               {sortedGold.map((p, i) => (
                 <tr key={p.id} className={`border-b border-border/50 ${i < 3 ? 'bg-gold/5' : ''}`}>
                   <td className="p-3"><span className={`font-heading ${i < 3 ? 'text-gold text-glow-gold' : 'text-muted-foreground'}`}>{i + 1}</span></td>
-                  <td className="p-3 text-foreground">{p.gameNick || p.username}</td>
-                  <td className="p-3 text-center text-gold font-heading">{p.gold}G</td>
+                  <td className="p-3 text-foreground">{p.game_nick || p.username}</td>
+                  <td className="p-3 text-center text-gold font-heading">{p.gold || 0}G</td>
                 </tr>
               ))}
             </tbody>
@@ -198,31 +195,26 @@ export default function RankingPage() {
 
       {tab === 'clans' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {allClans.map(clan => {
-            const memberCount = getUsers().filter(u => u.clanId === clan.id && u.role !== 'superadmin').length;
-            const teamCount = getTeams().filter(t => t.clanId === clan.id).length;
-            return (
-              <button key={clan.id} onClick={() => setViewingClanId(clan.id)}
-                className="p-4 bg-card rounded-lg border border-border hover:neon-border transition-all text-left group">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {clan.logo ? (
-                      <img src={clan.logo} alt={clan.name} className="w-12 h-12 rounded-full object-cover border border-primary/30" />
-                    ) : (
-                      <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-lg">
-                        {clan.name[0]?.toUpperCase()}
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-heading text-sm text-foreground group-hover:text-primary transition-colors">{clan.name}</p>
-                      <p className="text-xs text-muted-foreground font-display">{memberCount} membros · {teamCount} times</p>
+          {allClans.map(clan => (
+            <button key={clan.id} onClick={() => setViewingClanId(clan.id)}
+              className="p-4 bg-card rounded-lg border border-border hover:neon-border transition-all text-left group">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {clan.logo ? (
+                    <img src={clan.logo} alt={clan.name} className="w-12 h-12 rounded-full object-cover border border-primary/30" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-lg">
+                      {clan.name[0]?.toUpperCase()}
                     </div>
+                  )}
+                  <div>
+                    <p className="font-heading text-sm text-foreground group-hover:text-primary transition-colors">{clan.name}</p>
                   </div>
-                  <ChevronRight size={18} className="text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
-              </button>
-            );
-          })}
+                <ChevronRight size={18} className="text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+            </button>
+          ))}
           {allClans.length === 0 && <p className="col-span-2 text-center text-muted-foreground font-display p-6">Nenhum clã registrado</p>}
         </div>
       )}
