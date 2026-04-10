@@ -1,22 +1,28 @@
-import { useState } from 'react';
-import { getTeams, getUsers } from '@/lib/store';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Users, ChevronLeft, Target, Trophy } from 'lucide-react';
 
 export default function TeamsPage() {
-  const { user } = useAuth();
-  const clanId = user?.clanId || '';
-  const teams = getTeams().filter(t => t.clanId === clanId);
-  const users = getUsers().filter(u => u.clanId === clanId);
+  const { profile } = useAuth();
+  const clanId = profile?.clan_id || '';
+  const [teams, setTeams] = useState<any[]>([]);
+  const [members, setMembers] = useState<any[]>([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!clanId) return;
+    supabase.from('teams').select('*').eq('clan_id', clanId).then(({ data }) => setTeams(data || []));
+    supabase.from('profiles').select('*').eq('clan_id', clanId).then(({ data }) => setMembers(data || []));
+  }, [clanId]);
 
   return (
     <div className="space-y-6 animate-slide-up">
       <h1 className="text-2xl font-heading text-primary text-glow">LINES / TIMES</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {teams.map(team => {
-          const teamPlayers = users.filter(u => team.players.includes(u.id));
+          const teamPlayers = members.filter(u => team.players?.includes(u.user_id));
           return (
             <button key={team.id} onClick={() => navigate(`/teams/${team.id}`)}
               className="p-5 bg-card rounded-lg border border-border hover:neon-border transition-all text-left group">
@@ -29,8 +35,8 @@ export default function TeamsPage() {
                 </div>
               </div>
               <div className="flex gap-4 text-xs font-display text-muted-foreground">
-                <span><span className="text-success">{team.wins}</span> Vitórias</span>
-                <span><span className="text-destructive">{team.losses}</span> Derrotas</span>
+                <span><span className="text-success">{team.wins || 0}</span> Vitórias</span>
+                <span><span className="text-destructive">{team.losses || 0}</span> Derrotas</span>
               </div>
             </button>
           );
@@ -43,56 +49,53 @@ export default function TeamsPage() {
 
 export function TeamDetailPage() {
   const { id } = useParams();
-  const { user } = useAuth();
-  const clanId = user?.clanId || '';
-  const teams = getTeams().filter(t => t.clanId === clanId);
-  const users = getUsers().filter(u => u.clanId === clanId);
+  const { profile } = useAuth();
+  const clanId = profile?.clan_id || '';
+  const [team, setTeam] = useState<any>(null);
+  const [members, setMembers] = useState<any[]>([]);
   const navigate = useNavigate();
-  const team = teams.find(t => t.id === id);
 
-  if (!team) return <div className="text-center text-muted-foreground p-12">Time não encontrado</div>;
+  useEffect(() => {
+    if (!id) return;
+    supabase.from('teams').select('*').eq('id', id).single().then(({ data }) => setTeam(data));
+    supabase.from('profiles').select('*').eq('clan_id', clanId).then(({ data }) => setMembers(data || []));
+  }, [id, clanId]);
 
-  const teamPlayers = users.filter(u => team.players.includes(u.id));
+  if (!team) return <div className="text-center text-muted-foreground p-12 font-display">Carregando...</div>;
+
+  const teamPlayers = members.filter(u => team.players?.includes(u.user_id));
 
   return (
-    <div className="space-y-6 animate-slide-up">
-      <button onClick={() => navigate('/teams')} className="flex items-center gap-2 text-muted-foreground hover:text-primary font-display text-sm">
+    <div className="space-y-6 animate-slide-up max-w-2xl mx-auto">
+      <button onClick={() => navigate('/teams')} className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-display text-sm">
         <ChevronLeft size={16} /> Voltar
       </button>
-      <div className="flex items-center gap-4">
-        {team.logo ? <img src={team.logo} alt="" className="w-16 h-16 rounded-lg object-cover" /> :
-          <div className="w-16 h-16 rounded-lg gradient-primary flex items-center justify-center text-primary-foreground font-heading text-2xl">{team.name[0]}</div>}
-        <div>
-          <h1 className="text-2xl font-heading text-primary text-glow">{team.name}</h1>
-          <div className="flex gap-4 text-sm font-display text-muted-foreground mt-1">
-            <span><span className="text-success">{team.wins}W</span></span>
-            <span><span className="text-destructive">{team.losses}L</span></span>
-            <span>{team.wins + team.losses > 0 ? ((team.wins / (team.wins + team.losses)) * 100).toFixed(0) : 0}% WR</span>
-          </div>
+      <div className="bg-card rounded-lg neon-border-strong p-6 text-center">
+        {team.logo ? <img src={team.logo} alt="" className="w-20 h-20 rounded-xl mx-auto mb-4 object-cover" /> :
+          <div className="w-20 h-20 rounded-xl gradient-primary flex items-center justify-center text-primary-foreground font-heading text-2xl mx-auto mb-4">{team.name[0]}</div>}
+        <h1 className="text-2xl font-heading text-primary text-glow">{team.name}</h1>
+        <div className="flex justify-center gap-6 mt-3 text-sm font-display">
+          <span className="text-success">{team.wins || 0} Vitórias</span>
+          <span className="text-destructive">{team.losses || 0} Derrotas</span>
         </div>
       </div>
       <div className="bg-card rounded-lg neon-border p-5">
-        <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2"><Users size={16} /> JOGADORES</h3>
+        <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2"><Users size={16} /> JOGADORES ({teamPlayers.length}/5)</h3>
         <div className="space-y-3">
           {teamPlayers.map(p => (
-            <div key={p.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-              <div className="flex items-center gap-3">
-                {p.avatar ? <img src={p.avatar} alt="" className="w-10 h-10 rounded-full object-cover" /> :
-                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-heading text-sm text-foreground">{p.gameNick?.[0]?.toUpperCase()}</div>}
-                <div>
-                  <p className="font-display text-foreground">{p.gameNick || p.username}</p>
-                  <p className="text-xs text-muted-foreground">{p.mvps} MVPs</p>
-                </div>
+            <div key={p.id} className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
+              {p.avatar ? <img src={p.avatar} alt="" className="w-10 h-10 rounded-full object-cover" /> :
+                <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-xs">{p.game_nick?.[0]?.toUpperCase()}</div>}
+              <div className="flex-1">
+                <p className="font-display text-foreground text-sm">{p.game_nick}</p>
+                <p className="text-xs text-muted-foreground font-display">{p.kills || 0}K / {p.deaths || 0}D / {p.assists || 0}A</p>
               </div>
-              <div className="grid grid-cols-4 gap-4 text-center text-xs font-display">
-                <div><p className="text-muted-foreground">K</p><p className="text-foreground">{p.kills}</p></div>
-                <div><p className="text-muted-foreground">D</p><p className="text-foreground">{p.deaths}</p></div>
-                <div><p className="text-muted-foreground">A</p><p className="text-foreground">{p.assists}</p></div>
-                <div><p className="text-muted-foreground">K/D</p><p className="text-primary font-heading">{p.deaths > 0 ? (p.kills / p.deaths).toFixed(2) : p.kills.toFixed(2)}</p></div>
+              <div className="text-right">
+                <p className="text-xs text-primary font-heading">{p.mvps || 0} MVPs</p>
               </div>
             </div>
           ))}
-          {teamPlayers.length === 0 && <p className="text-center text-muted-foreground text-sm">Nenhum jogador</p>}
+          {teamPlayers.length === 0 && <p className="text-center text-muted-foreground text-sm font-display">Nenhum jogador</p>}
         </div>
       </div>
     </div>

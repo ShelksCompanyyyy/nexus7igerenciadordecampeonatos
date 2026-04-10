@@ -22,7 +22,16 @@ import NotFound from "@/pages/NotFound";
 const queryClient = new QueryClient();
 
 function AppRoutes() {
-  const { isLoggedIn, isAdminUser } = useAuth();
+  const { isLoggedIn, isAdminUser, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-primary font-heading text-lg">Carregando...</div>
+      </div>
+    );
+  }
+
   if (!isLoggedIn) return <LoginPage />;
   return (
     <Layout>
