@@ -59,7 +59,8 @@ function useSupabaseData<T>(table: string, filter?: { column: string; value: str
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    let query = supabase.from(table).select('*') as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase as any).from(table).select('*');
     if (filter) query = query.eq(filter.column, filter.value);
     const { data: rows } = await query;
     setData((rows || []) as T[]);
