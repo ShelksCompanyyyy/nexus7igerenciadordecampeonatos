@@ -1,31 +1,79 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import {
-  getUsers, saveUsers, updateUser, deleteUser,
-  getTeams, addTeam, updateTeam, deleteTeam,
-  getMatches, addMatch, updateMatch,
-  getTrainings, addTraining, updateTraining,
-  getNews, addNews, deleteNews,
-  getWithdrawals, updateWithdrawal,
-  getSpinPurchases, updateSpinPurchase,
-  getTransfers, addTransfer,
-  getClans, updateClan, deleteClan,
-  addNotification,
-  type User, type Team, type Clan
-} from '@/lib/store';
 import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Plus, Trash, Check, X, Search, Edit, Image, Crown, BarChart3, Settings, Lock, Copy } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 type SuperTab = 'dashboard' | 'clans' | 'users' | 'withdrawals' | 'spins' | 'economy' | 'clan-manage';
 type ClanTab = 'dashboard' | 'members' | 'teams' | 'matches' | 'training' | 'news' | 'settings';
 
 const CHART_COLORS = ['hsl(0,100%,50%)', 'hsl(45,100%,50%)', 'hsl(120,70%,50%)', 'hsl(200,100%,50%)', 'hsl(280,100%,50%)', 'hsl(30,100%,50%)'];
 
-export default function AdminPage() {
-  const { user: currentUser, profile, isSuperAdminUser, role, refreshProfile } = useAuth();
-  if (!currentUser || !profile) return null;
+// DB row types
+interface DBProfile {
+  id: string; user_id: string; unique_id: string; username: string; email: string;
+  game_nick: string; whatsapp: string | null; avatar: string | null; gold: number;
+  free_spins: number; clan_id: string | null; team_id: string | null; badges: string[];
+  colored_nick: boolean; nick_color_id: string | null; frame_id: string | null;
+  kills: number; deaths: number; assists: number; mvps: number; matches_played: number;
+  created_at: string; updated_at: string;
+}
+interface DBClan {
+  id: string; name: string; logo: string | null; banner: string | null;
+  description: string | null; owner_id: string | null; admin_code: string | null;
+  wins: number | null; losses: number | null; created_at: string; updated_at: string;
+}
+interface DBTeam {
+  id: string; name: string; logo: string | null; clan_id: string;
+  players: string[] | null; wins: number | null; losses: number | null;
+  created_at: string; updated_at: string;
+}
+interface DBMatch {
+  id: string; clan_id: string; team_a_id: string | null; team_b_id: string | null;
+  match_date: string; match_time: string | null; score_a: number | null; score_b: number | null;
+  status: string | null; player_stats: any; created_at: string; updated_at: string;
+}
+interface DBTraining {
+  id: string; clan_id: string; team_a_id: string | null; team_b_id: string | null;
+  training_date: string; training_time: string | null; score_a: number | null; score_b: number | null;
+  status: string | null; player_stats: any; created_at: string; updated_at: string;
+}
+interface DBNews {
+  id: string; title: string; content: string; image: string | null;
+  author_id: string | null; clan_id: string | null; created_at: string;
+}
+interface DBWithdrawal {
+  id: string; user_id: string; amount: number; pix_key: string; status: string | null;
+  username: string; game_nick: string; email: string; whatsapp: string | null;
+  user_unique_id: string; created_at: string;
+}
+interface DBSpinPurchase {
+  id: string; user_id: string; spins: number; amount: number;
+  bonus_spins: number | null; method: string | null; status: string | null; created_at: string;
+}
 
+// Hook to fetch data from supabase
+function useSupabaseData<T>(table: string, filter?: { column: string; value: string }, deps: any[] = []) {
+  const [data, setData] = useState<T[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refetch = useCallback(async () => {
+    let query = supabase.from(table).select('*') as any;
+    if (filter) query = query.eq(filter.column, filter.value);
+    const { data: rows } = await query;
+    setData((rows || []) as T[]);
+    setLoading(false);
+  }, [table, filter?.column, filter?.value]);
+
+  useEffect(() => { refetch(); }, [refetch, ...deps]);
+
+  return { data, loading, refetch };
+}
+
+export default function AdminPage() {
+  const { user: currentUser, profile, isSuperAdminUser, role } = useAuth();
+  if (!currentUser || !profile) return null;
   if (isSuperAdminUser) return <SuperAdminPanel />;
   if (role === 'admin') return <ClanAdminPanel clanId={profile.clan_id || ''} currentUserId={currentUser.id} />;
   return <div className="text-center text-muted-foreground p-12 font-display">Sem permissão</div>;
@@ -34,16 +82,21 @@ export default function AdminPage() {
 // ==================== SUPER ADMIN PANEL ====================
 function SuperAdminPanel() {
   const [tab, setTab] = useState<SuperTab>('dashboard');
-  const [refresh, setRefresh] = useState(0);
   const [selectedClanId, setSelectedClanId] = useState('');
-  const r = () => setRefresh(p => p + 1);
 
-  const users = getUsers().filter(u => u.role !== 'superadmin');
-  const clans = getClans();
-  const teams = getTeams();
-  const matches = getMatches();
-  const withdrawals = getWithdrawals();
-  const spinPurchases = getSpinPurchases();
+  const { data: profiles, refetch: rProfiles } = useSupabaseData<DBProfile>('profiles');
+  const { data: clans, refetch: rClans } = useSupabaseData<DBClan>('clans');
+  const { data: teams, refetch: rTeams } = useSupabaseData<DBTeam>('teams');
+  const { data: matches } = useSupabaseData<DBMatch>('matches');
+  const { data: withdrawals, refetch: rWith } = useSupabaseData<DBWithdrawal>('withdrawals');
+  const { data: spinPurchases, refetch: rSpins } = useSupabaseData<DBSpinPurchase>('spin_purchases');
+
+  const users = profiles.filter(p => {
+    // filter out superadmin later if needed
+    return true;
+  });
+
+  const r = () => { rProfiles(); rClans(); rTeams(); rWith(); rSpins(); };
 
   const tabs: { id: SuperTab; label: string; icon: any }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -55,10 +108,9 @@ function SuperAdminPanel() {
     { id: 'economy', label: 'Economia', icon: DollarSign },
   ];
 
-  // Charts data
   const clanMembersData = clans.map(c => ({
     name: c.name.substring(0, 10),
-    membros: users.filter(u => u.clanId === c.id).length,
+    membros: users.filter(u => u.clan_id === c.id).length,
   }));
 
   const matchStatusData = [
@@ -102,7 +154,6 @@ function SuperAdminPanel() {
             ))}
           </div>
 
-          {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {clanMembersData.length > 0 && (
               <div className="bg-card rounded-lg border border-border p-4">
@@ -146,8 +197,8 @@ function SuperAdminPanel() {
 
       {tab === 'clans' && <SuperClansTab clans={clans} users={users} onRefresh={r} />}
       {tab === 'users' && <SuperUsersTab users={users} clans={clans} onRefresh={r} />}
-      {tab === 'withdrawals' && <WithdrawalsTab />}
-      {tab === 'spins' && <SpinsTab users={users} onRefresh={r} />}
+      {tab === 'withdrawals' && <WithdrawalsTab withdrawals={withdrawals} onRefresh={rWith} />}
+      {tab === 'spins' && <SpinsTab users={users} spinPurchases={spinPurchases} onRefresh={r} />}
       {tab === 'clan-manage' && (
         <div className="space-y-4">
           <div className="bg-card rounded-lg border border-gold/20 p-4">
@@ -155,12 +206,10 @@ function SuperAdminPanel() {
             <select value={selectedClanId} onChange={e => setSelectedClanId(e.target.value)}
               className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm">
               <option value="">Selecione um clã</option>
-              {clans.map(c => <option key={c.id} value={c.id}>{c.name} ({users.filter(u => u.clanId === c.id).length} membros)</option>)}
+              {clans.map(c => <option key={c.id} value={c.id}>{c.name} ({users.filter(u => u.clan_id === c.id).length} membros)</option>)}
             </select>
           </div>
-          {selectedClanId && (
-            <SuperClanManagePanel clanId={selectedClanId} onRefresh={r} />
-          )}
+          {selectedClanId && <ClanManagePanel clanId={selectedClanId} onRefresh={r} />}
         </div>
       )}
       {tab === 'economy' && (
@@ -168,7 +217,7 @@ function SuperAdminPanel() {
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="font-heading text-xs text-gold mb-4">GOLD POR JOGADOR (TOP 10)</h3>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={[...users].sort((a, b) => b.gold - a.gold).slice(0, 10).map(u => ({ name: u.gameNick?.substring(0, 8) || u.username.substring(0, 8), gold: u.gold }))}>
+              <BarChart data={[...users].sort((a, b) => (b.gold || 0) - (a.gold || 0)).slice(0, 10).map(u => ({ name: (u.game_nick || u.username).substring(0, 8), gold: u.gold || 0 }))}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(0,0%,20%)" />
                 <XAxis dataKey="name" stroke="hsl(0,0%,50%)" fontSize={10} />
                 <YAxis stroke="hsl(0,0%,50%)" fontSize={10} />
@@ -183,17 +232,21 @@ function SuperAdminPanel() {
   );
 }
 
-// ==================== SUPER ADMIN CLAN MANAGE PANEL ====================
-function SuperClanManagePanel({ clanId, onRefresh }: { clanId: string; onRefresh: () => void }) {
+// ==================== CLAN MANAGE PANEL (used by both super and clan admin) ====================
+function ClanManagePanel({ clanId, onRefresh }: { clanId: string; onRefresh: () => void }) {
   const [subTab, setSubTab] = useState<ClanTab>('members');
-  const { refreshProfile } = useAuth();
+  const { data: profiles, refetch: rP } = useSupabaseData<DBProfile>('profiles', { column: 'clan_id', value: clanId });
+  const { data: teams, refetch: rT } = useSupabaseData<DBTeam>('teams', { column: 'clan_id', value: clanId });
+  const { data: matches, refetch: rM } = useSupabaseData<DBMatch>('matches', { column: 'clan_id', value: clanId });
+  const { data: trainings, refetch: rTr } = useSupabaseData<DBTraining>('trainings', { column: 'clan_id', value: clanId });
+  const { data: news, refetch: rN } = useSupabaseData<DBNews>('news', { column: 'clan_id', value: clanId });
+  const [clan, setClan] = useState<DBClan | null>(null);
 
-  const clan = getClans().find(c => c.id === clanId);
-  const clanUsers = getUsers().filter(u => u.clanId === clanId && u.role !== 'superadmin');
-  const clanTeams = getTeams().filter(t => t.clanId === clanId);
-  const clanMatches = getMatches().filter(m => m.clanId === clanId);
-  const clanTrainings = getTrainings().filter(t => t.clanId === clanId);
-  const clanNews = getNews().filter(n => n.clanId === clanId);
+  useEffect(() => {
+    supabase.from('clans').select('*').eq('id', clanId).maybeSingle().then(({ data }) => setClan(data as DBClan | null));
+  }, [clanId]);
+
+  const r = () => { rP(); rT(); rM(); rTr(); rN(); onRefresh(); };
 
   const subTabs: { id: ClanTab; label: string; icon: any }[] = [
     { id: 'members', label: 'Membros', icon: Users },
@@ -219,12 +272,12 @@ function SuperClanManagePanel({ clanId, onRefresh }: { clanId: string; onRefresh
           ><t.icon size={14} /> {t.label}</button>
         ))}
       </div>
-      {subTab === 'members' && <ClanMembersTab clanUsers={clanUsers} clanId={clanId} onRefresh={onRefresh} />}
-      {subTab === 'teams' && <ClanTeamsTab clanTeams={clanTeams} clanUsers={clanUsers} clanId={clanId} onRefresh={onRefresh} />}
-      {subTab === 'matches' && <ClanMatchesTab clanMatches={clanMatches} clanTeams={clanTeams} clanUsers={clanUsers} clanId={clanId} onRefresh={onRefresh} />}
-      {subTab === 'training' && <ClanTrainingTab clanTrainings={clanTrainings} clanTeams={clanTeams} clanId={clanId} onRefresh={onRefresh} />}
-      {subTab === 'news' && <ClanNewsTab clanNews={clanNews} clanId={clanId} currentUserId={'superadmin'} onRefresh={onRefresh} />}
-      {subTab === 'settings' && <ClanSettingsTab clan={clan} onRefresh={onRefresh} />}
+      {subTab === 'members' && <ClanMembersTab clanUsers={profiles} clanId={clanId} onRefresh={r} />}
+      {subTab === 'teams' && <ClanTeamsTab clanTeams={teams} clanUsers={profiles} clanId={clanId} onRefresh={r} />}
+      {subTab === 'matches' && <ClanMatchesTab clanMatches={matches} clanTeams={teams} clanId={clanId} onRefresh={r} />}
+      {subTab === 'training' && <ClanTrainingTab clanTrainings={trainings} clanTeams={teams} clanId={clanId} onRefresh={r} />}
+      {subTab === 'news' && <ClanNewsTab clanNews={news} clanId={clanId} onRefresh={r} />}
+      {subTab === 'settings' && <ClanSettingsTab clan={clan} onRefresh={r} />}
     </div>
   );
 }
@@ -232,15 +285,18 @@ function SuperClanManagePanel({ clanId, onRefresh }: { clanId: string; onRefresh
 // ==================== CLAN ADMIN PANEL ====================
 function ClanAdminPanel({ clanId, currentUserId }: { clanId: string; currentUserId: string }) {
   const [tab, setTab] = useState<ClanTab>('dashboard');
-  const [refresh, setRefresh] = useState(0);
-  const r = () => setRefresh(p => p + 1);
-  const { refreshProfile } = useAuth();
-  const clan = getClans().find(c => c.id === clanId);
-  const clanUsers = getUsers().filter(u => u.clanId === clanId && u.role !== 'superadmin');
-  const clanTeams = getTeams().filter(t => t.clanId === clanId);
-  const clanMatches = getMatches().filter(m => m.clanId === clanId);
-  const clanTrainings = getTrainings().filter(t => t.clanId === clanId);
-  const clanNews = getNews().filter(n => n.clanId === clanId);
+  const { data: profiles, refetch: rP } = useSupabaseData<DBProfile>('profiles', { column: 'clan_id', value: clanId });
+  const { data: teams, refetch: rT } = useSupabaseData<DBTeam>('teams', { column: 'clan_id', value: clanId });
+  const { data: matches, refetch: rM } = useSupabaseData<DBMatch>('matches', { column: 'clan_id', value: clanId });
+  const { data: trainings, refetch: rTr } = useSupabaseData<DBTraining>('trainings', { column: 'clan_id', value: clanId });
+  const { data: news, refetch: rN } = useSupabaseData<DBNews>('news', { column: 'clan_id', value: clanId });
+  const [clan, setClan] = useState<DBClan | null>(null);
+
+  useEffect(() => {
+    supabase.from('clans').select('*').eq('id', clanId).maybeSingle().then(({ data }) => setClan(data as DBClan | null));
+  }, [clanId]);
+
+  const r = () => { rP(); rT(); rM(); rTr(); rN(); };
 
   const tabs: { id: ClanTab; label: string; icon: any }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -252,12 +308,10 @@ function ClanAdminPanel({ clanId, currentUserId }: { clanId: string; currentUser
     { id: 'settings', label: 'Config', icon: Settings },
   ];
 
-  // Performance chart data
-  const topKillers = [...clanUsers].sort((a, b) => b.kills - a.kills).slice(0, 5).map(u => ({
-    name: (u.gameNick || u.username).substring(0, 8), kills: u.kills, deaths: u.deaths, assists: u.assists
+  const topKillers = [...profiles].sort((a, b) => (b.kills || 0) - (a.kills || 0)).slice(0, 5).map(u => ({
+    name: (u.game_nick || u.username).substring(0, 8), kills: u.kills || 0, deaths: u.deaths || 0, assists: u.assists || 0
   }));
-
-  const teamWins = clanTeams.map(t => ({ name: t.name.substring(0, 10), wins: t.wins, losses: t.losses }));
+  const teamWins = teams.map(t => ({ name: t.name.substring(0, 10), wins: t.wins || 0, losses: t.losses || 0 }));
 
   return (
     <div className="space-y-6 animate-slide-up">
@@ -283,10 +337,10 @@ function ClanAdminPanel({ clanId, currentUserId }: { clanId: string; currentUser
         <div className="space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Membros', value: clanUsers.length, icon: Users },
-              { label: 'Lines (Times)', value: clanTeams.length, icon: Shield },
-              { label: 'Partidas', value: clanMatches.length, icon: Swords },
-              { label: 'Treinos', value: clanTrainings.length, icon: Target },
+              { label: 'Membros', value: profiles.length, icon: Users },
+              { label: 'Lines (Times)', value: teams.length, icon: Shield },
+              { label: 'Partidas', value: matches.length, icon: Swords },
+              { label: 'Treinos', value: trainings.length, icon: Target },
             ].map(s => (
               <div key={s.label} className="bg-card rounded-lg neon-border p-4">
                 <s.icon size={18} className="text-primary mb-2" />
@@ -295,8 +349,6 @@ function ClanAdminPanel({ clanId, currentUserId }: { clanId: string; currentUser
               </div>
             ))}
           </div>
-
-          {/* Charts */}
           {topKillers.length > 0 && (
             <div className="bg-card rounded-lg border border-border p-4">
               <h3 className="font-heading text-xs text-primary mb-3">DESEMPENHO DOS JOGADORES (TOP 5)</h3>
@@ -313,7 +365,6 @@ function ClanAdminPanel({ clanId, currentUserId }: { clanId: string; currentUser
               </ResponsiveContainer>
             </div>
           )}
-
           {teamWins.length > 0 && (
             <div className="bg-card rounded-lg border border-border p-4">
               <h3 className="font-heading text-xs text-primary mb-3">VITÓRIAS/DERROTAS POR LINE</h3>
@@ -332,20 +383,23 @@ function ClanAdminPanel({ clanId, currentUserId }: { clanId: string; currentUser
         </div>
       )}
 
-      {tab === 'members' && <ClanMembersTab clanUsers={clanUsers} clanId={clanId} onRefresh={r} />}
-      {tab === 'teams' && <ClanTeamsTab clanTeams={clanTeams} clanUsers={clanUsers} clanId={clanId} onRefresh={r} />}
-      {tab === 'matches' && <ClanMatchesTab clanMatches={clanMatches} clanTeams={clanTeams} clanUsers={clanUsers} clanId={clanId} onRefresh={r} />}
-      {tab === 'training' && <ClanTrainingTab clanTrainings={clanTrainings} clanTeams={clanTeams} clanId={clanId} onRefresh={r} />}
-      {tab === 'news' && <ClanNewsTab clanNews={clanNews} clanId={clanId} currentUserId={currentUserId} onRefresh={r} />}
+      {tab === 'members' && <ClanMembersTab clanUsers={profiles} clanId={clanId} onRefresh={r} />}
+      {tab === 'teams' && <ClanTeamsTab clanTeams={teams} clanUsers={profiles} clanId={clanId} onRefresh={r} />}
+      {tab === 'matches' && <ClanMatchesTab clanMatches={matches} clanTeams={teams} clanId={clanId} onRefresh={r} />}
+      {tab === 'training' && <ClanTrainingTab clanTrainings={trainings} clanTeams={teams} clanId={clanId} onRefresh={r} />}
+      {tab === 'news' && <ClanNewsTab clanNews={news} clanId={clanId} onRefresh={r} />}
       {tab === 'settings' && <ClanSettingsTab clan={clan} onRefresh={r} />}
     </div>
   );
 }
 
 // ======= CLAN MEMBERS TAB =======
-function ClanMembersTab({ clanUsers, clanId, onRefresh }: { clanUsers: User[]; clanId: string; onRefresh: () => void }) {
+function ClanMembersTab({ clanUsers, clanId, onRefresh }: { clanUsers: DBProfile[]; clanId: string; onRefresh: () => void }) {
   const [search, setSearch] = useState('');
-  const filtered = clanUsers.filter(u => u.username.toLowerCase().includes(search.toLowerCase()) || u.gameNick?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = clanUsers.filter(u =>
+    u.username.toLowerCase().includes(search.toLowerCase()) ||
+    u.game_nick?.toLowerCase().includes(search.toLowerCase())
+  );
   return (
     <div className="space-y-4">
       <div className="relative">
@@ -353,23 +407,22 @@ function ClanMembersTab({ clanUsers, clanId, onRefresh }: { clanUsers: User[]; c
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar membro..."
           className="w-full pl-10 p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display text-sm" />
       </div>
-      {filtered.map(u => (
-        <ClanUserRow key={u.id} user={u} onRefresh={onRefresh} />
-      ))}
+      {filtered.map(u => <ClanUserRow key={u.id} user={u} onRefresh={onRefresh} />)}
       {filtered.length === 0 && <p className="text-center text-muted-foreground font-display p-6 text-sm">Nenhum membro encontrado</p>}
     </div>
   );
 }
 
-function ClanUserRow({ user, onRefresh }: { user: User; onRefresh: () => void }) {
+function ClanUserRow({ user, onRefresh }: { user: DBProfile; onRefresh: () => void }) {
   const [editing, setEditing] = useState(false);
-  const [kills, setKills] = useState(user.kills);
-  const [deaths, setDeaths] = useState(user.deaths);
-  const [assists, setAssists] = useState(user.assists);
-  const [mvps, setMvps] = useState(user.mvps);
+  const [kills, setKills] = useState(user.kills || 0);
+  const [deaths, setDeaths] = useState(user.deaths || 0);
+  const [assists, setAssists] = useState(user.assists || 0);
+  const [mvps, setMvps] = useState(user.mvps || 0);
 
-  const save = () => {
-    updateUser(user.id, { kills, deaths, assists, mvps });
+  const save = async () => {
+    const { error } = await supabase.from('profiles').update({ kills, deaths, assists, mvps }).eq('user_id', user.user_id);
+    if (error) { toast.error('Erro ao salvar: ' + error.message); return; }
     setEditing(false);
     onRefresh();
     toast.success('KDA atualizado!');
@@ -380,10 +433,10 @@ function ClanUserRow({ user, onRefresh }: { user: User; onRefresh: () => void })
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
           {user.avatar ? <img src={user.avatar} alt="" className="w-8 h-8 rounded-full object-cover" /> :
-            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-heading text-xs text-foreground">{user.gameNick?.[0]?.toUpperCase()}</div>}
+            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-heading text-xs text-foreground">{user.game_nick?.[0]?.toUpperCase()}</div>}
           <div>
-            <p className="font-display text-foreground text-sm">{user.gameNick || user.username}</p>
-            <p className="text-[10px] text-muted-foreground">ID: #{user.uniqueId} | {user.kills}K/{user.deaths}D/{user.assists}A | {user.mvps} MVPs</p>
+            <p className="font-display text-foreground text-sm">{user.game_nick || user.username}</p>
+            <p className="text-[10px] text-muted-foreground">ID: #{user.unique_id} | {user.kills || 0}K/{user.deaths || 0}D/{user.assists || 0}A | {user.mvps || 0} MVPs</p>
           </div>
         </div>
         <button onClick={() => setEditing(!editing)} className="text-primary p-1"><Edit size={14} /></button>
@@ -412,14 +465,15 @@ function ClanUserRow({ user, onRefresh }: { user: User; onRefresh: () => void })
 }
 
 // ======= CLAN TEAMS TAB =======
-function ClanTeamsTab({ clanTeams, clanUsers, clanId, onRefresh }: { clanTeams: Team[]; clanUsers: User[]; clanId: string; onRefresh: () => void }) {
+function ClanTeamsTab({ clanTeams, clanUsers, clanId, onRefresh }: { clanTeams: DBTeam[]; clanUsers: DBProfile[]; clanId: string; onRefresh: () => void }) {
   const [name, setName] = useState('');
-  const logoRef = useRef<HTMLInputElement>(null);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!name.trim()) return;
-    addTeam({ name, logo: '', clanId, players: [], wins: 0, losses: 0 });
-    setName(''); onRefresh();
+    const { error } = await supabase.from('teams').insert({ name: name.trim(), clan_id: clanId, players: [], wins: 0, losses: 0 });
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    setName('');
+    onRefresh();
     toast.success('Line criada!');
   };
 
@@ -430,51 +484,53 @@ function ClanTeamsTab({ clanTeams, clanUsers, clanId, onRefresh }: { clanTeams: 
           className="flex-1 p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display text-sm" />
         <button onClick={handleAdd} className="px-4 gradient-primary text-primary-foreground rounded font-heading text-xs flex items-center gap-2"><Plus size={14} /> Criar</button>
       </div>
-      {clanTeams.map(team => (
-        <ClanTeamRow key={team.id} team={team} users={clanUsers} onRefresh={onRefresh} />
-      ))}
+      {clanTeams.map(team => <ClanTeamRow key={team.id} team={team} users={clanUsers} onRefresh={onRefresh} />)}
       {clanTeams.length === 0 && <p className="text-center text-muted-foreground font-display p-6 text-sm">Nenhuma line criada</p>}
     </div>
   );
 }
 
-function ClanTeamRow({ team, users, onRefresh }: { team: Team; users: User[]; onRefresh: () => void }) {
+function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfile[]; onRefresh: () => void }) {
   const [addingPlayer, setAddingPlayer] = useState('');
   const [editingName, setEditingName] = useState(false);
   const [teamName, setTeamName] = useState(team.name);
-  const logoRef = useRef<HTMLInputElement>(null);
-  const teamPlayers = users.filter(u => team.players.includes(u.id));
-  const availablePlayers = users.filter(u => !u.teamId && !team.players.includes(u.id));
+  const players = team.players || [];
+  const teamPlayers = users.filter(u => players.includes(u.user_id));
+  const availablePlayers = users.filter(u => !u.team_id && !players.includes(u.user_id));
 
-  const handleAddPlayer = () => {
+  const handleAddPlayer = async () => {
     if (!addingPlayer) return;
-    updateTeam(team.id, { players: [...team.players, addingPlayer] });
-    updateUser(addingPlayer, { teamId: team.id });
-    setAddingPlayer(''); onRefresh();
+    const newPlayers = [...players, addingPlayer];
+    await supabase.from('teams').update({ players: newPlayers }).eq('id', team.id);
+    await supabase.from('profiles').update({ team_id: team.id }).eq('user_id', addingPlayer);
+    setAddingPlayer('');
+    onRefresh();
     toast.success('Jogador adicionado!');
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => { updateTeam(team.id, { logo: reader.result as string }); onRefresh(); toast.success('Logo atualizado!'); };
-    reader.readAsDataURL(file);
+  const handleRemovePlayer = async (playerId: string) => {
+    const newPlayers = players.filter(pid => pid !== playerId);
+    await supabase.from('teams').update({ players: newPlayers }).eq('id', team.id);
+    await supabase.from('profiles').update({ team_id: null }).eq('user_id', playerId);
+    onRefresh();
+  };
+
+  const handleDelete = async () => {
+    await supabase.from('teams').delete().eq('id', team.id);
+    onRefresh();
   };
 
   return (
     <div className="bg-secondary/50 p-4 rounded-lg">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className="relative cursor-pointer" onClick={() => logoRef.current?.click()}>
-            <div className="w-10 h-10 rounded-lg bg-background/50 border border-border flex items-center justify-center overflow-hidden">
-              {team.logo ? <img src={team.logo} alt="" className="w-full h-full object-cover" /> : <Image size={16} className="text-muted-foreground" />}
-            </div>
-            <input ref={logoRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+          <div className="w-10 h-10 rounded-lg bg-background/50 border border-border flex items-center justify-center overflow-hidden">
+            {team.logo ? <img src={team.logo} alt="" className="w-full h-full object-cover" /> : <Image size={16} className="text-muted-foreground" />}
           </div>
           {editingName ? (
             <div className="flex items-center gap-2">
               <input value={teamName} onChange={e => setTeamName(e.target.value)} className="p-1 bg-secondary rounded border border-border text-foreground font-heading text-sm w-32" />
-              <button onClick={() => { updateTeam(team.id, { name: teamName }); setEditingName(false); onRefresh(); }} className="text-success"><Check size={14} /></button>
+              <button onClick={async () => { await supabase.from('teams').update({ name: teamName }).eq('id', team.id); setEditingName(false); onRefresh(); }} className="text-success"><Check size={14} /></button>
               <button onClick={() => setEditingName(false)} className="text-destructive"><X size={14} /></button>
             </div>
           ) : (
@@ -485,28 +541,27 @@ function ClanTeamRow({ team, users, onRefresh }: { team: Team; users: User[]; on
           )}
         </div>
         <div className="flex items-center gap-2">
-          <input type="number" value={team.wins} onChange={e => { updateTeam(team.id, { wins: Number(e.target.value) }); onRefresh(); }}
+          <input type="number" value={team.wins || 0} onChange={async e => { await supabase.from('teams').update({ wins: Number(e.target.value) }).eq('id', team.id); onRefresh(); }}
             className="w-12 p-1 bg-secondary rounded border border-border text-success text-center text-xs" placeholder="W" />
-          <input type="number" value={team.losses} onChange={e => { updateTeam(team.id, { losses: Number(e.target.value) }); onRefresh(); }}
+          <input type="number" value={team.losses || 0} onChange={async e => { await supabase.from('teams').update({ losses: Number(e.target.value) }).eq('id', team.id); onRefresh(); }}
             className="w-12 p-1 bg-secondary rounded border border-border text-destructive text-center text-xs" placeholder="L" />
-          <button onClick={() => { deleteTeam(team.id); onRefresh(); }} className="text-destructive p-1"><Trash size={14} /></button>
+          <button onClick={handleDelete} className="text-destructive p-1"><Trash size={14} /></button>
         </div>
       </div>
       <div className="space-y-1 mb-3">
         {teamPlayers.map(p => (
           <div key={p.id} className="flex items-center justify-between text-xs bg-background/50 p-2 rounded">
-            <span className="text-foreground font-display">{p.gameNick || p.username}</span>
-            <button onClick={() => { updateTeam(team.id, { players: team.players.filter(pid => pid !== p.id) }); updateUser(p.id, { teamId: undefined }); onRefresh(); }}
-              className="text-destructive"><X size={12} /></button>
+            <span className="text-foreground font-display">{p.game_nick || p.username}</span>
+            <button onClick={() => handleRemovePlayer(p.user_id)} className="text-destructive"><X size={12} /></button>
           </div>
         ))}
       </div>
-      {team.players.length < 5 && (
+      {players.length < 5 && (
         <div className="flex gap-2">
           <select value={addingPlayer} onChange={e => setAddingPlayer(e.target.value)}
             className="flex-1 p-2 bg-secondary rounded border border-border text-foreground font-display text-xs">
             <option value="">Adicionar jogador</option>
-            {availablePlayers.map(p => <option key={p.id} value={p.id}>{p.gameNick || p.username}</option>)}
+            {availablePlayers.map(p => <option key={p.user_id} value={p.user_id}>{p.game_nick || p.username}</option>)}
           </select>
           <button onClick={handleAddPlayer} className="px-3 gradient-primary text-primary-foreground rounded text-xs"><Plus size={12} /></button>
         </div>
@@ -516,15 +571,19 @@ function ClanTeamRow({ team, users, onRefresh }: { team: Team; users: User[]; on
 }
 
 // ======= CLAN MATCHES TAB =======
-function ClanMatchesTab({ clanMatches, clanTeams, clanUsers, clanId, onRefresh }: { clanMatches: any[]; clanTeams: Team[]; clanUsers: User[]; clanId: string; onRefresh: () => void }) {
+function ClanMatchesTab({ clanMatches, clanTeams, clanId, onRefresh }: { clanMatches: DBMatch[]; clanTeams: DBTeam[]; clanId: string; onRefresh: () => void }) {
   const [teamA, setTeamA] = useState('');
   const [teamB, setTeamB] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!teamA || !teamB || !date) return;
-    addMatch({ teamAId: teamA, teamBId: teamB, date, time, scoreA: 0, scoreB: 0, status: 'upcoming', clanId, playerStats: {} });
+    const { error } = await supabase.from('matches').insert({
+      team_a_id: teamA, team_b_id: teamB, match_date: date, match_time: time,
+      score_a: 0, score_b: 0, status: 'upcoming', clan_id: clanId, player_stats: {}
+    });
+    if (error) { toast.error('Erro: ' + error.message); return; }
     setTeamA(''); setTeamB(''); setDate(''); setTime('');
     onRefresh(); toast.success('Partida criada!');
   };
@@ -545,21 +604,21 @@ function ClanMatchesTab({ clanMatches, clanTeams, clanUsers, clanId, onRefresh }
       </div>
       <button onClick={handleAdd} className="w-full px-4 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs flex items-center justify-center gap-2"><Plus size={14} /> CRIAR PARTIDA</button>
       {clanMatches.map(m => {
-        const tA = clanTeams.find(t => t.id === m.teamAId);
-        const tB = clanTeams.find(t => t.id === m.teamBId);
+        const tA = clanTeams.find(t => t.id === m.team_a_id);
+        const tB = clanTeams.find(t => t.id === m.team_b_id);
         return (
           <div key={m.id} className="bg-secondary/50 p-4 rounded-lg">
             <div className="flex items-center justify-between mb-2">
               <span className="font-display text-foreground text-sm">{tA?.name} vs {tB?.name}</span>
-              <span className="text-xs text-muted-foreground">{m.date} {m.time}</span>
+              <span className="text-xs text-muted-foreground">{m.match_date} {m.match_time}</span>
             </div>
             <div className="flex items-center gap-3">
-              <input type="number" value={m.scoreA} onChange={e => { updateMatch(m.id, { scoreA: Number(e.target.value) }); onRefresh(); }}
+              <input type="number" value={m.score_a || 0} onChange={async e => { await supabase.from('matches').update({ score_a: Number(e.target.value) }).eq('id', m.id); onRefresh(); }}
                 className="w-14 p-1 bg-secondary rounded border border-border text-foreground text-center text-sm" />
               <span className="text-primary font-heading text-xs">VS</span>
-              <input type="number" value={m.scoreB} onChange={e => { updateMatch(m.id, { scoreB: Number(e.target.value) }); onRefresh(); }}
+              <input type="number" value={m.score_b || 0} onChange={async e => { await supabase.from('matches').update({ score_b: Number(e.target.value) }).eq('id', m.id); onRefresh(); }}
                 className="w-14 p-1 bg-secondary rounded border border-border text-foreground text-center text-sm" />
-              <select value={m.status} onChange={e => { updateMatch(m.id, { status: e.target.value as any }); onRefresh(); }}
+              <select value={m.status || 'upcoming'} onChange={async e => { await supabase.from('matches').update({ status: e.target.value }).eq('id', m.id); onRefresh(); }}
                 className="p-1 bg-secondary rounded border border-border text-foreground text-xs ml-auto">
                 <option value="upcoming">Próxima</option>
                 <option value="live">Ao Vivo</option>
@@ -575,15 +634,19 @@ function ClanMatchesTab({ clanMatches, clanTeams, clanUsers, clanId, onRefresh }
 }
 
 // ======= CLAN TRAINING TAB =======
-function ClanTrainingTab({ clanTrainings, clanTeams, clanId, onRefresh }: { clanTrainings: any[]; clanTeams: Team[]; clanId: string; onRefresh: () => void }) {
+function ClanTrainingTab({ clanTrainings, clanTeams, clanId, onRefresh }: { clanTrainings: DBTraining[]; clanTeams: DBTeam[]; clanId: string; onRefresh: () => void }) {
   const [teamA, setTeamA] = useState('');
   const [teamB, setTeamB] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!teamA || !teamB || !date) return;
-    addTraining({ teamAId: teamA, teamBId: teamB, date, time, clanId, scoreA: 0, scoreB: 0, status: 'scheduled', playerStats: {} });
+    const { error } = await supabase.from('trainings').insert({
+      team_a_id: teamA, team_b_id: teamB, training_date: date, training_time: time,
+      clan_id: clanId, score_a: 0, score_b: 0, status: 'scheduled', player_stats: {}
+    });
+    if (error) { toast.error('Erro: ' + error.message); return; }
     setTeamA(''); setTeamB(''); setDate(''); setTime('');
     onRefresh(); toast.success('Treino agendado!');
   };
@@ -604,21 +667,21 @@ function ClanTrainingTab({ clanTrainings, clanTeams, clanId, onRefresh }: { clan
       </div>
       <button onClick={handleAdd} className="w-full px-4 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs flex items-center justify-center gap-2"><Plus size={14} /> AGENDAR TREINO</button>
       {clanTrainings.map(t => {
-        const tA = clanTeams.find(te => te.id === t.teamAId);
-        const tB = clanTeams.find(te => te.id === t.teamBId);
+        const tA = clanTeams.find(te => te.id === t.team_a_id);
+        const tB = clanTeams.find(te => te.id === t.team_b_id);
         return (
           <div key={t.id} className="bg-secondary/50 p-4 rounded-lg flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="font-display text-foreground text-sm">{tA?.name} vs {tB?.name}</span>
-              <span className="text-xs text-muted-foreground">{t.date} {t.time}</span>
+              <span className="text-xs text-muted-foreground">{t.training_date} {t.training_time}</span>
             </div>
             <div className="flex items-center gap-2">
-              <input type="number" value={t.scoreA} onChange={e => { updateTraining(t.id, { scoreA: Number(e.target.value) }); onRefresh(); }}
+              <input type="number" value={t.score_a || 0} onChange={async e => { await supabase.from('trainings').update({ score_a: Number(e.target.value) }).eq('id', t.id); onRefresh(); }}
                 className="w-12 p-1 bg-secondary rounded border border-border text-foreground text-center text-sm" />
               <span className="text-muted-foreground text-xs">x</span>
-              <input type="number" value={t.scoreB} onChange={e => { updateTraining(t.id, { scoreB: Number(e.target.value) }); onRefresh(); }}
+              <input type="number" value={t.score_b || 0} onChange={async e => { await supabase.from('trainings').update({ score_b: Number(e.target.value) }).eq('id', t.id); onRefresh(); }}
                 className="w-12 p-1 bg-secondary rounded border border-border text-foreground text-center text-sm" />
-              <select value={t.status} onChange={e => { updateTraining(t.id, { status: e.target.value as any }); onRefresh(); }}
+              <select value={t.status || 'scheduled'} onChange={async e => { await supabase.from('trainings').update({ status: e.target.value }).eq('id', t.id); onRefresh(); }}
                 className="p-1 bg-secondary rounded border border-border text-foreground text-xs ml-auto">
                 <option value="scheduled">Agendado</option>
                 <option value="completed">Concluído</option>
@@ -633,19 +696,18 @@ function ClanTrainingTab({ clanTrainings, clanTeams, clanId, onRefresh }: { clan
 }
 
 // ======= CLAN NEWS TAB =======
-function ClanNewsTab({ clanNews, clanId, currentUserId, onRefresh }: { clanNews: any[]; clanId: string; currentUserId: string; onRefresh: () => void }) {
+function ClanNewsTab({ clanNews, clanId, onRefresh }: { clanNews: DBNews[]; clanId: string; onRefresh: () => void }) {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [image, setImage] = useState('');
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!title || !content) return;
-    addNews({ title, content, clanId, authorId: currentUserId, createdAt: new Date().toISOString(), image: image || undefined });
-    // Notify all clan members
-    const clanMembers = getUsers().filter(u => u.clanId === clanId && u.role !== 'superadmin');
-    clanMembers.forEach(u => {
-      addNotification({ userId: u.id, type: 'news', title: '📰 Nova Notícia', message: title, read: false, createdAt: new Date().toISOString() });
+    const { error } = await supabase.from('news').insert({
+      title, content, clan_id: clanId, author_id: user?.id || null, image: image || null
     });
+    if (error) { toast.error('Erro: ' + error.message); return; }
     setTitle(''); setContent(''); setImage('');
     onRefresh(); toast.success('Aviso publicado!');
   };
@@ -678,7 +740,7 @@ function ClanNewsTab({ clanNews, clanId, currentUserId, onRefresh }: { clanNews:
               <span className="font-display text-foreground text-sm">{n.title}</span>
               {n.image && <span className="text-[10px] text-primary ml-2">📷</span>}
             </div>
-            <button onClick={() => { deleteNews(n.id); onRefresh(); }} className="text-destructive"><Trash size={14} /></button>
+            <button onClick={async () => { await supabase.from('news').delete().eq('id', n.id); onRefresh(); }} className="text-destructive"><Trash size={14} /></button>
           </div>
         ))}
       </div>
@@ -687,52 +749,31 @@ function ClanNewsTab({ clanNews, clanId, currentUserId, onRefresh }: { clanNews:
 }
 
 // ======= CLAN SETTINGS TAB =======
-function ClanSettingsTab({ clan, onRefresh }: { clan?: Clan; onRefresh: () => void }) {
+function ClanSettingsTab({ clan, onRefresh }: { clan?: DBClan | null; onRefresh: () => void }) {
   const [name, setName] = useState(clan?.name || '');
   const [description, setDescription] = useState(clan?.description || '');
-  const [adminCode, setAdminCode] = useState(clan?.adminCode || '');
-  const [division, setDivision] = useState(clan?.division || 'Bronze');
-  const bannerRef = useRef<HTMLInputElement>(null);
-  const logoRef = useRef<HTMLInputElement>(null);
+  const [adminCode, setAdminCode] = useState(clan?.admin_code || '');
+
+  useEffect(() => {
+    if (clan) {
+      setName(clan.name);
+      setDescription(clan.description || '');
+      setAdminCode(clan.admin_code || '');
+    }
+  }, [clan]);
 
   if (!clan) return <p className="text-muted-foreground font-display text-center p-6">Clã não encontrado</p>;
 
-  const handleSave = () => {
-    updateClan(clan.id, { name, description, adminCode, division });
+  const handleSave = async () => {
+    const { error } = await supabase.from('clans').update({ name, description, admin_code: adminCode }).eq('id', clan.id);
+    if (error) { toast.error('Erro: ' + error.message); return; }
     onRefresh(); toast.success('Configurações salvas!');
-  };
-
-  const handleImageUpload = (field: 'logo' | 'banner') => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => { updateClan(clan.id, { [field]: reader.result as string }); onRefresh(); toast.success(`${field === 'logo' ? 'Logo' : 'Banner'} atualizado!`); };
-    reader.readAsDataURL(file);
   };
 
   return (
     <div className="space-y-4">
       <div className="bg-card rounded-lg border border-border p-4 space-y-4">
         <h3 className="font-heading text-xs text-primary flex items-center gap-2"><Settings size={14} /> CONFIGURAÇÕES DO CLÃ</h3>
-
-        <div className="flex gap-4">
-          <div className="text-center">
-            <div className="w-16 h-16 rounded-lg border border-border overflow-hidden cursor-pointer mx-auto mb-1" onClick={() => logoRef.current?.click()}>
-              {clan.logo ? <img src={clan.logo} alt="" className="w-full h-full object-cover" /> :
-                <div className="w-full h-full flex items-center justify-center bg-secondary text-muted-foreground"><Image size={20} /></div>}
-            </div>
-            <p className="text-[10px] text-muted-foreground font-display">Logo</p>
-            <input ref={logoRef} type="file" accept="image/*" onChange={handleImageUpload('logo')} className="hidden" />
-          </div>
-          <div className="text-center flex-1">
-            <div className="w-full h-16 rounded-lg border border-border overflow-hidden cursor-pointer mb-1" onClick={() => bannerRef.current?.click()}>
-              {clan.banner ? <img src={clan.banner} alt="" className="w-full h-full object-cover" /> :
-                <div className="w-full h-full flex items-center justify-center bg-secondary text-muted-foreground"><Image size={20} /></div>}
-            </div>
-            <p className="text-[10px] text-muted-foreground font-display">Banner</p>
-            <input ref={bannerRef} type="file" accept="image/*" onChange={handleImageUpload('banner')} className="hidden" />
-          </div>
-        </div>
-
         <div>
           <label className="text-xs text-muted-foreground font-display">Nome do Clã</label>
           <input value={name} onChange={e => setName(e.target.value)} className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm" />
@@ -747,13 +788,6 @@ function ClanSettingsTab({ clan, onRefresh }: { clan?: Clan; onRefresh: () => vo
           <input value={adminCode} onChange={e => setAdminCode(e.target.value)} className="w-full p-3 bg-secondary rounded border border-primary/30 text-foreground font-display text-sm" />
           <p className="text-[10px] text-muted-foreground font-display mt-1">Compartilhe este código apenas com admins autorizados</p>
         </div>
-        <div>
-          <label className="text-xs text-muted-foreground font-display">Divisão</label>
-          <select value={division} onChange={e => setDivision(e.target.value)}
-            className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm">
-            {['Bronze', 'Prata', 'Ouro', 'Platina', 'Diamante', 'Mestre', 'Lendário'].map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-        </div>
         <button onClick={handleSave} className="w-full py-3 gradient-primary text-primary-foreground rounded font-heading text-xs">SALVAR CONFIGURAÇÕES</button>
       </div>
     </div>
@@ -761,12 +795,12 @@ function ClanSettingsTab({ clan, onRefresh }: { clan?: Clan; onRefresh: () => vo
 }
 
 // ======= SUPER ADMIN SUB-TABS =======
-function SuperClansTab({ clans, users, onRefresh }: { clans: Clan[]; users: User[]; onRefresh: () => void }) {
+function SuperClansTab({ clans, users, onRefresh }: { clans: DBClan[]; users: DBProfile[]; onRefresh: () => void }) {
   return (
     <div className="space-y-4">
       <h3 className="font-heading text-sm text-gold">TODOS OS CLÃS</h3>
       {clans.map(c => {
-        const memberCount = users.filter(u => u.clanId === c.id).length;
+        const memberCount = users.filter(u => u.clan_id === c.id).length;
         return (
           <div key={c.id} className="bg-secondary/50 p-4 rounded-lg flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -774,10 +808,10 @@ function SuperClansTab({ clans, users, onRefresh }: { clans: Clan[]; users: User
                 <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center font-heading text-foreground">{c.name[0]}</div>}
               <div>
                 <p className="font-heading text-sm text-foreground">{c.name}</p>
-                <p className="text-[10px] text-muted-foreground font-display">{memberCount} membros | {c.division} | Código: {c.adminCode || 'N/A'}</p>
+                <p className="text-[10px] text-muted-foreground font-display">{memberCount} membros | Código: {c.admin_code || 'N/A'}</p>
               </div>
             </div>
-            <button onClick={() => { deleteClan(c.id); onRefresh(); toast.success('Clã removido'); }} className="text-destructive p-1"><Trash size={14} /></button>
+            <button onClick={async () => { await supabase.from('clans').delete().eq('id', c.id); onRefresh(); toast.success('Clã removido'); }} className="text-destructive p-1"><Trash size={14} /></button>
           </div>
         );
       })}
@@ -786,9 +820,9 @@ function SuperClansTab({ clans, users, onRefresh }: { clans: Clan[]; users: User
   );
 }
 
-function SuperUsersTab({ users, clans, onRefresh }: { users: User[]; clans: Clan[]; onRefresh: () => void }) {
+function SuperUsersTab({ users, clans, onRefresh }: { users: DBProfile[]; clans: DBClan[]; onRefresh: () => void }) {
   const [search, setSearch] = useState('');
-  const filtered = users.filter(u => u.username.toLowerCase().includes(search.toLowerCase()) || u.gameNick?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = users.filter(u => u.username.toLowerCase().includes(search.toLowerCase()) || u.game_nick?.toLowerCase().includes(search.toLowerCase()));
   return (
     <div className="space-y-4">
       <div className="relative">
@@ -797,20 +831,12 @@ function SuperUsersTab({ users, clans, onRefresh }: { users: User[]; clans: Clan
           className="w-full pl-10 p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display text-sm" />
       </div>
       {filtered.map(u => {
-        const clan = clans.find(c => c.id === u.clanId);
+        const clan = clans.find(c => c.id === u.clan_id);
         return (
           <div key={u.id} className="bg-secondary/50 p-3 rounded-lg flex items-center justify-between">
             <div>
-              <p className="font-display text-foreground text-sm">{u.username} ({u.gameNick})</p>
-              <p className="text-[10px] text-muted-foreground">#{u.uniqueId} | {clan?.name || 'Sem clã'} | {u.role.toUpperCase()} | {u.gold}G</p>
-            </div>
-            <div className="flex gap-2">
-              <select value={u.role} onChange={e => { updateUser(u.id, { role: e.target.value as any }); onRefresh(); }}
-                className="p-1 bg-secondary rounded border border-border text-foreground text-xs">
-                <option value="user">Jogador</option>
-                <option value="admin">Admin</option>
-              </select>
-              <button onClick={() => { deleteUser(u.id); onRefresh(); }} className="text-destructive p-1"><Trash size={14} /></button>
+              <p className="font-display text-foreground text-sm">{u.username} ({u.game_nick})</p>
+              <p className="text-[10px] text-muted-foreground">#{u.unique_id} | {clan?.name || 'Sem clã'} | {u.gold || 0}G</p>
             </div>
           </div>
         );
@@ -819,14 +845,35 @@ function SuperUsersTab({ users, clans, onRefresh }: { users: User[]; clans: Clan
   );
 }
 
-function WithdrawalsTab() {
-  const [refresh, setRefresh] = useState(0);
-  const r = () => setRefresh(p => p + 1);
-  const withdrawals = getWithdrawals();
+function WithdrawalsTab({ withdrawals, onRefresh }: { withdrawals: DBWithdrawal[]; onRefresh: () => void }) {
   const copyText = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copiado!`);
   };
+
+  const handleApprove = async (w: DBWithdrawal) => {
+    await supabase.from('withdrawals').update({ status: 'completed' }).eq('id', w.id);
+    await supabase.from('notifications').insert({
+      user_id: w.user_id, type: 'withdrawal', title: 'Saque Aprovado ✅',
+      message: `Seu saque de ${w.amount}G foi aprovado!`
+    });
+    onRefresh(); toast.success('Saque aprovado');
+  };
+
+  const handleReject = async (w: DBWithdrawal) => {
+    await supabase.from('withdrawals').update({ status: 'rejected' }).eq('id', w.id);
+    // Return gold
+    const { data: profile } = await supabase.from('profiles').select('gold').eq('user_id', w.user_id).maybeSingle();
+    if (profile) {
+      await supabase.from('profiles').update({ gold: (profile.gold || 0) + w.amount }).eq('user_id', w.user_id);
+    }
+    await supabase.from('notifications').insert({
+      user_id: w.user_id, type: 'withdrawal', title: 'Saque Rejeitado ❌',
+      message: `Seu saque de ${w.amount}G foi rejeitado. O valor foi devolvido.`
+    });
+    onRefresh(); toast.info('Saque rejeitado, gold devolvido');
+  };
+
   return (
     <div className="space-y-3">
       {withdrawals.map(w => (
@@ -838,34 +885,21 @@ function WithdrawalsTab() {
             </span>
           </div>
           <div className="space-y-1 text-sm font-display">
-            {w.pixKey && (
-              <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded p-2">
-                <span className="text-primary">🔑 Pix: <span className="text-foreground">{w.pixKey}</span></span>
-                <button onClick={() => copyText(w.pixKey, 'Chave Pix')} className="text-xs text-primary hover:underline flex items-center gap-1"><Copy size={12} /> Copiar</button>
-              </div>
-            )}
-            <p className="text-muted-foreground">🎮 Nick: <span className="text-foreground">{w.gameNick}</span></p>
-            <p className="text-muted-foreground">🆔 ID: <span className="text-foreground">{w.userUniqueId}</span></p>
+            <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded p-2">
+              <span className="text-primary">🔑 Pix: <span className="text-foreground">{w.pix_key}</span></span>
+              <button onClick={() => copyText(w.pix_key, 'Chave Pix')} className="text-xs text-primary hover:underline flex items-center gap-1"><Copy size={12} /> Copiar</button>
+            </div>
+            <p className="text-muted-foreground">🎮 Nick: <span className="text-foreground">{w.game_nick}</span></p>
+            <p className="text-muted-foreground">🆔 ID: <span className="text-foreground">{w.user_unique_id}</span></p>
             <p className="text-muted-foreground">👤 Usuário: <span className="text-foreground">{w.username}</span></p>
             <p className="text-muted-foreground">📱 WhatsApp: <span className="text-foreground">{w.whatsapp}</span></p>
             <p className="text-muted-foreground">📧 Email: <span className="text-foreground">{w.email}</span></p>
-            <p className="text-muted-foreground text-xs">📅 {new Date(w.createdAt).toLocaleString('pt-BR')}</p>
+            <p className="text-muted-foreground text-xs">📅 {new Date(w.created_at).toLocaleString('pt-BR')}</p>
           </div>
           {w.status === 'pending' && (
             <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-              <button onClick={() => {
-                updateWithdrawal(w.id, { status: 'completed' });
-                addNotification({ userId: w.userId, type: 'withdrawal', title: 'Saque Aprovado ✅', message: `Seu saque de ${w.amount}G foi aprovado! O pagamento será enviado para sua chave Pix.`, read: false, createdAt: new Date().toISOString() });
-                r(); toast.success('Saque aprovado');
-              }}
-                className="flex-1 py-2 bg-success/20 text-success rounded font-heading text-xs hover:bg-success/30">✅ APROVAR</button>
-              <button onClick={() => {
-                updateWithdrawal(w.id, { status: 'rejected' });
-                const u = getUsers().find(u2 => u2.id === w.userId);
-                if (u) updateUser(u.id, { gold: (u.gold || 0) + w.amount });
-                addNotification({ userId: w.userId, type: 'withdrawal', title: 'Saque Rejeitado ❌', message: `Seu saque de ${w.amount}G foi rejeitado. O valor foi devolvido ao seu saldo.`, read: false, createdAt: new Date().toISOString() });
-                r(); toast.info('Saque rejeitado, gold devolvido');
-              }} className="flex-1 py-2 bg-destructive/20 text-destructive rounded font-heading text-xs hover:bg-destructive/30">❌ REJEITAR</button>
+              <button onClick={() => handleApprove(w)} className="flex-1 py-2 bg-success/20 text-success rounded font-heading text-xs hover:bg-success/30">✅ APROVAR</button>
+              <button onClick={() => handleReject(w)} className="flex-1 py-2 bg-destructive/20 text-destructive rounded font-heading text-xs hover:bg-destructive/30">❌ REJEITAR</button>
             </div>
           )}
         </div>
@@ -875,41 +909,48 @@ function WithdrawalsTab() {
   );
 }
 
-function SpinsTab({ users, onRefresh }: { users: User[]; onRefresh: () => void }) {
+function SpinsTab({ users, spinPurchases, onRefresh }: { users: DBProfile[]; spinPurchases: DBSpinPurchase[]; onRefresh: () => void }) {
   const [freeSpinUserId, setFreeSpinUserId] = useState('');
   const [freeSpinAmount, setFreeSpinAmount] = useState(1);
   const [goldUserId, setGoldUserId] = useState('');
   const [goldAmount, setGoldAmount] = useState(100);
-  const spinPurchases = getSpinPurchases();
 
-  const handleFreeSpins = () => {
+  const handleFreeSpins = async () => {
     if (!freeSpinUserId) return;
-    const u = users.find(u2 => u2.id === freeSpinUserId);
+    const u = users.find(u2 => u2.user_id === freeSpinUserId);
     if (!u) { toast.error('Usuário não encontrado'); return; }
-    updateUser(u.id, { freeSpins: (u.freeSpins || 0) + freeSpinAmount });
+    await supabase.from('profiles').update({ free_spins: (u.free_spins || 0) + freeSpinAmount }).eq('user_id', freeSpinUserId);
     toast.success(`${freeSpinAmount} giros enviados para ${u.username}`);
     onRefresh();
   };
 
-  const handleGiveGold = () => {
+  const handleGiveGold = async () => {
     if (!goldUserId) return;
-    const u = users.find(u2 => u2.id === goldUserId);
+    const u = users.find(u2 => u2.user_id === goldUserId);
     if (!u) { toast.error('Usuário não encontrado'); return; }
-    updateUser(u.id, { gold: (u.gold || 0) + goldAmount });
+    await supabase.from('profiles').update({ gold: (u.gold || 0) + goldAmount }).eq('user_id', goldUserId);
     toast.success(`${goldAmount}G enviados para ${u.username}`);
     onRefresh();
   };
 
+  const handleConfirmPurchase = async (p: DBSpinPurchase) => {
+    await supabase.from('spin_purchases').update({ status: 'confirmed' }).eq('id', p.id);
+    const u = users.find(u2 => u2.user_id === p.user_id);
+    if (u) {
+      await supabase.from('profiles').update({ free_spins: (u.free_spins || 0) + p.spins }).eq('user_id', p.user_id);
+    }
+    onRefresh(); toast.success('Compra confirmada!');
+  };
+
   return (
     <div className="space-y-6">
-      {/* Give Gold */}
       <div className="bg-card rounded-lg border border-gold/20 p-5">
         <h3 className="font-heading text-sm text-gold mb-4 flex items-center gap-2"><DollarSign size={16} /> DAR GOLDS</h3>
         <div className="flex gap-3 flex-wrap">
           <select value={goldUserId} onChange={e => setGoldUserId(e.target.value)}
             className="flex-1 p-3 bg-secondary rounded border border-border text-foreground font-display text-sm">
             <option value="">Selecionar usuário</option>
-            {users.map(u => <option key={u.id} value={u.id}>{u.username} ({u.gameNick}) - {u.gold || 0}G</option>)}
+            {users.map(u => <option key={u.user_id} value={u.user_id}>{u.username} ({u.game_nick}) - {u.gold || 0}G</option>)}
           </select>
           <input type="number" value={goldAmount} onChange={e => setGoldAmount(Number(e.target.value))} min={1}
             className="w-24 p-3 bg-secondary rounded border border-border text-foreground text-center font-display" placeholder="Gold" />
@@ -917,14 +958,13 @@ function SpinsTab({ users, onRefresh }: { users: User[]; onRefresh: () => void }
         </div>
       </div>
 
-      {/* Free Spins */}
       <div className="bg-card rounded-lg border border-primary/20 p-5">
         <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2"><Dices size={16} /> ENVIAR GIROS GRÁTIS</h3>
         <div className="flex gap-3 flex-wrap">
           <select value={freeSpinUserId} onChange={e => setFreeSpinUserId(e.target.value)}
             className="flex-1 p-3 bg-secondary rounded border border-border text-foreground font-display text-sm">
             <option value="">Selecionar usuário</option>
-            {users.map(u => <option key={u.id} value={u.id}>{u.username} ({u.gameNick})</option>)}
+            {users.map(u => <option key={u.user_id} value={u.user_id}>{u.username} ({u.game_nick})</option>)}
           </select>
           <input type="number" value={freeSpinAmount} onChange={e => setFreeSpinAmount(Number(e.target.value))} min={1}
             className="w-20 p-3 bg-secondary rounded border border-border text-foreground text-center font-display" />
@@ -932,26 +972,21 @@ function SpinsTab({ users, onRefresh }: { users: User[]; onRefresh: () => void }
         </div>
       </div>
 
-      {/* Pending purchases */}
       <div className="space-y-3">
         <h3 className="font-heading text-sm text-gold">COMPRAS PENDENTES</h3>
         {spinPurchases.filter(p => p.status === 'pending').map(p => {
-          const u = users.find(u2 => u2.id === p.userId);
+          const u = users.find(u2 => u2.user_id === p.user_id);
           return (
             <div key={p.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
               <div>
                 <p className="font-display text-foreground text-sm">{u?.username} - R${p.amount}</p>
-                <p className="text-xs text-muted-foreground">{p.spins} giros ({p.bonusSpins} bônus) | {p.method}</p>
+                <p className="text-xs text-muted-foreground">{p.spins} giros ({p.bonus_spins || 0} bônus) | {p.method}</p>
               </div>
-              <button onClick={() => {
-                updateSpinPurchase(p.id, { status: 'confirmed' });
-                if (u) updateUser(u.id, { freeSpins: (u.freeSpins || 0) + p.spins });
-                onRefresh(); toast.success('Compra confirmada!');
-              }} className="p-2 text-success hover:bg-success/10 rounded"><Check size={16} /></button>
+              <button onClick={() => handleConfirmPurchase(p)} className="p-2 text-success hover:bg-success/10 rounded"><Check size={16} /></button>
             </div>
           );
         })}
-        {spinPurchases.filter(p => p.status === 'pending').length === 0 && <p className="text-muted-foreground text-sm font-display">Nenhuma compra pendente</p>}
+        {spinPurchases.filter(p => p.status === 'pending').length === 0 && <p className="text-center text-muted-foreground font-display p-4 text-sm">Nenhuma compra pendente</p>}
       </div>
     </div>
   );
