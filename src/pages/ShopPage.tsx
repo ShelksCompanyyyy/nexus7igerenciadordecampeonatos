@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { SHOP_ITEMS, NICK_COLORS, FRAMES } from '@/lib/shopData';
 import { toast } from 'sonner';
 import { ShoppingBag, Coins, Palette, Frame, Award, Dices } from 'lucide-react';
