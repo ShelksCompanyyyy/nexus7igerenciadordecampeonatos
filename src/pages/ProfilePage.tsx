@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { getFrameStyle, getNickColor } from '@/lib/shopData';
 import { UserCircle, Copy, Trophy, Target, Zap, Shield, Award, Camera, Edit, Check, X } from 'lucide-react';
 import { toast } from 'sonner';

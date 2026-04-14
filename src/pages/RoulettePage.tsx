@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { ROULETTE_PRIZES, SPIN_PACKAGES, PIX_KEY, MIN_WITHDRAWAL, spinRoulette } from '@/lib/store';
 import { toast } from 'sonner';
 import { Dices, Gift, Copy, Wallet, ArrowRight } from 'lucide-react';

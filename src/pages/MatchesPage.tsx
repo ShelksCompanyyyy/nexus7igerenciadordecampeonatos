@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { Swords, Clock, CheckCircle } from 'lucide-react';
 
 export default function MatchesPage() {

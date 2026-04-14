@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { Trophy, Target, Zap, Users, ChevronRight, ArrowLeft } from 'lucide-react';
 
 type Tab = 'players' | 'teams' | 'mvp' | 'gold' | 'clans';

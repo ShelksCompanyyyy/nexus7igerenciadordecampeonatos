@@ -4,7 +4,7 @@ import nexusLogo from '@/assets/nexus7i-logo.png';
 import heroBg from '@/assets/hero-bg.jpg';
 import { Trophy, Users, Swords, Dices, Target, Newspaper, Zap, BookOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 
 const QUICK_LINKS = [
   { path: '/ranking', label: 'Ranking', icon: Trophy, desc: 'Ver classificação' },

@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import { useState, useEffect } from 'react';
 import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, Settings, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Home', icon: Home },

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Plus, Trash, Check, X, Search, Edit, Image, Crown, BarChart3, Settings, Lock, Copy } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
