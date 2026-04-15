@@ -60,6 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<AppRole>('user');
   const [loading, setLoading] = useState(true);
 
+  const CREATOR_UID = '6edd4f04-d46d-4316-8af9-0d1a496c7769';
+
   const fetchProfile = useCallback(async (userId: string) => {
     const { data: profileData } = await supabase
       .from('profiles')
@@ -71,14 +73,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(profileData as Profile);
     }
 
-    const { data: roleData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .single();
+    // UID-based superadmin override
+    if (userId === CREATOR_UID) {
+      setRole('superadmin');
+    } else {
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .single();
 
-    if (roleData) {
-      setRole(roleData.role as AppRole);
+      if (roleData) {
+        setRole(roleData.role as AppRole);
+      }
     }
   }, []);
 
