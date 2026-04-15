@@ -163,19 +163,15 @@ export default function LoginPage() {
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (!authUser) return;
 
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', authUser.id)
-          .single();
-
-        if (!roleData || roleData.role !== 'superadmin') {
-          toast.error('Credenciais de ADM Criador inválidas');
+        // Validate by UID only - not email/password role
+        const CREATOR_UID = '6edd4f04-d46d-4316-8af9-0d1a496c7769';
+        if (authUser.id !== CREATOR_UID) {
+          toast.error('Acesso negado. Apenas o Criador pode acessar esta área.');
           await supabase.auth.signOut();
           return;
         }
 
-        toast.success('Bem-vindo, ADM Criador!');
+        toast.success('Bem-vindo, Criador!');
         return;
       }
 
