@@ -163,19 +163,15 @@ export default function LoginPage() {
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (!authUser) return;
 
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', authUser.id)
-          .single();
-
-        if (!roleData || roleData.role !== 'superadmin') {
-          toast.error('Credenciais de ADM Criador inválidas');
+        // Validate by UID only - not email/password role
+        const CREATOR_UID = '6edd4f04-d46d-4316-8af9-0d1a496c7769';
+        if (authUser.id !== CREATOR_UID) {
+          toast.error('Acesso negado. Apenas o Criador pode acessar esta área.');
           await supabase.auth.signOut();
           return;
         }
 
-        toast.success('Bem-vindo, ADM Criador!');
+        toast.success('Bem-vindo, Criador!');
         return;
       }
 
@@ -212,9 +208,9 @@ export default function LoginPage() {
   }
 
   const modeConfig: Record<LoginMode, { title: string; icon: any; color: string }> = {
-    user: { title: 'LOGIN JOGADOR', icon: User, color: 'text-foreground' },
-    admin: { title: 'LOGIN ADMIN CLÃ', icon: Shield, color: 'text-primary' },
-    superadmin: { title: 'ADM CRIADOR', icon: Crown, color: 'text-gold' },
+    user: { title: 'LOGIN PARA JOGADOR', icon: User, color: 'text-foreground' },
+    admin: { title: 'LOGIN PARA LÍDERES DE CLÃS E LINES', icon: Shield, color: 'text-primary' },
+    superadmin: { title: 'LOGIN PARA CRIADOR', icon: Crown, color: 'text-gold' },
     'register-player': { title: 'REGISTRO JOGADOR', icon: User, color: 'text-foreground' },
     'register-leader': { title: 'REGISTRO LÍDER DE CLÃ', icon: Shield, color: 'text-primary' },
     'register-select': { title: 'CRIAR CONTA', icon: Users, color: 'text-foreground' },
@@ -242,8 +238,8 @@ export default function LoginPage() {
           <div className="flex gap-2 mb-4 animate-slide-up" style={{ animationDelay: '0.1s' }}>
             {([
               { id: 'user' as const, label: 'Jogador', icon: User },
-              { id: 'admin' as const, label: 'Admin', icon: Shield },
-              { id: 'superadmin' as const, label: 'ADM Criador', icon: Crown },
+              { id: 'admin' as const, label: 'Líderes', icon: Shield },
+              { id: 'superadmin' as const, label: 'Criador', icon: Crown },
             ]).map(tab => (
               <button key={tab.id} onClick={() => { setMode(tab.id); setEmail(''); setPassword(''); setClanAdminCode(''); }}
                 className={`flex-1 flex flex-col items-center gap-1 p-3 rounded-lg font-display text-xs transition-all ${
