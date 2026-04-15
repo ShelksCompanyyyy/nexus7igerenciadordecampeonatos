@@ -63,28 +63,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const CREATOR_UID = '6edd4f04-d46d-4316-8af9-0d1a496c7769';
 
   const fetchProfile = useCallback(async (userId: string) => {
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+    try {
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
 
-    if (profileData) {
-      setProfile(profileData as Profile);
+      if (profileData && !error) {
+        setProfile(profileData as Profile);
+      } else {
+        // Profile table may not exist or user_id column missing — create a minimal profile object
+        console.warn('Profile fetch failed, using fallback:', error?.message);
+        setProfile({
+          id: userId,
+          user_id: userId,
+          unique_id: '',
+          username: '',
+          email: '',
+          game_nick: '',
+          whatsapp: null,
+          avatar: null,
+          gold: 0,
+          free_spins: 0,
+          clan_id: null,
+          team_id: null,
+          badges: [],
+          colored_nick: false,
+          nick_color_id: null,
+          frame_id: null,
+          kills: 0,
+          deaths: 0,
+          assists: 0,
+          mvps: 0,
+          matches_played: 0,
+          created_at: '',
+          updated_at: '',
+        } as Profile);
+      }
+    } catch (e) {
+      console.warn('Profile fetch exception:', e);
     }
 
     // UID-based superadmin override
     if (userId === CREATOR_UID) {
       setRole('superadmin');
     } else {
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .single();
+      try {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .single();
 
-      if (roleData) {
-        setRole(roleData.role as AppRole);
+        if (roleData) {
+          setRole(roleData.role as AppRole);
+        }
+      } catch (e) {
+        console.warn('Role fetch failed:', e);
       }
     }
   }, []);
