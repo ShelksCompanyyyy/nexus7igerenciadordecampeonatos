@@ -110,7 +110,7 @@ function SuperAdminPanel() {
   ];
 
   const clanMembersData = clans.map(c => ({
-    name: c.name.substring(0, 10),
+    name: (c.name || '').substring(0, 10),
     membros: users.filter(u => u.clan_id === c.id).length,
   }));
 
@@ -218,7 +218,7 @@ function SuperAdminPanel() {
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="font-heading text-xs text-gold mb-4">GOLD POR JOGADOR (TOP 10)</h3>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={[...users].sort((a, b) => (b.gold || 0) - (a.gold || 0)).slice(0, 10).map(u => ({ name: (u.game_nick || u.username).substring(0, 8), gold: u.gold || 0 }))}>
+              <BarChart data={[...users].sort((a, b) => (b.gold || 0) - (a.gold || 0)).slice(0, 10).map(u => ({ name: (u.game_nick || u.username || '').substring(0, 8), gold: u.gold || 0 }))}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(0,0%,20%)" />
                 <XAxis dataKey="name" stroke="hsl(0,0%,50%)" fontSize={10} />
                 <YAxis stroke="hsl(0,0%,50%)" fontSize={10} />
@@ -310,9 +310,9 @@ function ClanAdminPanel({ clanId, currentUserId }: { clanId: string; currentUser
   ];
 
   const topKillers = [...profiles].sort((a, b) => (b.kills || 0) - (a.kills || 0)).slice(0, 5).map(u => ({
-    name: (u.game_nick || u.username).substring(0, 8), kills: u.kills || 0, deaths: u.deaths || 0, assists: u.assists || 0
+    name: (u.game_nick || u.username || '').substring(0, 8), kills: u.kills || 0, deaths: u.deaths || 0, assists: u.assists || 0
   }));
-  const teamWins = teams.map(t => ({ name: t.name.substring(0, 10), wins: t.wins || 0, losses: t.losses || 0 }));
+  const teamWins = teams.map(t => ({ name: (t.name || '').substring(0, 10), wins: t.wins || 0, losses: t.losses || 0 }));
 
   return (
     <div className="space-y-6 animate-slide-up">
