@@ -212,9 +212,9 @@ export default function LoginPage() {
   }
 
   const modeConfig: Record<LoginMode, { title: string; icon: any; color: string }> = {
-    user: { title: 'LOGIN JOGADOR', icon: User, color: 'text-foreground' },
-    admin: { title: 'LOGIN ADMIN CLÃ', icon: Shield, color: 'text-primary' },
-    superadmin: { title: 'ADM CRIADOR', icon: Crown, color: 'text-gold' },
+    user: { title: 'LOGIN PARA JOGADOR', icon: User, color: 'text-foreground' },
+    admin: { title: 'LOGIN PARA LÍDERES DE CLÃS E LINES', icon: Shield, color: 'text-primary' },
+    superadmin: { title: 'LOGIN PARA CRIADOR', icon: Crown, color: 'text-gold' },
     'register-player': { title: 'REGISTRO JOGADOR', icon: User, color: 'text-foreground' },
     'register-leader': { title: 'REGISTRO LÍDER DE CLÃ', icon: Shield, color: 'text-primary' },
     'register-select': { title: 'CRIAR CONTA', icon: Users, color: 'text-foreground' },
@@ -242,8 +242,8 @@ export default function LoginPage() {
           <div className="flex gap-2 mb-4 animate-slide-up" style={{ animationDelay: '0.1s' }}>
             {([
               { id: 'user' as const, label: 'Jogador', icon: User },
-              { id: 'admin' as const, label: 'Admin', icon: Shield },
-              { id: 'superadmin' as const, label: 'ADM Criador', icon: Crown },
+              { id: 'admin' as const, label: 'Líderes', icon: Shield },
+              { id: 'superadmin' as const, label: 'Criador', icon: Crown },
             ]).map(tab => (
               <button key={tab.id} onClick={() => { setMode(tab.id); setEmail(''); setPassword(''); setClanAdminCode(''); }}
                 className={`flex-1 flex flex-col items-center gap-1 p-3 rounded-lg font-display text-xs transition-all ${
