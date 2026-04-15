@@ -398,8 +398,8 @@ function ClanAdminPanel({ clanId, currentUserId }: { clanId: string; currentUser
 function ClanMembersTab({ clanUsers, clanId, onRefresh }: { clanUsers: DBProfile[]; clanId: string; onRefresh: () => void }) {
   const [search, setSearch] = useState('');
   const filtered = clanUsers.filter(u =>
-    u.username.toLowerCase().includes(search.toLowerCase()) ||
-    u.game_nick?.toLowerCase().includes(search.toLowerCase())
+    (u.username || '').toLowerCase().includes(search.toLowerCase()) ||
+    (u.game_nick || '').toLowerCase().includes(search.toLowerCase())
   );
   return (
     <div className="space-y-4">
@@ -823,7 +823,7 @@ function SuperClansTab({ clans, users, onRefresh }: { clans: DBClan[]; users: DB
 
 function SuperUsersTab({ users, clans, onRefresh }: { users: DBProfile[]; clans: DBClan[]; onRefresh: () => void }) {
   const [search, setSearch] = useState('');
-  const filtered = users.filter(u => u.username.toLowerCase().includes(search.toLowerCase()) || u.game_nick?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = users.filter(u => (u.username || '').toLowerCase().includes(search.toLowerCase()) || (u.game_nick || '').toLowerCase().includes(search.toLowerCase()));
   return (
     <div className="space-y-4">
       <div className="relative">
