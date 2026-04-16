@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<LoginMode>('user');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [creatorCode, setCreatorCode] = useState('');
   const [gameNick, setGameNick] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
