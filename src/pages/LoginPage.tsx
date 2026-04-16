@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<LoginMode>('user');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
+  const [creatorCode, setCreatorCode] = useState('');
   const [gameNick, setGameNick] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [selectedClanId, setSelectedClanId] = useState('');
@@ -156,16 +156,26 @@ export default function LoginPage() {
       }
 
       if (mode === 'superadmin') {
+        const CREATOR_CODE = 'Nexus7i007';
+        if (creatorCode !== CREATOR_CODE) {
+          toast.error('Código de acesso do Criador inválido');
+          return;
+        }
+
         const result = await login(email, password);
         if (result.error) { toast.error(result.error); return; }
 
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (!authUser) return;
 
-        // Validate by UID only - not email/password role
-        const CREATOR_UID = '6edd4f04-d46d-4316-8af9-0d1a496c7769';
-        if (authUser.id !== CREATOR_UID) {
-          toast.error('Acesso negado. Apenas o Criador pode acessar esta área.');
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', authUser.id)
+          .single();
+
+        if (!roleData || roleData.role !== 'superadmin') {
+          toast.error('Acesso negado. Esta conta não é do Criador.');
           await supabase.auth.signOut();
           return;
         }
