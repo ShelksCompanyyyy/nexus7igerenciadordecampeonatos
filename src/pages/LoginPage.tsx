@@ -414,6 +414,11 @@ export default function LoginPage() {
                     className={`${inputClass} border-primary/30`} />
                 )}
 
+                {mode === 'superadmin' && (
+                  <input type="text" placeholder="Código de Acesso do Criador" value={creatorCode} onChange={e => setCreatorCode(e.target.value)} required
+                    className={`${inputClass} border-gold/30`} />
+                )}
+
                 <button type="submit" disabled={submitting} className={`w-full py-3 font-heading text-sm rounded transition-all disabled:opacity-50 ${
                   mode === 'superadmin'
                     ? 'bg-gradient-to-r from-gold/80 to-gold text-background hover:from-gold hover:to-gold/90 shadow-[0_0_20px_hsl(45,100%,50%,0.3)]'
