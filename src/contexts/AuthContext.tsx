@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<AppRole>('user');
   const [loading, setLoading] = useState(true);
 
-  const CREATOR_UID = '6edd4f04-d46d-4316-8af9-0d1a496c7769';
+  // No hardcoded UID - role is determined by user_roles table
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -105,23 +105,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn('Profile fetch exception:', e);
     }
 
-    // UID-based superadmin override
-    if (userId === CREATOR_UID) {
-      setRole('superadmin');
-    } else {
-      try {
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', userId)
-          .single();
+    // Fetch role from user_roles table
+    try {
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .single();
 
-        if (roleData) {
-          setRole(roleData.role as AppRole);
-        }
-      } catch (e) {
-        console.warn('Role fetch failed:', e);
+      if (roleData) {
+        setRole(roleData.role as AppRole);
       }
+    } catch (e) {
+      console.warn('Role fetch failed:', e);
     }
   }, []);
 

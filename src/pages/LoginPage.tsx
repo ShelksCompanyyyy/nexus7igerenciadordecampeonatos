@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [creatorCode, setCreatorCode] = useState('');
   const [gameNick, setGameNick] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [selectedClanId, setSelectedClanId] = useState('');
@@ -156,16 +157,26 @@ export default function LoginPage() {
       }
 
       if (mode === 'superadmin') {
+        const CREATOR_CODE = 'Nexus7i007';
+        if (creatorCode !== CREATOR_CODE) {
+          toast.error('Código de acesso do Criador inválido');
+          return;
+        }
+
         const result = await login(email, password);
         if (result.error) { toast.error(result.error); return; }
 
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (!authUser) return;
 
-        // Validate by UID only - not email/password role
-        const CREATOR_UID = '6edd4f04-d46d-4316-8af9-0d1a496c7769';
-        if (authUser.id !== CREATOR_UID) {
-          toast.error('Acesso negado. Apenas o Criador pode acessar esta área.');
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', authUser.id)
+          .single();
+
+        if (!roleData || roleData.role !== 'superadmin') {
+          toast.error('Acesso negado. Esta conta não é do Criador.');
           await supabase.auth.signOut();
           return;
         }
@@ -240,7 +251,7 @@ export default function LoginPage() {
               { id: 'admin' as const, label: 'Líderes', icon: Shield },
               { id: 'superadmin' as const, label: 'Criador', icon: Crown },
             ]).map(tab => (
-              <button key={tab.id} onClick={() => { setMode(tab.id); setEmail(''); setPassword(''); setClanAdminCode(''); }}
+              <button key={tab.id} onClick={() => { setMode(tab.id); setEmail(''); setPassword(''); setClanAdminCode(''); setCreatorCode(''); }}
                 className={`flex-1 flex flex-col items-center gap-1 p-3 rounded-lg font-display text-xs transition-all ${
                   mode === tab.id
                     ? tab.id === 'superadmin' ? 'bg-gold/10 border border-gold/50 text-gold'
@@ -401,6 +412,11 @@ export default function LoginPage() {
                 {mode === 'admin' && (
                   <input type="text" placeholder="Código do Admin do Clã" value={clanAdminCode} onChange={e => setClanAdminCode(e.target.value)} required
                     className={`${inputClass} border-primary/30`} />
+                )}
+
+                {mode === 'superadmin' && (
+                  <input type="text" placeholder="Código de Acesso do Criador" value={creatorCode} onChange={e => setCreatorCode(e.target.value)} required
+                    className={`${inputClass} border-gold/30`} />
                 )}
 
                 <button type="submit" disabled={submitting} className={`w-full py-3 font-heading text-sm rounded transition-all disabled:opacity-50 ${
