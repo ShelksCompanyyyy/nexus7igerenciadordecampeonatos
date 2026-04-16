@@ -251,7 +251,7 @@ export default function LoginPage() {
               { id: 'admin' as const, label: 'Líderes', icon: Shield },
               { id: 'superadmin' as const, label: 'Criador', icon: Crown },
             ]).map(tab => (
-              <button key={tab.id} onClick={() => { setMode(tab.id); setEmail(''); setPassword(''); setClanAdminCode(''); }}
+              <button key={tab.id} onClick={() => { setMode(tab.id); setEmail(''); setPassword(''); setClanAdminCode(''); setCreatorCode(''); }}
                 className={`flex-1 flex flex-col items-center gap-1 p-3 rounded-lg font-display text-xs transition-all ${
                   mode === tab.id
                     ? tab.id === 'superadmin' ? 'bg-gold/10 border border-gold/50 text-gold'
