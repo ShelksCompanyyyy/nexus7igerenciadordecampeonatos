@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<AppRole>('user');
   const [loading, setLoading] = useState(true);
 
-  const CREATOR_UID = '6edd4f04-d46d-4316-8af9-0d1a496c7769';
+  // No hardcoded UID - role is determined by user_roles table
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
