@@ -105,23 +105,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn('Profile fetch exception:', e);
     }
 
-    // UID-based superadmin override
-    if (userId === CREATOR_UID) {
-      setRole('superadmin');
-    } else {
-      try {
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', userId)
-          .single();
+    // Fetch role from user_roles table
+    try {
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .single();
 
-        if (roleData) {
-          setRole(roleData.role as AppRole);
-        }
-      } catch (e) {
-        console.warn('Role fetch failed:', e);
+      if (roleData) {
+        setRole(roleData.role as AppRole);
       }
+    } catch (e) {
+      console.warn('Role fetch failed:', e);
     }
   }, []);
 
