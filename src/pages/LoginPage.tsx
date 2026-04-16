@@ -88,7 +88,7 @@ export default function LoginPage() {
         await new Promise(r => setTimeout(r, 500));
 
         const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (!authUser) { toast.error('Erro ao criar conta'); return; }
+        if (!authUser || !authUser.id) { toast.error('Erro ao criar conta — usuário não autenticado'); return; }
 
         // Create the clan
         const { data: clan, error: clanError } = await supabase
@@ -97,7 +97,6 @@ export default function LoginPage() {
             name: newClanName.trim(),
             owner_id: authUser.id,
             admin_code: newClanAdminCode.trim(),
-            description: '',
           })
           .select()
           .single();
