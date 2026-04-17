@@ -60,7 +60,7 @@ export default function LoginPage() {
       }
 
       if (mode === 'register-player') {
-        if (!selectedClanId) { toast.error('Selecione seu clã'); return; }
+        if (!selectedClanId || selectedClanId.trim() === '') { toast.error('Selecione seu clã'); return; }
         const result = await register({
           username, email, password, gameNick, whatsapp,
           clanId: selectedClanId,
@@ -157,8 +157,14 @@ export default function LoginPage() {
       }
 
       if (mode === 'superadmin') {
-        const CREATOR_CODE = 'Nexus7i007';
-        if (creatorCode !== CREATOR_CODE) {
+        if (!creatorCode.trim()) {
+          toast.error('Digite o código de acesso do Criador');
+          return;
+        }
+        const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-creator-code', {
+          body: { code: creatorCode },
+        });
+        if (verifyError || !verifyData?.valid) {
           toast.error('Código de acesso do Criador inválido');
           return;
         }
