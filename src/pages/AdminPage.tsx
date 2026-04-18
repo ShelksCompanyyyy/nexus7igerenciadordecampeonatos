@@ -22,7 +22,8 @@ interface DBProfile {
 interface DBClan {
   id: string; name: string; logo: string | null; banner: string | null;
   description: string | null; owner_id: string | null; admin_code: string | null;
-  wins: number | null; losses: number | null; created_at: string; updated_at: string;
+  wins: number | null; losses: number | null; is_banned: boolean | null;
+  created_at: string; updated_at: string;
 }
 interface DBTeam {
   id: string; name: string; logo: string | null; clan_id: string;
