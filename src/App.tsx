@@ -15,6 +15,7 @@ import ChatPage from "@/pages/ChatPage";
 import NewsPage from "@/pages/NewsPage";
 import ShopPage from "@/pages/ShopPage";
 import ProfilePage from "@/pages/ProfilePage";
+import FriendsPage from "@/pages/FriendsPage";
 import AdminPage from "@/pages/AdminPage";
 import TutorialPage from "@/pages/TutorialPage";
 import NotFound from "@/pages/NotFound";
@@ -47,6 +48,7 @@ function AppRoutes() {
         <Route path="/news" element={<NewsPage />} />
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/friends" element={<FriendsPage />} />
         <Route path="/tutorial" element={<TutorialPage />} />
         {isAdminUser && <Route path="/admin" element={<AdminPage />} />}
         <Route path="*" element={<NotFound />} />

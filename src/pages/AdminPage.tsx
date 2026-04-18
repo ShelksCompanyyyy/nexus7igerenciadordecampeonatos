@@ -2,10 +2,11 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
-import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Plus, Trash, Check, X, Search, Edit, Image, Crown, BarChart3, Settings, Lock, Copy } from 'lucide-react';
+import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Plus, Trash, Check, X, Search, Edit, Image, Crown, BarChart3, Settings, Lock, Copy, Gift } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import PromoCodesPanel from '@/components/admin/PromoCodesPanel';
 
-type SuperTab = 'dashboard' | 'clans' | 'users' | 'withdrawals' | 'spins' | 'economy' | 'clan-manage';
+type SuperTab = 'dashboard' | 'clans' | 'users' | 'withdrawals' | 'spins' | 'economy' | 'clan-manage' | 'promo';
 type ClanTab = 'dashboard' | 'members' | 'teams' | 'matches' | 'training' | 'news' | 'settings';
 
 const CHART_COLORS = ['hsl(0,100%,50%)', 'hsl(45,100%,50%)', 'hsl(120,70%,50%)', 'hsl(200,100%,50%)', 'hsl(280,100%,50%)', 'hsl(30,100%,50%)'];
@@ -108,6 +109,7 @@ function SuperAdminPanel() {
     { id: 'withdrawals', label: 'Saques', icon: Wallet },
     { id: 'spins', label: 'Giros', icon: Dices },
     { id: 'economy', label: 'Economia', icon: DollarSign },
+    { id: 'promo', label: 'Códigos', icon: Gift },
   ];
 
   const clanMembersData = clans.map(c => ({
@@ -231,6 +233,7 @@ function SuperAdminPanel() {
           <ResetGoldsPanel clans={clans} onRefresh={r} />
         </div>
       )}
+      {tab === 'promo' && <PromoCodesPanel />}
     </div>
   );
 }
