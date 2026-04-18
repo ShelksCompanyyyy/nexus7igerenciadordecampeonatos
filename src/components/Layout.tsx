@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import { useState, useEffect } from 'react';
-import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, Settings, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell } from 'lucide-react';
+import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, Settings, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell, UserPlus } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
 const NAV_ITEMS = [
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { path: '/shop', label: 'Loja', icon: ShoppingBag },
   { path: '/news', label: 'Notícias', icon: Newspaper },
   { path: '/chat', label: 'Chat', icon: MessageSquare },
+  { path: '/friends', label: 'Amigos', icon: UserPlus },
   { path: '/tutorial', label: 'Tutorial', icon: BookOpen },
   { path: '/profile', label: 'Perfil', icon: UserCircle },
 ];
