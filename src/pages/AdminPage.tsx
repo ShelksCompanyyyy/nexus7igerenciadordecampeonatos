@@ -1021,3 +1021,71 @@ function SpinsTab({ users, spinPurchases, onRefresh }: { users: DBProfile[]; spi
     </div>
   );
 }
+
+// ======= RESET GOLDS PANEL (criador) =======
+function ResetGoldsPanel({ clans, onRefresh }: { clans: DBClan[]; onRefresh: () => void }) {
+  const [clanFilter, setClanFilter] = useState<string>('');
+  const [excludeAdmins, setExcludeAdmins] = useState(true);
+  const [confirmText, setConfirmText] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleReset = async () => {
+    if (confirmText !== 'CONFIRMAR') {
+      toast.error('Digite CONFIRMAR para prosseguir');
+      return;
+    }
+    setLoading(true);
+    const { data, error } = await (supabase.rpc as any)('reset_user_golds', {
+      _clan_id: clanFilter || null,
+      _exclude_admins: excludeAdmins,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error('Erro: ' + error.message);
+      return;
+    }
+    setConfirmText('');
+    onRefresh();
+    toast.success(`Gold zerado para ${data} jogador(es)`);
+  };
+
+  return (
+    <div className="bg-destructive/5 border border-destructive/30 rounded-lg p-5 space-y-4">
+      <div className="flex items-center gap-2">
+        <Lock size={16} className="text-destructive" />
+        <h3 className="font-heading text-sm text-destructive">⚠️ ZERAR GOLD (DESTRUTIVO)</h3>
+      </div>
+      <p className="text-xs text-muted-foreground font-display">
+        Esta ação zera o saldo de Gold dos jogadores selecionados (não afeta saques pendentes).
+      </p>
+
+      <div>
+        <label className="text-xs text-muted-foreground font-display block mb-1">Filtrar por clã (opcional)</label>
+        <select value={clanFilter} onChange={e => setClanFilter(e.target.value)}
+          className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm">
+          <option value="">Todos os clãs (e sem clã)</option>
+          {clans.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      </div>
+
+      <label className="flex items-center gap-2 text-xs font-display text-foreground cursor-pointer">
+        <input type="checkbox" checked={excludeAdmins} onChange={e => setExcludeAdmins(e.target.checked)} />
+        Excluir admins e superadmins (recomendado)
+      </label>
+
+      <div>
+        <label className="text-xs text-muted-foreground font-display block mb-1">Digite <strong className="text-destructive">CONFIRMAR</strong> para prosseguir</label>
+        <input value={confirmText} onChange={e => setConfirmText(e.target.value)} placeholder="CONFIRMAR"
+          className="w-full p-3 bg-secondary rounded border border-destructive/40 focus:border-destructive outline-none text-foreground font-display text-sm" />
+      </div>
+
+      <button
+        onClick={handleReset}
+        disabled={loading || confirmText !== 'CONFIRMAR'}
+        className="w-full px-6 py-3 bg-destructive text-destructive-foreground rounded font-heading text-xs disabled:opacity-50"
+      >
+        {loading ? 'PROCESSANDO...' : 'ZERAR GOLD AGORA'}
+      </button>
+    </div>
+  );
+}
