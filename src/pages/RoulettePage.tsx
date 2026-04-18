@@ -1,81 +1,109 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { ROULETTE_PRIZES, SPIN_PACKAGES, PIX_KEY, MIN_WITHDRAWAL, spinRoulette } from '@/lib/store';
+import { SPIN_PACKAGES, PIX_KEY, MIN_WITHDRAWAL } from '@/lib/store';
 import { toast } from 'sonner';
-import { Dices, Gift, Copy, Wallet, ArrowRight } from 'lucide-react';
+import { Dices, Gift, Copy, Wallet, Sparkles } from 'lucide-react';
 
-const SEGMENT_COLORS = [
-  'from-primary/80 to-primary/40',
-  'from-secondary to-secondary/80',
+// Prêmios visuais (mesma ordem da probabilidade no backend)
+const PRIZES = [
+  { gold: 5, label: '5G', color: 'hsl(0 0% 22%)', text: 'hsl(0 0% 90%)' },
+  { gold: 10, label: '10G', color: 'hsl(0 60% 35%)', text: 'hsl(0 0% 100%)' },
+  { gold: 15, label: '15G', color: 'hsl(0 0% 22%)', text: 'hsl(0 0% 90%)' },
+  { gold: 20, label: '20G', color: 'hsl(0 70% 40%)', text: 'hsl(0 0% 100%)' },
+  { gold: 100, label: '100G', color: 'hsl(45 100% 50%)', text: 'hsl(0 0% 10%)' },
+  { gold: 250, label: '250G', color: 'hsl(0 90% 45%)', text: 'hsl(0 0% 100%)' },
+  { gold: 500, label: '500G', color: 'hsl(280 90% 55%)', text: 'hsl(0 0% 100%)' },
 ];
+
+const SEGMENT_COUNT = PRIZES.length;
+const SEG_ANGLE = 360 / SEGMENT_COUNT;
 
 export default function RoulettePage() {
   const { user, profile, refreshProfile } = useAuth();
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<number | null>(null);
   const [rotation, setRotation] = useState(0);
-  const [showPix, setShowPix] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawData, setWithdrawData] = useState({ gameNick: '', username: '', email: '', whatsapp: '', pixKey: '' });
   const [withdrawAmount, setWithdrawAmount] = useState(500);
   const wheelRef = useRef<HTMLDivElement>(null);
 
-  const totalSpins = (profile?.free_spins || 0);
+  const freeSpins = profile?.free_spins || 0;
+  const gold = profile?.gold || 0;
+  const willUseFree = freeSpins > 0;
+  const canSpin = freeSpins > 0 || gold >= 10;
+
+  const playStartSound = () => {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(180, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 4);
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 4);
+      osc.start(); osc.stop(ctx.currentTime + 4);
+    } catch { /* noop */ }
+  };
+
+  const playWinSound = () => {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(523, ctx.currentTime);
+      osc.frequency.setValueAtTime(659, ctx.currentTime + 0.15);
+      osc.frequency.setValueAtTime(784, ctx.currentTime + 0.3);
+      osc.frequency.setValueAtTime(1046, ctx.currentTime + 0.45);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.7);
+      osc.start(); osc.stop(ctx.currentTime + 0.7);
+    } catch { /* noop */ }
+  };
 
   const handleSpin = async () => {
-    if (!user || !profile) return;
-    if (totalSpins <= 0) { toast.error('Você não tem giros disponíveis!'); return; }
+    if (!user || !profile || spinning) return;
+    if (!canSpin) { toast.error('Você precisa de 10 Gold ou 1 giro grátis!'); return; }
+
     setSpinning(true);
     setResult(null);
 
-    const prize = spinRoulette();
-    const prizeIndex = ROULETTE_PRIZES.findIndex(p => p.gold === prize);
-    const segmentAngle = 360 / ROULETTE_PRIZES.length;
-    const targetAngle = 360 - (prizeIndex * segmentAngle + segmentAngle / 2);
-    const totalRotation = rotation + 360 * 5 + targetAngle;
-    setRotation(totalRotation);
+    // 1) Backend decide o prêmio (autoritativo)
+    const { data, error } = await supabase.rpc('spin_roulette');
+    if (error || !data) {
+      setSpinning(false);
+      toast.error(error?.message || 'Erro ao girar');
+      return;
+    }
+    const reward = (data as { reward: number }).reward;
+    const prizeIndex = PRIZES.findIndex(p => p.gold === reward);
+    if (prizeIndex < 0) {
+      setSpinning(false);
+      toast.error('Prêmio inválido');
+      return;
+    }
 
-    try {
-      const audioCtx = new AudioContext();
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 3);
-      gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 3);
-      oscillator.start(audioCtx.currentTime);
-      oscillator.stop(audioCtx.currentTime + 3);
-    } catch {}
+    // 2) Anima até o prêmio retornado
+    playStartSound();
+    const baseTurns = 6; // voltas extras
+    const targetAngle = 360 - (prizeIndex * SEG_ANGLE + SEG_ANGLE / 2);
+    // garante progressão sempre crescente
+    const currentMod = ((rotation % 360) + 360) % 360;
+    const delta = ((targetAngle - currentMod) + 360) % 360;
+    const next = rotation + baseTurns * 360 + delta;
+    setRotation(next);
 
+    // 3) Após animação, mostra resultado e atualiza perfil
     setTimeout(async () => {
       setSpinning(false);
-      setResult(prize);
-      await supabase.from('profiles').update({
-        gold: (profile.gold || 0) + prize,
-        free_spins: Math.max(0, (profile.free_spins || 0) - 1),
-      }).eq('user_id', user.id);
+      setResult(reward);
+      playWinSound();
       await refreshProfile();
-
-      try {
-        const audioCtx = new AudioContext();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.frequency.setValueAtTime(523, audioCtx.currentTime);
-        osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.15);
-        osc.frequency.setValueAtTime(784, audioCtx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-        osc.start(audioCtx.currentTime);
-        osc.stop(audioCtx.currentTime + 0.5);
-      } catch {}
-
-      toast.success(`🎉 Você ganhou ${prize}G!`, { duration: 4000 });
-    }, 3500);
+      toast.success(`🎉 Você ganhou ${reward}G!`, { duration: 4000 });
+    }, 4200);
   };
 
   const handleBuySpins = async (pkg: typeof SPIN_PACKAGES[0]) => {
@@ -88,18 +116,14 @@ export default function RoulettePage() {
       method: 'pix',
       status: 'pending',
     });
-    toast.info('Compra registrada! Aguarde confirmação do ADM.');
-  };
-
-  const copyPix = (value: number) => {
     navigator.clipboard.writeText(PIX_KEY);
-    toast.success(`Chave Pix copiada! Valor: R$${value}`);
+    toast.success(`Chave Pix copiada! Valor: R$${pkg.price}. Aguarde confirmação do ADM.`);
   };
 
   const handleWithdraw = async () => {
     if (!user || !profile) return;
-    if ((profile.gold || 0) < MIN_WITHDRAWAL) { toast.error(`Mínimo para saque: ${MIN_WITHDRAWAL}G`); return; }
-    if (withdrawAmount > (profile.gold || 0)) { toast.error('Saldo insuficiente'); return; }
+    if (gold < MIN_WITHDRAWAL) { toast.error(`Mínimo para saque: ${MIN_WITHDRAWAL}G`); return; }
+    if (withdrawAmount > gold) { toast.error('Saldo insuficiente'); return; }
     if (!withdrawData.gameNick || !withdrawData.username || !withdrawData.email || !withdrawData.whatsapp || !withdrawData.pixKey) {
       toast.error('Preencha todos os campos'); return;
     }
@@ -116,105 +140,167 @@ export default function RoulettePage() {
       user_unique_id: profile.unique_id || user.id,
     });
 
-    await supabase.from('profiles').update({ gold: (profile.gold || 0) - withdrawAmount }).eq('user_id', user.id);
+    await supabase.from('profiles').update({ gold: gold - withdrawAmount }).eq('user_id', user.id);
     await refreshProfile();
     setShowWithdraw(false);
-    toast.success('Saque solicitado! Aguarde o ADM entrar em contato ou liberar o pagamento.');
+    toast.success('Saque solicitado! Aguarde o ADM liberar o pagamento.');
   };
 
   return (
     <div className="space-y-6 animate-slide-up">
-      <h1 className="text-2xl font-heading text-primary text-glow flex items-center gap-3"><Dices size={28} /> ROLETA</h1>
+      <h1 className="text-2xl font-heading text-primary text-glow flex items-center gap-3">
+        <Dices size={28} /> ROLETA
+      </h1>
 
-      <div className="flex flex-wrap gap-4 items-center">
-        <div className="bg-card rounded-lg neon-border p-4 flex items-center gap-3">
+      {/* Saldo */}
+      <div className="flex flex-wrap gap-3">
+        <div className="bg-card rounded-lg neon-border p-4 flex items-center gap-3 flex-1 min-w-[140px]">
           <Wallet size={20} className="text-gold" />
           <div>
             <p className="text-xs text-muted-foreground font-display">Saldo</p>
-            <p className="font-heading text-gold text-lg">{profile?.gold || 0}G</p>
+            <p className="font-heading text-gold text-lg">{gold}G</p>
           </div>
         </div>
-        <div className="bg-card rounded-lg neon-border p-4 flex items-center gap-3">
-          <Dices size={20} className="text-primary" />
+        <div className="bg-card rounded-lg neon-border p-4 flex items-center gap-3 flex-1 min-w-[140px]">
+          <Sparkles size={20} className="text-primary" />
           <div>
-            <p className="text-xs text-muted-foreground font-display">Giros</p>
-            <p className="font-heading text-primary text-lg">{totalSpins}</p>
+            <p className="text-xs text-muted-foreground font-display">Giros Grátis</p>
+            <p className="font-heading text-primary text-lg">{freeSpins}</p>
           </div>
         </div>
       </div>
 
-      {/* Roulette Wheel */}
+      {/* Roleta diagonal com brilho */}
       <div className="flex flex-col items-center gap-6">
-        <div className="relative w-72 h-72 md:w-80 md:h-80">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-20 w-0 h-0 border-l-[12px] border-r-[12px] border-t-[24px] border-l-transparent border-r-transparent border-t-primary drop-shadow-[0_0_10px_hsl(0,100%,50%,0.8)]" />
-          <div className={`absolute inset-0 rounded-full ${spinning ? 'animate-glow-pulse' : ''}`} style={{ boxShadow: spinning ? 'var(--glow-lg)' : 'var(--glow-md)' }} />
-          <div ref={wheelRef}
-            className="w-full h-full rounded-full border-4 border-primary/50 overflow-hidden relative"
+        <div
+          className="relative w-72 h-72 md:w-96 md:h-96"
+          style={{ perspective: '1000px' }}
+        >
+          {/* Brilho externo */}
+          <div
+            className="absolute inset-0 rounded-full blur-2xl opacity-60 pointer-events-none"
             style={{
-              transform: `rotate(${rotation}deg)`,
-              transition: spinning ? 'transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
+              background: 'conic-gradient(from 0deg, hsl(0 100% 50% / 0.6), hsl(45 100% 50% / 0.6), hsl(280 100% 60% / 0.6), hsl(0 100% 50% / 0.6))',
+              animation: spinning ? 'spin 2s linear infinite' : 'none',
+            }}
+          />
+
+          {/* Ponteiro (topo) */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 z-30">
+            <div className="w-0 h-0 border-l-[14px] border-r-[14px] border-t-[28px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_12px_hsl(45,100%,50%,0.9)]" />
+          </div>
+
+          {/* Roda inclinada (perspective) */}
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              transform: 'rotateX(28deg)',
+              transformStyle: 'preserve-3d',
             }}
           >
-            <svg viewBox="0 0 100 100" className="w-full h-full absolute inset-0">
-              {ROULETTE_PRIZES.map((_, i) => {
-                const segAngle = 360 / ROULETTE_PRIZES.length;
-                const startAngle = i * segAngle - 90;
-                const endAngle = (i + 1) * segAngle - 90;
-                const x1 = 50 + 50 * Math.cos((startAngle * Math.PI) / 180);
-                const y1 = 50 + 50 * Math.sin((startAngle * Math.PI) / 180);
-                const x2 = 50 + 50 * Math.cos((endAngle * Math.PI) / 180);
-                const y2 = 50 + 50 * Math.sin((endAngle * Math.PI) / 180);
-                const largeArc = segAngle > 180 ? 1 : 0;
+            <div
+              ref={wheelRef}
+              className="relative w-full h-full rounded-full border-4 border-gold/60 overflow-hidden"
+              style={{
+                transform: `rotate(${rotation}deg)`,
+                transition: spinning
+                  ? 'transform 4.2s cubic-bezier(0.12, 0.72, 0.18, 1)'
+                  : 'none',
+                boxShadow: spinning
+                  ? '0 0 60px hsl(45 100% 50% / 0.6), 0 0 120px hsl(0 100% 50% / 0.4), inset 0 0 40px rgba(0,0,0,0.6)'
+                  : '0 0 30px hsl(0 100% 50% / 0.3), inset 0 0 30px rgba(0,0,0,0.7)',
+              }}
+            >
+              <svg viewBox="0 0 100 100" className="w-full h-full absolute inset-0">
+                <defs>
+                  <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="hsl(45 100% 60% / 0.4)" />
+                    <stop offset="100%" stopColor="hsl(0 0% 0% / 0)" />
+                  </radialGradient>
+                </defs>
+                {PRIZES.map((p, i) => {
+                  const start = i * SEG_ANGLE - 90;
+                  const end = (i + 1) * SEG_ANGLE - 90;
+                  const x1 = 50 + 50 * Math.cos((start * Math.PI) / 180);
+                  const y1 = 50 + 50 * Math.sin((start * Math.PI) / 180);
+                  const x2 = 50 + 50 * Math.cos((end * Math.PI) / 180);
+                  const y2 = 50 + 50 * Math.sin((end * Math.PI) / 180);
+                  const large = SEG_ANGLE > 180 ? 1 : 0;
+                  return (
+                    <path
+                      key={i}
+                      d={`M50,50 L${x1},${y1} A50,50 0 ${large},1 ${x2},${y2} Z`}
+                      fill={p.color}
+                      stroke="hsl(45 100% 50% / 0.5)"
+                      strokeWidth="0.4"
+                    />
+                  );
+                })}
+                <circle cx="50" cy="50" r="50" fill="url(#centerGlow)" />
+              </svg>
+
+              {/* Labels dos prêmios */}
+              {PRIZES.map((prize, i) => {
+                const mid = i * SEG_ANGLE + SEG_ANGLE / 2 - 90;
+                const r = 34;
+                const x = 50 + r * Math.cos((mid * Math.PI) / 180);
+                const y = 50 + r * Math.sin((mid * Math.PI) / 180);
                 return (
-                  <path key={i}
-                    d={`M50,50 L${x1},${y1} A50,50 0 ${largeArc},1 ${x2},${y2} Z`}
-                    fill={i % 2 === 0 ? 'hsl(0 100% 25%)' : 'hsl(0 0% 12%)'}
-                    stroke="hsl(0 0% 20%)" strokeWidth="0.3"
-                  />
+                  <div
+                    key={i}
+                    className="absolute font-heading text-xs md:text-sm pointer-events-none"
+                    style={{
+                      left: `${x}%`,
+                      top: `${y}%`,
+                      color: prize.text,
+                      transform: `translate(-50%, -50%) rotate(${mid + 90}deg)`,
+                      textShadow: '0 1px 3px rgba(0,0,0,0.9)',
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    {prize.label}
+                  </div>
                 );
               })}
-            </svg>
-            {ROULETTE_PRIZES.map((prize, i) => {
-              const segAngle = 360 / ROULETTE_PRIZES.length;
-              const midAngle = i * segAngle + segAngle / 2 - 90;
-              const r = 32;
-              const x = 50 + r * Math.cos((midAngle * Math.PI) / 180);
-              const y = 50 + r * Math.sin((midAngle * Math.PI) / 180);
-              return (
-                <div key={i} className="absolute font-heading text-xs text-primary-foreground"
+
+              {/* Centro */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div
+                  className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center z-10 border-2 border-gold"
                   style={{
-                    left: `${x}%`, top: `${y}%`,
-                    transform: `translate(-50%, -50%) rotate(${midAngle + 90}deg)`,
-                    textShadow: '0 0 4px rgba(0,0,0,0.8)',
-                  }}>
-                  {prize.label}
+                    background: 'radial-gradient(circle, hsl(0 0% 8%) 0%, hsl(0 0% 0%) 100%)',
+                    boxShadow: '0 0 20px hsl(45 100% 50% / 0.6)',
+                  }}
+                >
+                  <span className="font-heading text-gold text-xs md:text-sm tracking-widest">N7i</span>
                 </div>
-              );
-            })}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-background border-2 border-primary flex items-center justify-center z-10">
-                <span className="font-heading text-primary text-xs">N7i</span>
               </div>
             </div>
           </div>
         </div>
 
-        <button onClick={handleSpin} disabled={spinning || totalSpins <= 0}
-          className="px-8 py-3 gradient-primary text-primary-foreground font-heading rounded-lg disabled:opacity-50 transition-all hover:box-glow-lg box-glow text-sm tracking-wider"
+        <button
+          onClick={handleSpin}
+          disabled={spinning || !canSpin}
+          className="px-10 py-4 gradient-primary text-primary-foreground font-heading rounded-lg disabled:opacity-50 transition-all hover:scale-105 box-glow text-sm tracking-widest relative overflow-hidden"
+          style={{ boxShadow: '0 0 30px hsl(0 100% 50% / 0.5)' }}
         >
-          {spinning ? 'GIRANDO...' : `GIRAR (${totalSpins} restantes)`}
+          {spinning ? 'GIRANDO...' : willUseFree ? `GIRAR GRÁTIS (${freeSpins})` : 'GIRAR (-10G)'}
         </button>
 
-        {result && !spinning && (
-          <div className="text-center animate-slide-up">
-            <p className="text-2xl font-heading text-gold text-glow-gold">🎉 {result}G!</p>
+        {result !== null && !spinning && (
+          <div className="text-center animate-scale-in">
+            <p className="text-3xl font-heading text-gold text-glow-gold">🎉 +{result}G!</p>
+            <p className="text-xs text-muted-foreground font-display mt-1">Resultado validado pelo servidor</p>
           </div>
         )}
       </div>
 
       {/* Buy Spins */}
       <div className="bg-card rounded-lg neon-border p-5">
-        <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2"><Gift size={16} /> COMPRAR GIROS</h3>
+        <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2">
+          <Gift size={16} /> COMPRAR GIROS
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {SPIN_PACKAGES.map((pkg, i) => (
             <div key={i} className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg">
@@ -222,7 +308,8 @@ export default function RoulettePage() {
                 <p className="font-display text-foreground">{pkg.label}</p>
                 {pkg.bonus > 0 && <p className="text-xs text-gold">+{pkg.bonus} bônus</p>}
               </div>
-              <button onClick={() => copyPix(pkg.price)}
+              <button
+                onClick={() => handleBuySpins(pkg)}
                 className="flex items-center gap-2 px-4 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs"
               >
                 <Copy size={12} /> PIX R${pkg.price}
@@ -231,19 +318,22 @@ export default function RoulettePage() {
           ))}
         </div>
         <p className="text-xs text-muted-foreground mt-3 font-display">
-          Ao clicar, a chave Pix será copiada. Após pagamento, aguarde confirmação do ADM.
+          Ao clicar, a chave Pix é copiada e a compra registrada. Aguarde confirmação do ADM.
         </p>
       </div>
 
       {/* Withdraw */}
       <div className="bg-card rounded-lg neon-border p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-heading text-sm text-primary flex items-center gap-2"><Wallet size={16} /> SAQUE</h3>
+          <h3 className="font-heading text-sm text-primary flex items-center gap-2">
+            <Wallet size={16} /> SAQUE
+          </h3>
           <span className="text-xs text-muted-foreground font-display">Mínimo: {MIN_WITHDRAWAL}G</span>
         </div>
         {!showWithdraw ? (
-          <button onClick={() => setShowWithdraw(true)}
-            disabled={(profile?.gold || 0) < MIN_WITHDRAWAL}
+          <button
+            onClick={() => setShowWithdraw(true)}
+            disabled={gold < MIN_WITHDRAWAL}
             className="px-6 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs disabled:opacity-50"
           >
             SOLICITAR SAQUE
@@ -251,58 +341,41 @@ export default function RoulettePage() {
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-primary font-heading">📋 DADOS PARA SAQUE</p>
-            <p className="text-xs text-muted-foreground font-display">Preencha corretamente. O ADM usará esses dados para liberar o pagamento.</p>
-
             <div>
-              <label className="text-xs text-muted-foreground font-display block mb-1">💰 Quantidade de Gold para sacar</label>
+              <label className="text-xs text-muted-foreground font-display block mb-1">💰 Quantidade de Gold</label>
               <input type="number" value={withdrawAmount} onChange={e => setWithdrawAmount(Number(e.target.value))}
                 className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
             </div>
-
             <div>
-              <label className="text-xs text-muted-foreground font-display block mb-1">🔑 Sua Chave Pix</label>
-              <input type="text" placeholder="CPF, Email, Telefone ou Chave Aleatória"
-                value={withdrawData.pixKey} onChange={e => setWithdrawData(prev => ({ ...prev, pixKey: e.target.value }))}
+              <label className="text-xs text-muted-foreground font-display block mb-1">🔑 Chave Pix</label>
+              <input type="text" value={withdrawData.pixKey} onChange={e => setWithdrawData(prev => ({ ...prev, pixKey: e.target.value }))}
                 className="w-full p-3 bg-secondary rounded border border-primary/50 focus:border-primary outline-none text-foreground font-display" />
             </div>
-
             <div>
               <label className="text-xs text-muted-foreground font-display block mb-1">🎮 Nick no Jogo</label>
               <input type="text" value={withdrawData.gameNick} onChange={e => setWithdrawData(prev => ({ ...prev, gameNick: e.target.value }))}
                 className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
             </div>
-
             <div>
               <label className="text-xs text-muted-foreground font-display block mb-1">👤 Nome de Usuário</label>
               <input type="text" value={withdrawData.username} onChange={e => setWithdrawData(prev => ({ ...prev, username: e.target.value }))}
                 className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
             </div>
-
-            <div>
-              <label className="text-xs text-muted-foreground font-display block mb-1">🆔 Seu ID Único</label>
-              <div className="w-full p-3 bg-secondary/50 rounded border border-border text-foreground font-display text-sm opacity-70">
-                {profile?.unique_id || user?.id}
-              </div>
-            </div>
-
             <div>
               <label className="text-xs text-muted-foreground font-display block mb-1">📧 Gmail</label>
               <input type="email" value={withdrawData.email} onChange={e => setWithdrawData(prev => ({ ...prev, email: e.target.value }))}
                 className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
             </div>
-
             <div>
               <label className="text-xs text-muted-foreground font-display block mb-1">📱 WhatsApp</label>
               <input type="text" value={withdrawData.whatsapp} onChange={e => setWithdrawData(prev => ({ ...prev, whatsapp: e.target.value }))}
                 className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
             </div>
-
             <div className="bg-warning/10 border border-warning/30 rounded-lg p-3">
-              <p className="text-xs text-warning font-display">⏳ Após solicitar o saque, <strong>aguarde o ADM entrar em contato ou liberar o pagamento</strong>. Prazo: 24h a 48h úteis.</p>
+              <p className="text-xs text-warning font-display">⏳ Após solicitar, aguarde o ADM liberar o pagamento (24h-48h úteis).</p>
             </div>
-
             <div className="flex gap-3">
-              <button onClick={handleWithdraw} className="px-6 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs">CONFIRMAR SAQUE</button>
+              <button onClick={handleWithdraw} className="px-6 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs">CONFIRMAR</button>
               <button onClick={() => setShowWithdraw(false)} className="px-6 py-2 bg-secondary text-muted-foreground rounded font-heading text-xs">CANCELAR</button>
             </div>
           </div>

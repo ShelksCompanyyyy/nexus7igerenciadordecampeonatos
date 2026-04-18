@@ -45,6 +45,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_banned: boolean
           logo: string | null
           losses: number | null
           name: string
@@ -58,6 +59,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_banned?: boolean
           logo?: string | null
           losses?: number | null
           name: string
@@ -71,6 +73,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_banned?: boolean
           logo?: string | null
           losses?: number | null
           name?: string
@@ -399,6 +402,33 @@ export type Database = {
         }
         Relationships: []
       }
+      spins: {
+        Row: {
+          cost: number
+          created_at: string
+          id: string
+          reward: number
+          spin_type: string
+          user_id: string
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          id?: string
+          reward?: number
+          spin_type?: string
+          user_id: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          id?: string
+          reward?: number
+          spin_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       teams: {
         Row: {
           clan_id: string
@@ -634,6 +664,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      reset_user_golds: {
+        Args: { _clan_id?: string; _exclude_admins?: boolean }
+        Returns: number
+      }
+      spin_roulette: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "user" | "admin" | "superadmin"

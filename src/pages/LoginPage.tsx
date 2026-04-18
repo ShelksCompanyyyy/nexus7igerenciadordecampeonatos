@@ -40,7 +40,7 @@ export default function LoginPage() {
   const [clans, setClans] = useState<ClanOption[]>([]);
 
   useEffect(() => {
-    supabase.from('clans').select('id, name, admin_code').then(({ data }) => {
+    supabase.from('clans').select('id, name, admin_code').eq('is_banned', false).then(({ data }) => {
       if (data) setClans(data);
     });
   }, []);

@@ -22,7 +22,8 @@ interface DBProfile {
 interface DBClan {
   id: string; name: string; logo: string | null; banner: string | null;
   description: string | null; owner_id: string | null; admin_code: string | null;
-  wins: number | null; losses: number | null; created_at: string; updated_at: string;
+  wins: number | null; losses: number | null; is_banned: boolean | null;
+  created_at: string; updated_at: string;
 }
 interface DBTeam {
   id: string; name: string; logo: string | null; clan_id: string;
@@ -227,6 +228,7 @@ function SuperAdminPanel() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+          <ResetGoldsPanel clans={clans} onRefresh={r} />
         </div>
       )}
     </div>
@@ -797,22 +799,49 @@ function ClanSettingsTab({ clan, onRefresh }: { clan?: DBClan | null; onRefresh:
 
 // ======= SUPER ADMIN SUB-TABS =======
 function SuperClansTab({ clans, users, onRefresh }: { clans: DBClan[]; users: DBProfile[]; onRefresh: () => void }) {
+  const handleToggleBan = async (clan: DBClan) => {
+    const newState = !clan.is_banned;
+    const { error } = await supabase.from('clans').update({ is_banned: newState }).eq('id', clan.id);
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    onRefresh();
+    toast.success(newState ? `Clã ${clan.name} banido` : `Clã ${clan.name} desbanido`);
+  };
+
+  const handleDelete = async (clan: DBClan) => {
+    if (!confirm(`Excluir o clã "${clan.name}" permanentemente? Esta ação não pode ser desfeita.`)) return;
+    await supabase.from('profiles').update({ clan_id: null }).eq('clan_id', clan.id);
+    const { error } = await supabase.from('clans').delete().eq('id', clan.id);
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    onRefresh();
+    toast.success('Clã removido');
+  };
+
   return (
     <div className="space-y-4">
-      <h3 className="font-heading text-sm text-gold">TODOS OS CLÃS</h3>
+      <h3 className="font-heading text-sm text-gold">TODOS OS CLÃS ({clans.length})</h3>
       {clans.map(c => {
         const memberCount = users.filter(u => u.clan_id === c.id).length;
+        const banned = !!c.is_banned;
         return (
-          <div key={c.id} className="bg-secondary/50 p-4 rounded-lg flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div key={c.id} className={`p-4 rounded-lg flex items-center justify-between gap-3 ${banned ? 'bg-destructive/10 border border-destructive/40' : 'bg-secondary/50'}`}>
+            <div className="flex items-center gap-3 min-w-0">
               {c.logo ? <img src={c.logo} alt="" className="w-10 h-10 rounded-lg object-cover" /> :
                 <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center font-heading text-foreground">{c.name[0]}</div>}
-              <div>
-                <p className="font-heading text-sm text-foreground">{c.name}</p>
+              <div className="min-w-0">
+                <p className="font-heading text-sm text-foreground truncate flex items-center gap-2">
+                  {c.name}
+                  {banned && <span className="text-[9px] px-1.5 py-0.5 rounded bg-destructive text-destructive-foreground font-display">BANIDO</span>}
+                </p>
                 <p className="text-[10px] text-muted-foreground font-display">{memberCount} membros | Código: {c.admin_code || 'N/A'}</p>
               </div>
             </div>
-            <button onClick={async () => { await supabase.from('clans').delete().eq('id', c.id); onRefresh(); toast.success('Clã removido'); }} className="text-destructive p-1"><Trash size={14} /></button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={() => handleToggleBan(c)}
+                className={`px-3 py-1.5 rounded font-heading text-[10px] ${banned ? 'bg-success/20 text-success border border-success/40' : 'bg-warning/20 text-warning border border-warning/40'}`}>
+                {banned ? 'DESBANIR' : 'BANIR'}
+              </button>
+              <button onClick={() => handleDelete(c)} className="text-destructive p-1.5 hover:bg-destructive/10 rounded"><Trash size={14} /></button>
+            </div>
           </div>
         );
       })}
@@ -989,6 +1018,74 @@ function SpinsTab({ users, spinPurchases, onRefresh }: { users: DBProfile[]; spi
         })}
         {spinPurchases.filter(p => p.status === 'pending').length === 0 && <p className="text-center text-muted-foreground font-display p-4 text-sm">Nenhuma compra pendente</p>}
       </div>
+    </div>
+  );
+}
+
+// ======= RESET GOLDS PANEL (criador) =======
+function ResetGoldsPanel({ clans, onRefresh }: { clans: DBClan[]; onRefresh: () => void }) {
+  const [clanFilter, setClanFilter] = useState<string>('');
+  const [excludeAdmins, setExcludeAdmins] = useState(true);
+  const [confirmText, setConfirmText] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleReset = async () => {
+    if (confirmText !== 'CONFIRMAR') {
+      toast.error('Digite CONFIRMAR para prosseguir');
+      return;
+    }
+    setLoading(true);
+    const { data, error } = await (supabase.rpc as any)('reset_user_golds', {
+      _clan_id: clanFilter || null,
+      _exclude_admins: excludeAdmins,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error('Erro: ' + error.message);
+      return;
+    }
+    setConfirmText('');
+    onRefresh();
+    toast.success(`Gold zerado para ${data} jogador(es)`);
+  };
+
+  return (
+    <div className="bg-destructive/5 border border-destructive/30 rounded-lg p-5 space-y-4">
+      <div className="flex items-center gap-2">
+        <Lock size={16} className="text-destructive" />
+        <h3 className="font-heading text-sm text-destructive">⚠️ ZERAR GOLD (DESTRUTIVO)</h3>
+      </div>
+      <p className="text-xs text-muted-foreground font-display">
+        Esta ação zera o saldo de Gold dos jogadores selecionados (não afeta saques pendentes).
+      </p>
+
+      <div>
+        <label className="text-xs text-muted-foreground font-display block mb-1">Filtrar por clã (opcional)</label>
+        <select value={clanFilter} onChange={e => setClanFilter(e.target.value)}
+          className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm">
+          <option value="">Todos os clãs (e sem clã)</option>
+          {clans.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      </div>
+
+      <label className="flex items-center gap-2 text-xs font-display text-foreground cursor-pointer">
+        <input type="checkbox" checked={excludeAdmins} onChange={e => setExcludeAdmins(e.target.checked)} />
+        Excluir admins e superadmins (recomendado)
+      </label>
+
+      <div>
+        <label className="text-xs text-muted-foreground font-display block mb-1">Digite <strong className="text-destructive">CONFIRMAR</strong> para prosseguir</label>
+        <input value={confirmText} onChange={e => setConfirmText(e.target.value)} placeholder="CONFIRMAR"
+          className="w-full p-3 bg-secondary rounded border border-destructive/40 focus:border-destructive outline-none text-foreground font-display text-sm" />
+      </div>
+
+      <button
+        onClick={handleReset}
+        disabled={loading || confirmText !== 'CONFIRMAR'}
+        className="w-full px-6 py-3 bg-destructive text-destructive-foreground rounded font-heading text-xs disabled:opacity-50"
+      >
+        {loading ? 'PROCESSANDO...' : 'ZERAR GOLD AGORA'}
+      </button>
     </div>
   );
 }
