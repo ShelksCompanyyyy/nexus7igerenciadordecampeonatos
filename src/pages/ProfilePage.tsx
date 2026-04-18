@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { getFrameStyle, getNickColor } from '@/lib/shopData';
 import { UserCircle, Copy, Trophy, Target, Zap, Shield, Award, Camera, Edit, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
+import PromoCodeRedeem from '@/components/PromoCodeRedeem';
 
 export default function ProfilePage() {
   const { user, profile, refreshProfile } = useAuth();
@@ -168,6 +169,8 @@ export default function ProfilePage() {
         <h3 className="font-heading text-sm text-primary mb-3">MVPs: {profile.mvps || 0}</h3>
         <p className="text-xs text-muted-foreground font-display">Partidas: {profile.matches_played || 0}</p>
       </div>
+
+      <PromoCodeRedeem />
     </div>
   );
 }
