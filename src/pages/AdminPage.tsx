@@ -228,6 +228,7 @@ function SuperAdminPanel() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+          <ResetGoldsPanel clans={clans} onRefresh={r} />
         </div>
       )}
     </div>
