@@ -38,6 +38,38 @@ export type Database = {
         }
         Relationships: []
       }
+      clan_members: {
+        Row: {
+          clan_id: string
+          id: string
+          joined_at: string
+          role: Database["public"]["Enums"]["clan_role"]
+          user_id: string
+        }
+        Insert: {
+          clan_id: string
+          id?: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["clan_role"]
+          user_id: string
+        }
+        Update: {
+          clan_id?: string
+          id?: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["clan_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clan_members_clan_id_fkey"
+            columns: ["clan_id"]
+            isOneToOne: false
+            referencedRelation: "clans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clans: {
         Row: {
           admin_code: string | null
@@ -102,6 +134,33 @@ export type Database = {
           balance?: number
           created_at?: string
           id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      friends: {
+        Row: {
+          created_at: string
+          friend_id: string
+          id: string
+          status: Database["public"]["Enums"]["friend_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_id: string
+          id?: string
+          status?: Database["public"]["Enums"]["friend_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_id?: string
+          id?: string
+          status?: Database["public"]["Enums"]["friend_status"]
           updated_at?: string
           user_id?: string
         }
@@ -368,6 +427,74 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      promo_code_redemptions: {
+        Row: {
+          id: string
+          promo_code_id: string
+          redeemed_at: string
+          reward: number
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          promo_code_id: string
+          redeemed_at?: string
+          reward: number
+          user_id: string
+        }
+        Update: {
+          id?: string
+          promo_code_id?: string
+          redeemed_at?: string
+          reward?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_code_redemptions_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promo_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          reward: number
+          uses: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          reward?: number
+          uses?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          reward?: number
+          uses?: number
+        }
+        Relationships: []
       }
       spin_purchases: {
         Row: {
@@ -664,6 +791,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_clan_admin: {
+        Args: { _clan_id: string; _user_id: string }
+        Returns: boolean
+      }
+      promote_clan_member: {
+        Args: {
+          _clan_id: string
+          _new_role: Database["public"]["Enums"]["clan_role"]
+          _target_user: string
+        }
+        Returns: Json
+      }
+      redeem_promo_code: { Args: { _code: string }; Returns: Json }
       reset_user_golds: {
         Args: { _clan_id?: string; _exclude_admins?: boolean }
         Returns: number
@@ -672,6 +812,8 @@ export type Database = {
     }
     Enums: {
       app_role: "user" | "admin" | "superadmin"
+      clan_role: "leader" | "co_leader" | "member"
+      friend_status: "pending" | "accepted" | "blocked"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -800,6 +942,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["user", "admin", "superadmin"],
+      clan_role: ["leader", "co_leader", "member"],
+      friend_status: ["pending", "accepted", "blocked"],
     },
   },
 } as const
