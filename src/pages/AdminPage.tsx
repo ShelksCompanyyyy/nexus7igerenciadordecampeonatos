@@ -798,22 +798,49 @@ function ClanSettingsTab({ clan, onRefresh }: { clan?: DBClan | null; onRefresh:
 
 // ======= SUPER ADMIN SUB-TABS =======
 function SuperClansTab({ clans, users, onRefresh }: { clans: DBClan[]; users: DBProfile[]; onRefresh: () => void }) {
+  const handleToggleBan = async (clan: DBClan) => {
+    const newState = !clan.is_banned;
+    const { error } = await supabase.from('clans').update({ is_banned: newState }).eq('id', clan.id);
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    onRefresh();
+    toast.success(newState ? `Clã ${clan.name} banido` : `Clã ${clan.name} desbanido`);
+  };
+
+  const handleDelete = async (clan: DBClan) => {
+    if (!confirm(`Excluir o clã "${clan.name}" permanentemente? Esta ação não pode ser desfeita.`)) return;
+    await supabase.from('profiles').update({ clan_id: null }).eq('clan_id', clan.id);
+    const { error } = await supabase.from('clans').delete().eq('id', clan.id);
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    onRefresh();
+    toast.success('Clã removido');
+  };
+
   return (
     <div className="space-y-4">
-      <h3 className="font-heading text-sm text-gold">TODOS OS CLÃS</h3>
+      <h3 className="font-heading text-sm text-gold">TODOS OS CLÃS ({clans.length})</h3>
       {clans.map(c => {
         const memberCount = users.filter(u => u.clan_id === c.id).length;
+        const banned = !!c.is_banned;
         return (
-          <div key={c.id} className="bg-secondary/50 p-4 rounded-lg flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div key={c.id} className={`p-4 rounded-lg flex items-center justify-between gap-3 ${banned ? 'bg-destructive/10 border border-destructive/40' : 'bg-secondary/50'}`}>
+            <div className="flex items-center gap-3 min-w-0">
               {c.logo ? <img src={c.logo} alt="" className="w-10 h-10 rounded-lg object-cover" /> :
                 <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center font-heading text-foreground">{c.name[0]}</div>}
-              <div>
-                <p className="font-heading text-sm text-foreground">{c.name}</p>
+              <div className="min-w-0">
+                <p className="font-heading text-sm text-foreground truncate flex items-center gap-2">
+                  {c.name}
+                  {banned && <span className="text-[9px] px-1.5 py-0.5 rounded bg-destructive text-destructive-foreground font-display">BANIDO</span>}
+                </p>
                 <p className="text-[10px] text-muted-foreground font-display">{memberCount} membros | Código: {c.admin_code || 'N/A'}</p>
               </div>
             </div>
-            <button onClick={async () => { await supabase.from('clans').delete().eq('id', c.id); onRefresh(); toast.success('Clã removido'); }} className="text-destructive p-1"><Trash size={14} /></button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={() => handleToggleBan(c)}
+                className={`px-3 py-1.5 rounded font-heading text-[10px] ${banned ? 'bg-success/20 text-success border border-success/40' : 'bg-warning/20 text-warning border border-warning/40'}`}>
+                {banned ? 'DESBANIR' : 'BANIR'}
+              </button>
+              <button onClick={() => handleDelete(c)} className="text-destructive p-1.5 hover:bg-destructive/10 rounded"><Trash size={14} /></button>
+            </div>
           </div>
         );
       })}
