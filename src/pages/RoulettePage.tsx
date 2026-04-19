@@ -5,15 +5,17 @@ import { SPIN_PACKAGES, PIX_KEY, MIN_WITHDRAWAL } from '@/lib/store';
 import { toast } from 'sonner';
 import { Dices, Gift, Copy, Wallet, Sparkles } from 'lucide-react';
 
-// Prêmios visuais (mesma ordem da probabilidade no backend)
+// Prêmios visuais (mesma ordem das probabilidades no backend)
 const PRIZES = [
-  { gold: 5, label: '5G', color: 'hsl(0 0% 22%)', text: 'hsl(0 0% 90%)' },
-  { gold: 10, label: '10G', color: 'hsl(0 60% 35%)', text: 'hsl(0 0% 100%)' },
-  { gold: 15, label: '15G', color: 'hsl(0 0% 22%)', text: 'hsl(0 0% 90%)' },
-  { gold: 20, label: '20G', color: 'hsl(0 70% 40%)', text: 'hsl(0 0% 100%)' },
-  { gold: 100, label: '100G', color: 'hsl(45 100% 50%)', text: 'hsl(0 0% 10%)' },
-  { gold: 250, label: '250G', color: 'hsl(0 90% 45%)', text: 'hsl(0 0% 100%)' },
-  { gold: 500, label: '500G', color: 'hsl(280 90% 55%)', text: 'hsl(0 0% 100%)' },
+  { gold: 5,   label: '5G',   color: 'hsl(0 0% 22%)',     text: 'hsl(0 0% 92%)' },
+  { gold: 10,  label: '10G',  color: 'hsl(0 60% 35%)',    text: 'hsl(0 0% 100%)' },
+  { gold: 15,  label: '15G',  color: 'hsl(0 0% 22%)',     text: 'hsl(0 0% 92%)' },
+  { gold: 20,  label: '20G',  color: 'hsl(0 70% 40%)',    text: 'hsl(0 0% 100%)' },
+  { gold: 25,  label: '25G',  color: 'hsl(200 70% 40%)',  text: 'hsl(0 0% 100%)' },
+  { gold: 50,  label: '50G',  color: 'hsl(140 60% 35%)',  text: 'hsl(0 0% 100%)' },
+  { gold: 100, label: '100G', color: 'hsl(45 100% 50%)',  text: 'hsl(0 0% 10%)' },
+  { gold: 150, label: '150G', color: 'hsl(280 90% 55%)',  text: 'hsl(0 0% 100%)' },
+  { gold: 200, label: '200G', color: 'hsl(0 90% 45%)',    text: 'hsl(0 0% 100%)' },
 ];
 
 const SEGMENT_COUNT = PRIZES.length;
@@ -31,8 +33,7 @@ export default function RoulettePage() {
 
   const freeSpins = profile?.free_spins || 0;
   const gold = profile?.gold || 0;
-  const willUseFree = freeSpins > 0;
-  const canSpin = freeSpins > 0 || gold >= 10;
+  const canSpin = freeSpins > 0;
 
   const playStartSound = () => {
     try {
@@ -66,12 +67,11 @@ export default function RoulettePage() {
 
   const handleSpin = async () => {
     if (!user || !profile || spinning) return;
-    if (!canSpin) { toast.error('Você precisa de 10 Gold ou 1 giro grátis!'); return; }
+    if (!canSpin) { toast.error('Você precisa de uma roleta grátis para girar!'); return; }
 
     setSpinning(true);
     setResult(null);
 
-    // 1) Backend decide o prêmio (autoritativo)
     const { data, error } = await supabase.rpc('spin_roulette');
     if (error || !data) {
       setSpinning(false);
@@ -86,17 +86,14 @@ export default function RoulettePage() {
       return;
     }
 
-    // 2) Anima até o prêmio retornado
     playStartSound();
-    const baseTurns = 6; // voltas extras
+    const baseTurns = 6;
     const targetAngle = 360 - (prizeIndex * SEG_ANGLE + SEG_ANGLE / 2);
-    // garante progressão sempre crescente
     const currentMod = ((rotation % 360) + 360) % 360;
     const delta = ((targetAngle - currentMod) + 360) % 360;
     const next = rotation + baseTurns * 360 + delta;
     setRotation(next);
 
-    // 3) Após animação, mostra resultado e atualiza perfil
     setTimeout(async () => {
       setSpinning(false);
       setResult(reward);
@@ -110,14 +107,14 @@ export default function RoulettePage() {
     if (!user) return;
     await supabase.from('spin_purchases').insert({
       user_id: user.id,
-      amount: pkg.price,
+      amount: Math.round(pkg.price * 100) / 100,
       spins: pkg.spins + pkg.bonus,
       bonus_spins: pkg.bonus,
       method: 'pix',
       status: 'pending',
     });
     navigator.clipboard.writeText(PIX_KEY);
-    toast.success(`Chave Pix copiada! Valor: R$${pkg.price}. Aguarde confirmação do ADM.`);
+    toast.success(`Chave Pix copiada! Valor: R$${pkg.price.toFixed(2)}. Aguarde confirmação do ADM.`);
   };
 
   const handleWithdraw = async () => {
@@ -152,7 +149,6 @@ export default function RoulettePage() {
         <Dices size={28} /> ROLETA
       </h1>
 
-      {/* Saldo */}
       <div className="flex flex-wrap gap-3">
         <div className="bg-card rounded-lg neon-border p-4 flex items-center gap-3 flex-1 min-w-[140px]">
           <Wallet size={20} className="text-gold" />
@@ -170,13 +166,8 @@ export default function RoulettePage() {
         </div>
       </div>
 
-      {/* Roleta diagonal com brilho */}
       <div className="flex flex-col items-center gap-6">
-        <div
-          className="relative w-72 h-72 md:w-96 md:h-96"
-          style={{ perspective: '1000px' }}
-        >
-          {/* Brilho externo */}
+        <div className="relative w-72 h-72 md:w-96 md:h-96" style={{ perspective: '1000px' }}>
           <div
             className="absolute inset-0 rounded-full blur-2xl opacity-60 pointer-events-none"
             style={{
@@ -185,18 +176,13 @@ export default function RoulettePage() {
             }}
           />
 
-          {/* Ponteiro (topo) */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 z-30">
             <div className="w-0 h-0 border-l-[14px] border-r-[14px] border-t-[28px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_12px_hsl(45,100%,50%,0.9)]" />
           </div>
 
-          {/* Roda inclinada (perspective) */}
           <div
             className="absolute inset-0 rounded-full"
-            style={{
-              transform: 'rotateX(28deg)',
-              transformStyle: 'preserve-3d',
-            }}
+            style={{ transform: 'rotateX(28deg)', transformStyle: 'preserve-3d' }}
           >
             <div
               ref={wheelRef}
@@ -239,7 +225,6 @@ export default function RoulettePage() {
                 <circle cx="50" cy="50" r="50" fill="url(#centerGlow)" />
               </svg>
 
-              {/* Labels dos prêmios */}
               {PRIZES.map((prize, i) => {
                 const mid = i * SEG_ANGLE + SEG_ANGLE / 2 - 90;
                 const r = 34;
@@ -263,7 +248,6 @@ export default function RoulettePage() {
                 );
               })}
 
-              {/* Centro */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div
                   className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center z-10 border-2 border-gold"
@@ -285,8 +269,14 @@ export default function RoulettePage() {
           className="px-10 py-4 gradient-primary text-primary-foreground font-heading rounded-lg disabled:opacity-50 transition-all hover:scale-105 box-glow text-sm tracking-widest relative overflow-hidden"
           style={{ boxShadow: '0 0 30px hsl(0 100% 50% / 0.5)' }}
         >
-          {spinning ? 'GIRANDO...' : willUseFree ? `GIRAR GRÁTIS (${freeSpins})` : 'GIRAR (-10G)'}
+          {spinning ? 'GIRANDO...' : canSpin ? `GIRAR GRÁTIS (${freeSpins})` : 'SEM ROLETAS GRÁTIS'}
         </button>
+
+        {!canSpin && !spinning && (
+          <p className="text-xs text-muted-foreground font-display text-center">
+            Compre giros via Pix abaixo, resgate um código promocional ou aguarde uma premiação.
+          </p>
+        )}
 
         {result !== null && !spinning && (
           <div className="text-center animate-scale-in">
@@ -296,23 +286,22 @@ export default function RoulettePage() {
         )}
       </div>
 
-      {/* Buy Spins */}
       <div className="bg-card rounded-lg neon-border p-5">
         <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2">
           <Gift size={16} /> COMPRAR GIROS
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {SPIN_PACKAGES.map((pkg, i) => (
-            <div key={i} className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg">
-              <div>
-                <p className="font-display text-foreground">{pkg.label}</p>
-                {pkg.bonus > 0 && <p className="text-xs text-gold">+{pkg.bonus} bônus</p>}
+            <div key={i} className="flex items-start justify-between p-4 bg-secondary/50 rounded-lg gap-3">
+              <div className="min-w-0">
+                <p className="font-display text-foreground text-sm">{pkg.spins} {pkg.spins === 1 ? 'Giro' : 'Giros'}{pkg.bonus > 0 && ` + ${pkg.bonus} bônus`}</p>
+                {pkg.extras && <p className="text-[10px] text-gold mt-1 font-display">{pkg.extras}</p>}
               </div>
               <button
                 onClick={() => handleBuySpins(pkg)}
-                className="flex items-center gap-2 px-4 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs"
+                className="flex items-center gap-2 px-3 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs shrink-0"
               >
-                <Copy size={12} /> PIX R${pkg.price}
+                <Copy size={12} /> R${pkg.price.toFixed(2).replace('.', ',')}
               </button>
             </div>
           ))}
@@ -322,7 +311,6 @@ export default function RoulettePage() {
         </p>
       </div>
 
-      {/* Withdraw */}
       <div className="bg-card rounded-lg neon-border p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-heading text-sm text-primary flex items-center gap-2">
