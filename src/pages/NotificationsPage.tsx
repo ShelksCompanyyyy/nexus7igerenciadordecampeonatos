@@ -35,6 +35,20 @@ export default function NotificationsPage() {
 
   useEffect(() => { refetch(); }, [refetch]);
 
+  // Realtime: keep list synced when notifications are created/updated/deleted
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`notifications-page-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => refetch(),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, refetch]);
+
   const handleClick = async (n: Notification) => {
     if (!n.read) {
       await supabase.from('notifications').update({ read: true }).eq('id', n.id);
