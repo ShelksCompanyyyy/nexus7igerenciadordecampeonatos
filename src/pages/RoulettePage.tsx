@@ -1,69 +1,151 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { SPIN_PACKAGES, PIX_KEY, MIN_WITHDRAWAL } from '@/lib/store';
 import { toast } from 'sonner';
 import { Dices, Gift, Copy, Wallet, Sparkles } from 'lucide-react';
 
-// Prêmios visuais (mesma ordem das probabilidades no backend)
+// Prêmios visuais (ordem usada para sortear visualmente; o servidor define o vencedor)
 const PRIZES = [
-  { gold: 5,   label: '5G',   color: 'hsl(0 0% 22%)',     text: 'hsl(0 0% 92%)' },
-  { gold: 10,  label: '10G',  color: 'hsl(0 60% 35%)',    text: 'hsl(0 0% 100%)' },
-  { gold: 15,  label: '15G',  color: 'hsl(0 0% 22%)',     text: 'hsl(0 0% 92%)' },
-  { gold: 20,  label: '20G',  color: 'hsl(0 70% 40%)',    text: 'hsl(0 0% 100%)' },
-  { gold: 25,  label: '25G',  color: 'hsl(200 70% 40%)',  text: 'hsl(0 0% 100%)' },
-  { gold: 50,  label: '50G',  color: 'hsl(140 60% 35%)',  text: 'hsl(0 0% 100%)' },
-  { gold: 100, label: '100G', color: 'hsl(45 100% 50%)',  text: 'hsl(0 0% 10%)' },
-  { gold: 150, label: '150G', color: 'hsl(280 90% 55%)',  text: 'hsl(0 0% 100%)' },
-  { gold: 200, label: '200G', color: 'hsl(0 90% 45%)',    text: 'hsl(0 0% 100%)' },
+  { gold: 5,   label: '5G',   color: 'hsl(0 0% 22%)',     text: 'hsl(0 0% 92%)',  rarity: 'common' },
+  { gold: 10,  label: '10G',  color: 'hsl(0 60% 35%)',    text: 'hsl(0 0% 100%)', rarity: 'common' },
+  { gold: 15,  label: '15G',  color: 'hsl(0 0% 22%)',     text: 'hsl(0 0% 92%)',  rarity: 'common' },
+  { gold: 20,  label: '20G',  color: 'hsl(0 70% 40%)',    text: 'hsl(0 0% 100%)', rarity: 'uncommon' },
+  { gold: 25,  label: '25G',  color: 'hsl(200 70% 40%)',  text: 'hsl(0 0% 100%)', rarity: 'uncommon' },
+  { gold: 50,  label: '50G',  color: 'hsl(140 60% 35%)',  text: 'hsl(0 0% 100%)', rarity: 'rare' },
+  { gold: 100, label: '100G', color: 'hsl(45 100% 50%)',  text: 'hsl(0 0% 10%)',  rarity: 'epic' },
+  { gold: 150, label: '150G', color: 'hsl(280 90% 55%)',  text: 'hsl(0 0% 100%)', rarity: 'epic' },
+  { gold: 200, label: '200G', color: 'hsl(0 90% 45%)',    text: 'hsl(0 0% 100%)', rarity: 'legendary' },
 ];
 
-const SEGMENT_COUNT = PRIZES.length;
-const SEG_ANGLE = 360 / SEGMENT_COUNT;
+const ITEM_WIDTH = 110; // px - matches CSS class w-[110px]
+
+// Build a long shuffled strip with the winning prize placed at a known index
+function buildStrip(winningGold: number, length = 60): { items: typeof PRIZES; winIndex: number } {
+  const items: typeof PRIZES = [];
+  for (let i = 0; i < length; i++) {
+    items.push(PRIZES[Math.floor(Math.random() * PRIZES.length)]);
+  }
+  const winIndex = length - 8; // place winner near end so user sees it pass slowly
+  const winPrize = PRIZES.find(p => p.gold === winningGold) ?? PRIZES[0];
+  items[winIndex] = winPrize;
+  return { items, winIndex };
+}
 
 export default function RoulettePage() {
   const { user, profile, refreshProfile } = useAuth();
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<number | null>(null);
-  const [rotation, setRotation] = useState(0);
+  const [strip, setStrip] = useState<{ items: typeof PRIZES; winIndex: number }>({ items: [], winIndex: 0 });
+  const [offset, setOffset] = useState(0);
+  const [transition, setTransition] = useState<string>('none');
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [glow, setGlow] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tickIntervalRef = useRef<number | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawData, setWithdrawData] = useState({ gameNick: '', username: '', email: '', whatsapp: '', pixKey: '' });
   const [withdrawAmount, setWithdrawAmount] = useState(500);
-  const wheelRef = useRef<HTMLDivElement>(null);
 
   const freeSpins = profile?.free_spins || 0;
   const gold = profile?.gold || 0;
   const canSpin = freeSpins > 0;
 
-  const playStartSound = () => {
+  // Track container width to centre the winning item under the marker
+  useEffect(() => {
+    const update = () => setContainerWidth(containerRef.current?.clientWidth || 0);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  // Build initial filler strip so the carousel isn't empty before first spin
+  const initialFiller = useMemo(() => {
+    return Array.from({ length: 30 }, () => PRIZES[Math.floor(Math.random() * PRIZES.length)]);
+  }, []);
+
+  const ensureCtx = () => {
+    if (!audioCtxRef.current) {
+      try { audioCtxRef.current = new AudioContext(); } catch { /* noop */ }
+    }
+    return audioCtxRef.current;
+  };
+
+  const playTick = (highPitch = false) => {
+    const ctx = ensureCtx();
+    if (!ctx) return;
     try {
-      const ctx = new AudioContext();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.setValueAtTime(180, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 4);
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 4);
-      osc.start(); osc.stop(ctx.currentTime + 4);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(highPitch ? 880 : 620, ctx.currentTime);
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.06);
     } catch { /* noop */ }
   };
 
   const playWinSound = () => {
+    const ctx = ensureCtx();
+    if (!ctx) return;
     try {
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.setValueAtTime(523, ctx.currentTime);
-      osc.frequency.setValueAtTime(659, ctx.currentTime + 0.15);
-      osc.frequency.setValueAtTime(784, ctx.currentTime + 0.3);
-      osc.frequency.setValueAtTime(1046, ctx.currentTime + 0.45);
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.7);
-      osc.start(); osc.stop(ctx.currentTime + 0.7);
+      const notes = [523, 659, 784, 1046];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.12);
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + i * 0.12 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.4);
+        osc.start(ctx.currentTime + i * 0.12);
+        osc.stop(ctx.currentTime + i * 0.12 + 0.4);
+      });
     } catch { /* noop */ }
   };
+
+  const stopTicks = () => {
+    if (tickIntervalRef.current !== null) {
+      window.clearInterval(tickIntervalRef.current);
+      tickIntervalRef.current = null;
+    }
+  };
+
+  // Schedule decelerating ticks while the strip travels
+  const scheduleTicks = (totalDuration: number) => {
+    stopTicks();
+    const start = performance.now();
+    let lastTickAt = start;
+    const tick = () => {
+      const elapsed = performance.now() - start;
+      const t = Math.min(1, elapsed / totalDuration);
+      // tick interval grows exponentially as we slow down (60ms -> 320ms)
+      const interval = 60 + Math.pow(t, 3) * 280;
+      if (performance.now() - lastTickAt >= interval) {
+        playTick(t > 0.85); // higher pitch in the slow-motion final phase
+        lastTickAt = performance.now();
+      }
+      if (t < 1 && tickIntervalRef.current !== null) {
+        tickIntervalRef.current = window.requestAnimationFrame(tick);
+      }
+    };
+    // store rAF id in same ref slot (we just need a cleanup mechanism)
+    tickIntervalRef.current = window.requestAnimationFrame(tick);
+  };
+
+  const stopTicksRAF = () => {
+    if (tickIntervalRef.current !== null) {
+      window.cancelAnimationFrame(tickIntervalRef.current);
+      tickIntervalRef.current = null;
+    }
+  };
+
+  useEffect(() => () => stopTicksRAF(), []);
 
   const handleSpin = async () => {
     if (!user || !profile || spinning) return;
@@ -71,6 +153,7 @@ export default function RoulettePage() {
 
     setSpinning(true);
     setResult(null);
+    setGlow(false);
 
     const { data, error } = await supabase.rpc('spin_roulette');
     if (error || !data) {
@@ -79,28 +162,41 @@ export default function RoulettePage() {
       return;
     }
     const reward = (data as { reward: number }).reward;
-    const prizeIndex = PRIZES.findIndex(p => p.gold === reward);
-    if (prizeIndex < 0) {
-      setSpinning(false);
-      toast.error('Prêmio inválido');
-      return;
-    }
 
-    playStartSound();
-    const baseTurns = 6;
-    const targetAngle = 360 - (prizeIndex * SEG_ANGLE + SEG_ANGLE / 2);
-    const currentMod = ((rotation % 360) + 360) % 360;
-    const delta = ((targetAngle - currentMod) + 360) % 360;
-    const next = rotation + baseTurns * 360 + delta;
-    setRotation(next);
+    // Build strip with winner placed at known index
+    const built = buildStrip(reward);
+    setStrip(built);
 
-    setTimeout(async () => {
-      setSpinning(false);
-      setResult(reward);
-      playWinSound();
-      await refreshProfile();
-      toast.success(`🎉 Você ganhou ${reward}G!`, { duration: 4000 });
-    }, 4200);
+    // Reset position (instant) so the animation always starts from a clean state
+    setTransition('none');
+    setOffset(0);
+
+    // Force layout flush before applying the moving transition
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const center = containerWidth / 2;
+        // Slight jitter inside the winning cell so it doesn't always align dead-centre
+        const jitter = (Math.random() * 0.6 - 0.3) * (ITEM_WIDTH * 0.5);
+        const targetOffset = built.winIndex * ITEM_WIDTH + ITEM_WIDTH / 2 - center + jitter;
+
+        // Two-phase animation via single cubic-bezier that mimics fast cruise -> slow-motion finish
+        const duration = 6.2; // seconds (longer = more slow-mo)
+        setTransition(`transform ${duration}s cubic-bezier(0.08, 0.82, 0.16, 1)`);
+        setOffset(-targetOffset);
+        scheduleTicks(duration * 1000);
+
+        window.setTimeout(async () => {
+          stopTicksRAF();
+          setSpinning(false);
+          setResult(reward);
+          setGlow(true);
+          playWinSound();
+          await refreshProfile();
+          toast.success(`🎉 Você ganhou ${reward}G!`, { duration: 4000 });
+          window.setTimeout(() => setGlow(false), 2500);
+        }, duration * 1000 + 80);
+      });
+    });
   };
 
   const handleBuySpins = async (pkg: typeof SPIN_PACKAGES[0]) => {
@@ -143,6 +239,9 @@ export default function RoulettePage() {
     toast.success('Saque solicitado! Aguarde o ADM liberar o pagamento.');
   };
 
+  // Items currently being rendered: real strip during/after spin, filler before
+  const displayItems = strip.items.length > 0 ? strip.items : initialFiller;
+
   return (
     <div className="space-y-6 animate-slide-up">
       <h1 className="text-2xl font-heading text-primary text-glow flex items-center gap-3">
@@ -166,100 +265,61 @@ export default function RoulettePage() {
         </div>
       </div>
 
+      {/* Horizontal carousel roulette */}
       <div className="flex flex-col items-center gap-6">
-        <div className="relative w-72 h-72 md:w-96 md:h-96" style={{ perspective: '1000px' }}>
-          <div
-            className="absolute inset-0 rounded-full blur-2xl opacity-60 pointer-events-none"
-            style={{
-              background: 'conic-gradient(from 0deg, hsl(0 100% 50% / 0.6), hsl(45 100% 50% / 0.6), hsl(280 100% 60% / 0.6), hsl(0 100% 50% / 0.6))',
-              animation: spinning ? 'spin 2s linear infinite' : 'none',
-            }}
-          />
+        <div
+          ref={containerRef}
+          className="relative w-full max-w-3xl h-40 rounded-xl border-2 border-gold/40 overflow-hidden bg-gradient-to-b from-background via-card to-background"
+          style={{
+            boxShadow: glow
+              ? '0 0 60px hsl(45 100% 50% / 0.7), inset 0 0 40px hsl(45 100% 50% / 0.2)'
+              : '0 0 30px hsl(0 100% 50% / 0.25), inset 0 0 30px rgba(0,0,0,0.6)',
+            transition: 'box-shadow 0.4s ease',
+          }}
+        >
+          {/* Side fades */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-24 z-20 bg-gradient-to-r from-background to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-24 z-20 bg-gradient-to-l from-background to-transparent" />
 
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 z-30">
-            <div className="w-0 h-0 border-l-[14px] border-r-[14px] border-t-[28px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_12px_hsl(45,100%,50%,0.9)]" />
+          {/* Center marker */}
+          <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-[2px] bg-gold z-30 shadow-[0_0_12px_hsl(45,100%,50%,0.9)]" />
+          <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 z-30">
+            <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[14px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_8px_hsl(45,100%,50%,0.9)]" />
+          </div>
+          <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 z-30 rotate-180">
+            <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[14px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_8px_hsl(45,100%,50%,0.9)]" />
           </div>
 
+          {/* Moving strip */}
           <div
-            className="absolute inset-0 rounded-full"
-            style={{ transform: 'rotateX(28deg)', transformStyle: 'preserve-3d' }}
+            className="absolute top-1/2 -translate-y-1/2 flex items-center will-change-transform"
+            style={{
+              transform: `translate3d(${offset}px, 0, 0)`,
+              transition,
+              left: 0,
+            }}
           >
-            <div
-              ref={wheelRef}
-              className="relative w-full h-full rounded-full border-4 border-gold/60 overflow-hidden"
-              style={{
-                transform: `rotate(${rotation}deg)`,
-                transition: spinning
-                  ? 'transform 4.2s cubic-bezier(0.12, 0.72, 0.18, 1)'
-                  : 'none',
-                boxShadow: spinning
-                  ? '0 0 60px hsl(45 100% 50% / 0.6), 0 0 120px hsl(0 100% 50% / 0.4), inset 0 0 40px rgba(0,0,0,0.6)'
-                  : '0 0 30px hsl(0 100% 50% / 0.3), inset 0 0 30px rgba(0,0,0,0.7)',
-              }}
-            >
-              <svg viewBox="0 0 100 100" className="w-full h-full absolute inset-0">
-                <defs>
-                  <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="hsl(45 100% 60% / 0.4)" />
-                    <stop offset="100%" stopColor="hsl(0 0% 0% / 0)" />
-                  </radialGradient>
-                </defs>
-                {PRIZES.map((p, i) => {
-                  const start = i * SEG_ANGLE - 90;
-                  const end = (i + 1) * SEG_ANGLE - 90;
-                  const x1 = 50 + 50 * Math.cos((start * Math.PI) / 180);
-                  const y1 = 50 + 50 * Math.sin((start * Math.PI) / 180);
-                  const x2 = 50 + 50 * Math.cos((end * Math.PI) / 180);
-                  const y2 = 50 + 50 * Math.sin((end * Math.PI) / 180);
-                  const large = SEG_ANGLE > 180 ? 1 : 0;
-                  return (
-                    <path
-                      key={i}
-                      d={`M50,50 L${x1},${y1} A50,50 0 ${large},1 ${x2},${y2} Z`}
-                      fill={p.color}
-                      stroke="hsl(45 100% 50% / 0.5)"
-                      strokeWidth="0.4"
-                    />
-                  );
-                })}
-                <circle cx="50" cy="50" r="50" fill="url(#centerGlow)" />
-              </svg>
-
-              {PRIZES.map((prize, i) => {
-                const mid = i * SEG_ANGLE + SEG_ANGLE / 2 - 90;
-                const r = 34;
-                const x = 50 + r * Math.cos((mid * Math.PI) / 180);
-                const y = 50 + r * Math.sin((mid * Math.PI) / 180);
-                return (
-                  <div
-                    key={i}
-                    className="absolute font-heading text-xs md:text-sm pointer-events-none"
-                    style={{
-                      left: `${x}%`,
-                      top: `${y}%`,
-                      color: prize.text,
-                      transform: `translate(-50%, -50%) rotate(${mid + 90}deg)`,
-                      textShadow: '0 1px 3px rgba(0,0,0,0.9)',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
-                    {prize.label}
-                  </div>
-                );
-              })}
-
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            {displayItems.map((p, i) => {
+              const isWinner = strip.items.length > 0 && i === strip.winIndex && !spinning && result !== null;
+              return (
                 <div
-                  className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center z-10 border-2 border-gold"
+                  key={i}
+                  className="w-[110px] shrink-0 mx-1 h-28 rounded-lg flex flex-col items-center justify-center font-heading transition-transform"
                   style={{
-                    background: 'radial-gradient(circle, hsl(0 0% 8%) 0%, hsl(0 0% 0%) 100%)',
-                    boxShadow: '0 0 20px hsl(45 100% 50% / 0.6)',
+                    background: `linear-gradient(180deg, ${p.color}, hsl(0 0% 8%))`,
+                    color: p.text,
+                    boxShadow: isWinner
+                      ? `0 0 24px ${p.color}, inset 0 0 16px hsl(45 100% 50% / 0.5)`
+                      : 'inset 0 0 12px rgba(0,0,0,0.5)',
+                    border: isWinner ? '2px solid hsl(45 100% 50%)' : '1px solid hsl(0 0% 0% / 0.4)',
+                    transform: isWinner ? 'scale(1.05)' : 'scale(1)',
                   }}
                 >
-                  <span className="font-heading text-gold text-xs md:text-sm tracking-widest">N7i</span>
+                  <span className="text-lg tracking-wide" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{p.label}</span>
+                  <span className="text-[9px] uppercase opacity-80 mt-1 font-display">{p.rarity}</span>
                 </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
 
