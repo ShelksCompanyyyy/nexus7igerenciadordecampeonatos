@@ -33,9 +33,29 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from('notifications').select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id).eq('read', false)
-      .then(({ count }) => setUnreadCount(count || 0));
+
+    const fetchUnread = async () => {
+      const { count } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('read', false);
+      setUnreadCount(count || 0);
+    };
+
+    fetchUnread();
+
+    // Realtime: refetch on any change to this user's notifications
+    const channel = supabase
+      .channel(`notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => fetchUnread(),
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user, location.pathname]);
 
   const handleLogout = async () => {

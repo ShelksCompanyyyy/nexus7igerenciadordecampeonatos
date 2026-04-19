@@ -425,6 +425,24 @@ function ClanUserRow({ user, onRefresh }: { user: DBProfile; onRefresh: () => vo
   const [deaths, setDeaths] = useState(user.deaths || 0);
   const [assists, setAssists] = useState(user.assists || 0);
   const [mvps, setMvps] = useState(user.mvps || 0);
+  const [memberRole, setMemberRole] = useState<'leader' | 'co_leader' | 'member' | null>(null);
+  const [roleLoading, setRoleLoading] = useState(false);
+
+  // Fetch current clan_member role for this user in this clan
+  useEffect(() => {
+    let cancelled = false;
+    if (!user.clan_id) { setMemberRole(null); return; }
+    supabase
+      .from('clan_members')
+      .select('role')
+      .eq('clan_id', user.clan_id)
+      .eq('user_id', user.user_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setMemberRole((data?.role as 'leader' | 'co_leader' | 'member' | undefined) ?? 'member');
+      });
+    return () => { cancelled = true; };
+  }, [user.user_id, user.clan_id]);
 
   const save = async () => {
     const { error } = await supabase.from('profiles').update({ kills, deaths, assists, mvps }).eq('user_id', user.user_id);
@@ -434,19 +452,70 @@ function ClanUserRow({ user, onRefresh }: { user: DBProfile; onRefresh: () => vo
     toast.success('KDA atualizado!');
   };
 
+  const changeRole = async (newRole: 'co_leader' | 'member') => {
+    if (!user.clan_id) return;
+    setRoleLoading(true);
+    const { error } = await supabase.rpc('promote_clan_member', {
+      _target_user: user.user_id,
+      _clan_id: user.clan_id,
+      _new_role: newRole,
+    });
+    setRoleLoading(false);
+    if (error) { toast.error(error.message); return; }
+    setMemberRole(newRole);
+    toast.success(newRole === 'co_leader' ? 'Promovido a Vice-Líder!' : 'Rebaixado a Membro');
+    onRefresh();
+  };
+
+  const isLeader = memberRole === 'leader';
+  const isCoLeader = memberRole === 'co_leader';
+
+  const roleBadge = isLeader
+    ? { label: 'LÍDER', className: 'bg-gold/15 text-gold border-gold/40' }
+    : isCoLeader
+      ? { label: 'VICE', className: 'bg-primary/15 text-primary border-primary/40' }
+      : { label: 'MEMBRO', className: 'bg-secondary text-muted-foreground border-border' };
+
   return (
     <div className="bg-secondary/50 p-4 rounded-lg">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between mb-2 gap-2">
+        <div className="flex items-center gap-3 min-w-0">
           {user.avatar ? <img src={user.avatar} alt="" className="w-8 h-8 rounded-full object-cover" /> :
             <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-heading text-xs text-foreground">{user.game_nick?.[0]?.toUpperCase()}</div>}
-          <div>
-            <p className="font-display text-foreground text-sm">{user.game_nick || user.username}</p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-display text-foreground text-sm truncate">{user.game_nick || user.username}</p>
+              <span className={`text-[9px] font-heading px-1.5 py-0.5 rounded border ${roleBadge.className}`}>{roleBadge.label}</span>
+            </div>
             <p className="text-[10px] text-muted-foreground">ID: #{user.unique_id} | {user.kills || 0}K/{user.deaths || 0}D/{user.assists || 0}A | {user.mvps || 0} MVPs</p>
           </div>
         </div>
-        <button onClick={() => setEditing(!editing)} className="text-primary p-1"><Edit size={14} /></button>
+        <button onClick={() => setEditing(!editing)} className="text-primary p-1 shrink-0"><Edit size={14} /></button>
       </div>
+
+      {/* Promote / demote (hidden for leader) */}
+      {!isLeader && memberRole !== null && (
+        <div className="flex gap-2 mt-2">
+          {isCoLeader ? (
+            <button
+              onClick={() => changeRole('member')}
+              disabled={roleLoading}
+              className="text-[10px] font-heading px-2 py-1 rounded bg-secondary text-muted-foreground border border-border hover:border-destructive/50 hover:text-destructive transition-colors disabled:opacity-50"
+            >
+              ↓ REBAIXAR A MEMBRO
+            </button>
+          ) : (
+            <button
+              onClick={() => changeRole('co_leader')}
+              disabled={roleLoading}
+              className="text-[10px] font-heading px-2 py-1 rounded bg-primary/10 text-primary border border-primary/40 hover:bg-primary/20 transition-colors disabled:opacity-50"
+            >
+              ↑ PROMOVER A VICE-LÍDER
+            </button>
+          )}
+        </div>
+      )}
+
       {editing && (
         <div className="grid grid-cols-5 gap-2 mt-3">
           {[
