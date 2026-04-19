@@ -18,6 +18,7 @@ import ProfilePage from "@/pages/ProfilePage";
 import FriendsPage from "@/pages/FriendsPage";
 import AdminPage from "@/pages/AdminPage";
 import TutorialPage from "@/pages/TutorialPage";
+import NotificationsPage from "@/pages/NotificationsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/friends" element={<FriendsPage />} />
         <Route path="/tutorial" element={<TutorialPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
         {isAdminUser && <Route path="/admin" element={<AdminPage />} />}
         <Route path="*" element={<NotFound />} />
       </Routes>

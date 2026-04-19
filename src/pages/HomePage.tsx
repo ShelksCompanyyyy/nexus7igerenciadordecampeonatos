@@ -65,14 +65,17 @@ export default function HomePage() {
 
       {notifications.length > 0 && (
         <div className="space-y-2">
-          <h3 className="font-heading text-xs text-primary flex items-center gap-2">🔔 NOTIFICAÇÕES ({notifications.length})</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-heading text-xs text-primary flex items-center gap-2">🔔 NOTIFICAÇÕES ({notifications.length})</h3>
+            <Link to="/notifications" className="text-[10px] text-primary font-display hover:underline">Ver todas →</Link>
+          </div>
           {notifications.slice(0, 3).map(n => (
-            <div key={n.id} className={`p-3 rounded-lg border text-sm font-display ${
+            <Link key={n.id} to="/notifications" className={`block p-3 rounded-lg border text-sm font-display hover:border-primary/60 transition-all ${
               n.type === 'withdrawal' ? 'border-gold/30 bg-gold/5' : 'border-primary/30 bg-primary/5'
             }`}>
               <p className="font-heading text-xs text-foreground">{n.title}</p>
               <p className="text-xs text-muted-foreground mt-1">{n.message}</p>
-            </div>
+            </Link>
           ))}
         </div>
       )}

@@ -104,7 +104,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-gold text-xs font-display">{profile?.gold || 0}G</span>
-            <button onClick={() => navigate('/')} className="relative text-foreground">
+            <button onClick={() => navigate('/notifications')} className="relative text-foreground" aria-label="Notificações">
               <Bell size={20} />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full text-[9px] text-primary-foreground flex items-center justify-center font-heading animate-pulse">
