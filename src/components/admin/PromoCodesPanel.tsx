@@ -1,12 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
-import { Gift, Plus, Trash, Power, PowerOff } from 'lucide-react';
+import { Gift, Plus, Trash, Power, PowerOff, Coins, Sparkles } from 'lucide-react';
 
 interface PromoCode {
   id: string;
   code: string;
   reward: number;
+  reward_type: 'gold' | 'free_spins';
+  free_spins: number;
   uses: number;
   max_uses: number | null;
   expires_at: string | null;
@@ -19,7 +21,9 @@ export default function PromoCodesPanel() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formCode, setFormCode] = useState('');
+  const [formType, setFormType] = useState<'gold' | 'free_spins'>('gold');
   const [formReward, setFormReward] = useState(50);
+  const [formFreeSpins, setFormFreeSpins] = useState(1);
   const [formMaxUses, setFormMaxUses] = useState<string>('');
 
   const refetch = useCallback(async () => {
@@ -32,23 +36,22 @@ export default function PromoCodesPanel() {
   useEffect(() => { refetch(); }, [refetch]);
 
   const create = async () => {
-    if (!formCode.trim() || formReward <= 0) {
-      toast.error('Preencha código e recompensa');
-      return;
-    }
-    const payload: {
-      code: string;
-      reward: number;
-      max_uses?: number | null;
-    } = {
+    if (!formCode.trim()) { toast.error('Informe o código'); return; }
+    if (formType === 'gold' && formReward <= 0) { toast.error('Recompensa em Gold inválida'); return; }
+    if (formType === 'free_spins' && formFreeSpins <= 0) { toast.error('Quantidade de roletas inválida'); return; }
+
+    const payload = {
       code: formCode.trim().toUpperCase(),
-      reward: formReward,
+      reward_type: formType,
+      reward: formType === 'gold' ? formReward : 0,
+      free_spins: formType === 'free_spins' ? formFreeSpins : 0,
       max_uses: formMaxUses ? parseInt(formMaxUses, 10) : null,
     };
-    const { error } = await supabase.from('promo_codes').insert(payload);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from('promo_codes').insert(payload);
     if (error) { toast.error(error.message); return; }
     toast.success('Código criado!');
-    setFormCode(''); setFormReward(50); setFormMaxUses(''); setShowForm(false);
+    setFormCode(''); setFormReward(50); setFormFreeSpins(1); setFormMaxUses(''); setShowForm(false);
     refetch();
   };
 
@@ -84,12 +87,39 @@ export default function PromoCodesPanel() {
               placeholder="EX: BONUS50"
               className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm uppercase tracking-wider" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] text-muted-foreground font-display">RECOMPENSA (GOLD)</label>
-              <input type="number" min={1} value={formReward} onChange={e => setFormReward(parseInt(e.target.value, 10) || 0)}
-                className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm" />
+
+          <div>
+            <label className="text-[10px] text-muted-foreground font-display block mb-1">TIPO DE RECOMPENSA</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setFormType('gold')}
+                className={`p-3 rounded font-heading text-xs flex items-center justify-center gap-2 border transition-all ${
+                  formType === 'gold' ? 'bg-gold/20 border-gold/50 text-gold' : 'bg-secondary border-border text-muted-foreground'
+                }`}>
+                <Coins size={14} /> GOLD
+              </button>
+              <button type="button" onClick={() => setFormType('free_spins')}
+                className={`p-3 rounded font-heading text-xs flex items-center justify-center gap-2 border transition-all ${
+                  formType === 'free_spins' ? 'bg-primary/20 border-primary/50 text-primary' : 'bg-secondary border-border text-muted-foreground'
+                }`}>
+                <Sparkles size={14} /> ROLETAS GRÁTIS
+              </button>
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {formType === 'gold' ? (
+              <div>
+                <label className="text-[10px] text-muted-foreground font-display">RECOMPENSA (GOLD)</label>
+                <input type="number" min={1} value={formReward} onChange={e => setFormReward(parseInt(e.target.value, 10) || 0)}
+                  className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm" />
+              </div>
+            ) : (
+              <div>
+                <label className="text-[10px] text-muted-foreground font-display">QTD DE ROLETAS GRÁTIS</label>
+                <input type="number" min={1} value={formFreeSpins} onChange={e => setFormFreeSpins(parseInt(e.target.value, 10) || 0)}
+                  className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm" />
+              </div>
+            )}
             <div>
               <label className="text-[10px] text-muted-foreground font-display">USOS MÁX (vazio = ∞)</label>
               <input type="number" min={1} value={formMaxUses} onChange={e => setFormMaxUses(e.target.value)}
@@ -114,7 +144,11 @@ export default function PromoCodesPanel() {
             <div className="min-w-0">
               <p className="font-heading text-sm text-foreground tracking-wider">{c.code}</p>
               <p className="text-[10px] text-muted-foreground font-display">
-                +{c.reward}G • {c.uses}/{c.max_uses ?? '∞'} usos
+                {c.reward_type === 'free_spins'
+                  ? <>+{c.free_spins} 🎰 roleta(s) grátis</>
+                  : <>+{c.reward}G</>
+                }
+                {' • '}{c.uses}/{c.max_uses ?? '∞'} usos
                 {!c.is_active && ' • DESATIVADO'}
               </p>
             </div>

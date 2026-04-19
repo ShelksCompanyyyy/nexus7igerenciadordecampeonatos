@@ -18,8 +18,12 @@ export default function PromoCodeRedeem() {
       toast.error(error.message);
       return;
     }
-    const result = data as { reward: number; code: string } | null;
-    toast.success(`+${result?.reward ?? 0}G resgatados! 🎁`);
+    const result = data as { reward_type?: string; reward?: number; free_spins?: number; code?: string } | null;
+    if (result?.reward_type === 'free_spins') {
+      toast.success(`+${result?.free_spins ?? 0} roleta(s) grátis! 🎰`);
+    } else {
+      toast.success(`+${result?.reward ?? 0}G resgatados! 🎁`);
+    }
     setCode('');
     await refreshProfile();
   };

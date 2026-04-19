@@ -855,7 +855,40 @@ function SuperClansTab({ clans, users, onRefresh }: { clans: DBClan[]; users: DB
 
 function SuperUsersTab({ users, clans, onRefresh }: { users: DBProfile[]; clans: DBClan[]; onRefresh: () => void }) {
   const [search, setSearch] = useState('');
+  const [teams, setTeams] = useState<DBTeam[]>([]);
+  useEffect(() => {
+    supabase.from('teams').select('*').then(({ data }) => setTeams((data || []) as DBTeam[]));
+  }, []);
   const filtered = users.filter(u => (u.username || '').toLowerCase().includes(search.toLowerCase()) || (u.game_nick || '').toLowerCase().includes(search.toLowerCase()));
+
+  const zeroGold = async (u: DBProfile) => {
+    if (!confirm(`Zerar Gold de ${u.username}?`)) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.rpc as any)('reset_user_golds', { _user_id: u.user_id, _exclude_admins: false, _clan_id: null });
+    if (error) { toast.error(error.message); return; }
+    onRefresh(); toast.success(`Gold zerado: ${u.username}`);
+  };
+
+  const deleteAccount = async (u: DBProfile) => {
+    if (!confirm(`EXCLUIR a conta de ${u.username}? Esta ação é irreversível.`)) return;
+    const { error } = await supabase.functions.invoke('admin-delete-user', { body: { user_id: u.user_id } });
+    if (error) { toast.error(error.message); return; }
+    onRefresh(); toast.success('Conta excluída');
+  };
+
+  const transferClan = async (u: DBProfile, newClanId: string) => {
+    const payload: { clan_id: string | null; team_id: null } = { clan_id: newClanId || null, team_id: null };
+    const { error } = await supabase.from('profiles').update(payload).eq('user_id', u.user_id);
+    if (error) { toast.error(error.message); return; }
+    onRefresh(); toast.success('Clã transferido');
+  };
+
+  const transferTeam = async (u: DBProfile, newTeamId: string) => {
+    const { error } = await supabase.from('profiles').update({ team_id: newTeamId || null }).eq('user_id', u.user_id);
+    if (error) { toast.error(error.message); return; }
+    onRefresh(); toast.success('Line atualizada');
+  };
+
   return (
     <div className="space-y-4">
       <div className="relative">
@@ -865,11 +898,36 @@ function SuperUsersTab({ users, clans, onRefresh }: { users: DBProfile[]; clans:
       </div>
       {filtered.map(u => {
         const clan = clans.find(c => c.id === u.clan_id);
+        const userTeams = teams.filter(t => t.clan_id === u.clan_id);
         return (
-          <div key={u.id} className="bg-secondary/50 p-3 rounded-lg flex items-center justify-between">
-            <div>
-              <p className="font-display text-foreground text-sm">{u.username} ({u.game_nick})</p>
-              <p className="text-[10px] text-muted-foreground">#{u.unique_id} | {clan?.name || 'Sem clã'} | {u.gold || 0}G</p>
+          <div key={u.id} className="bg-secondary/50 p-3 rounded-lg space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-display text-foreground text-sm truncate">{u.username} ({u.game_nick})</p>
+                <p className="text-[10px] text-muted-foreground">#{u.unique_id} | {clan?.name || 'Sem clã'} | {u.gold || 0}G</p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => zeroGold(u)} title="Zerar Gold"
+                  className="px-2 py-1 bg-warning/10 text-warning border border-warning/30 rounded font-heading text-[10px]">
+                  ZERAR G
+                </button>
+                <button onClick={() => deleteAccount(u)} title="Excluir conta"
+                  className="p-1.5 bg-destructive/10 text-destructive border border-destructive/30 rounded">
+                  <Trash size={12} />
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <select value={u.clan_id || ''} onChange={e => transferClan(u, e.target.value)}
+                className="p-2 bg-background rounded border border-border text-foreground font-display text-xs">
+                <option value="">Sem clã</option>
+                {clans.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <select value={u.team_id || ''} onChange={e => transferTeam(u, e.target.value)} disabled={!u.clan_id}
+                className="p-2 bg-background rounded border border-border text-foreground font-display text-xs disabled:opacity-50">
+                <option value="">Sem line</option>
+                {userTeams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
             </div>
           </div>
         );
