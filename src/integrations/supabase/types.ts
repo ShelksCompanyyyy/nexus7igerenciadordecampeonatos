@@ -466,10 +466,12 @@ export type Database = {
           created_at: string
           created_by: string | null
           expires_at: string | null
+          free_spins: number
           id: string
           is_active: boolean
           max_uses: number | null
           reward: number
+          reward_type: string
           uses: number
         }
         Insert: {
@@ -477,10 +479,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
+          free_spins?: number
           id?: string
           is_active?: boolean
           max_uses?: number | null
           reward?: number
+          reward_type?: string
           uses?: number
         }
         Update: {
@@ -488,10 +492,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
+          free_spins?: number
           id?: string
           is_active?: boolean
           max_uses?: number | null
           reward?: number
+          reward_type?: string
           uses?: number
         }
         Relationships: []
@@ -784,6 +790,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_user: { Args: { _target_user: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -804,10 +811,19 @@ export type Database = {
         Returns: Json
       }
       redeem_promo_code: { Args: { _code: string }; Returns: Json }
-      reset_user_golds: {
-        Args: { _clan_id?: string; _exclude_admins?: boolean }
-        Returns: number
-      }
+      reset_user_golds:
+        | {
+            Args: { _clan_id?: string; _exclude_admins?: boolean }
+            Returns: number
+          }
+        | {
+            Args: {
+              _clan_id?: string
+              _exclude_admins?: boolean
+              _user_id?: string
+            }
+            Returns: number
+          }
       spin_roulette: { Args: never; Returns: Json }
     }
     Enums: {
