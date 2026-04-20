@@ -3,33 +3,40 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { SPIN_PACKAGES, PIX_KEY, MIN_WITHDRAWAL } from '@/lib/store';
 import { toast } from 'sonner';
-import { Dices, Gift, Copy, Wallet, Sparkles } from 'lucide-react';
+import { Dices, Gift, Copy, Wallet, Sparkles, History, Crown } from 'lucide-react';
 
-// Prêmios visuais (ordem usada para sortear visualmente; o servidor define o vencedor)
+// Prêmios — ÍNDICES devem bater 1:1 com winner_index retornado pelo RPC spin_roulette
 const PRIZES = [
-  { gold: 5,   label: '5G',   color: 'hsl(0 0% 22%)',     text: 'hsl(0 0% 92%)',  rarity: 'common' },
-  { gold: 10,  label: '10G',  color: 'hsl(0 60% 35%)',    text: 'hsl(0 0% 100%)', rarity: 'common' },
-  { gold: 15,  label: '15G',  color: 'hsl(0 0% 22%)',     text: 'hsl(0 0% 92%)',  rarity: 'common' },
-  { gold: 20,  label: '20G',  color: 'hsl(0 70% 40%)',    text: 'hsl(0 0% 100%)', rarity: 'uncommon' },
-  { gold: 25,  label: '25G',  color: 'hsl(200 70% 40%)',  text: 'hsl(0 0% 100%)', rarity: 'uncommon' },
-  { gold: 50,  label: '50G',  color: 'hsl(140 60% 35%)',  text: 'hsl(0 0% 100%)', rarity: 'rare' },
-  { gold: 100, label: '100G', color: 'hsl(45 100% 50%)',  text: 'hsl(0 0% 10%)',  rarity: 'epic' },
-  { gold: 150, label: '150G', color: 'hsl(280 90% 55%)',  text: 'hsl(0 0% 100%)', rarity: 'epic' },
-  { gold: 200, label: '200G', color: 'hsl(0 90% 45%)',    text: 'hsl(0 0% 100%)', rarity: 'legendary' },
+  { gold: 5,   label: '5G',   color: 'hsl(0 0% 22%)',     text: 'hsl(0 0% 92%)',  rarity: 'common' },     // 0
+  { gold: 10,  label: '10G',  color: 'hsl(0 60% 35%)',    text: 'hsl(0 0% 100%)', rarity: 'common' },     // 1
+  { gold: 15,  label: '15G',  color: 'hsl(0 0% 22%)',     text: 'hsl(0 0% 92%)',  rarity: 'common' },     // 2
+  { gold: 20,  label: '20G',  color: 'hsl(0 70% 40%)',    text: 'hsl(0 0% 100%)', rarity: 'uncommon' },   // 3
+  { gold: 25,  label: '25G',  color: 'hsl(200 70% 40%)',  text: 'hsl(0 0% 100%)', rarity: 'uncommon' },   // 4
+  { gold: 50,  label: '50G',  color: 'hsl(140 60% 35%)',  text: 'hsl(0 0% 100%)', rarity: 'rare' },       // 5
+  { gold: 100, label: '100G', color: 'hsl(45 100% 50%)',  text: 'hsl(0 0% 10%)',  rarity: 'epic' },       // 6
+  { gold: 150, label: '150G', color: 'hsl(280 90% 55%)',  text: 'hsl(0 0% 100%)', rarity: 'epic' },       // 7
+  { gold: 200, label: '200G', color: 'hsl(0 90% 45%)',    text: 'hsl(0 0% 100%)', rarity: 'legendary' },  // 8
 ];
 
-const ITEM_WIDTH = 110; // px - matches CSS class w-[110px]
+const ITEM_WIDTH = 110; // px - matches w-[110px]
 
-// Build a long shuffled strip with the winning prize placed at a known index
-function buildStrip(winningGold: number, length = 60): { items: typeof PRIZES; winIndex: number } {
+// Build strip with the WINNER placed at exact index using server-provided winner_index
+function buildStrip(winnerIndex: number, length = 60): { items: typeof PRIZES; winIndex: number } {
   const items: typeof PRIZES = [];
   for (let i = 0; i < length; i++) {
     items.push(PRIZES[Math.floor(Math.random() * PRIZES.length)]);
   }
-  const winIndex = length - 8; // place winner near end so user sees it pass slowly
-  const winPrize = PRIZES.find(p => p.gold === winningGold) ?? PRIZES[0];
-  items[winIndex] = winPrize;
-  return { items, winIndex };
+  const winIdx = length - 8;
+  items[winIdx] = PRIZES[winnerIndex] ?? PRIZES[0];
+  return { items, winIndex: winIdx };
+}
+
+interface SpinHistoryRow {
+  id: string;
+  user_id: string;
+  reward: number;
+  created_at: string;
+  username?: string;
 }
 
 export default function RoulettePage() {
@@ -41,8 +48,10 @@ export default function RoulettePage() {
   const [transition, setTransition] = useState<string>('none');
   const [containerWidth, setContainerWidth] = useState(0);
   const [glow, setGlow] = useState(false);
+  const [legendaryBurst, setLegendaryBurst] = useState(false);
+  const [history, setHistory] = useState<SpinHistoryRow[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
-  const tickIntervalRef = useRef<number | null>(null);
+  const tickRafRef = useRef<number | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   const [showWithdraw, setShowWithdraw] = useState(false);
@@ -53,7 +62,7 @@ export default function RoulettePage() {
   const gold = profile?.gold || 0;
   const canSpin = freeSpins > 0;
 
-  // Track container width to centre the winning item under the marker
+  // ===== Container measurement =====
   useEffect(() => {
     const update = () => setContainerWidth(containerRef.current?.clientWidth || 0);
     update();
@@ -61,11 +70,38 @@ export default function RoulettePage() {
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  // Build initial filler strip so the carousel isn't empty before first spin
-  const initialFiller = useMemo(() => {
-    return Array.from({ length: 30 }, () => PRIZES[Math.floor(Math.random() * PRIZES.length)]);
+  const initialFiller = useMemo(
+    () => Array.from({ length: 30 }, () => PRIZES[Math.floor(Math.random() * PRIZES.length)]),
+    [],
+  );
+
+  // ===== Spin history (realtime) =====
+  const loadHistory = async () => {
+    const { data: spins } = await supabase
+      .from('spins')
+      .select('id, user_id, reward, created_at')
+      .order('created_at', { ascending: false })
+      .limit(15);
+    if (!spins) return;
+    const userIds = Array.from(new Set(spins.map(s => s.user_id)));
+    const { data: profs } = await supabase
+      .from('profiles')
+      .select('user_id, game_nick, username')
+      .in('user_id', userIds);
+    const map = new Map(profs?.map(p => [p.user_id, p.game_nick || p.username]) || []);
+    setHistory(spins.map(s => ({ ...s, username: map.get(s.user_id) || 'Jogador' })));
+  };
+
+  useEffect(() => {
+    loadHistory();
+    const channel = supabase
+      .channel('spins-feed')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'spins' }, () => loadHistory())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // ===== Audio =====
   const ensureCtx = () => {
     if (!audioCtxRef.current) {
       try { audioCtxRef.current = new AudioContext(); } catch { /* noop */ }
@@ -109,43 +145,79 @@ export default function RoulettePage() {
     } catch { /* noop */ }
   };
 
-  const stopTicks = () => {
-    if (tickIntervalRef.current !== null) {
-      window.clearInterval(tickIntervalRef.current);
-      tickIntervalRef.current = null;
-    }
+  // Som ÉPICO/LENDÁRIO para 50G+ — fanfarra grave + brilho agudo
+  const playEpicWinSound = () => {
+    const ctx = ensureCtx();
+    if (!ctx) return;
+    try {
+      // Bass impact
+      const bass = ctx.createOscillator();
+      const bassGain = ctx.createGain();
+      bass.connect(bassGain); bassGain.connect(ctx.destination);
+      bass.type = 'sawtooth';
+      bass.frequency.setValueAtTime(80, ctx.currentTime);
+      bass.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.6);
+      bassGain.gain.setValueAtTime(0.001, ctx.currentTime);
+      bassGain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+      bassGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+      bass.start(); bass.stop(ctx.currentTime + 1.3);
+
+      // Heroic chord arpeggio (C major triad up)
+      const heroic = [392, 523, 659, 784, 1046, 1318];
+      heroic.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + 0.1 + i * 0.08);
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime + 0.1 + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + 0.12 + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7 + i * 0.08);
+        osc.start(ctx.currentTime + 0.1 + i * 0.08);
+        osc.stop(ctx.currentTime + 0.8 + i * 0.08);
+      });
+
+      // Final shimmer
+      const shimmer = ctx.createOscillator();
+      const shimmerGain = ctx.createGain();
+      shimmer.connect(shimmerGain); shimmerGain.connect(ctx.destination);
+      shimmer.type = 'sine';
+      shimmer.frequency.setValueAtTime(1568, ctx.currentTime + 0.7);
+      shimmer.frequency.exponentialRampToValueAtTime(2637, ctx.currentTime + 1.4);
+      shimmerGain.gain.setValueAtTime(0.0001, ctx.currentTime + 0.7);
+      shimmerGain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.75);
+      shimmerGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+      shimmer.start(ctx.currentTime + 0.7);
+      shimmer.stop(ctx.currentTime + 1.5);
+    } catch { /* noop */ }
   };
 
-  // Schedule decelerating ticks while the strip travels
   const scheduleTicks = (totalDuration: number) => {
-    stopTicks();
+    if (tickRafRef.current !== null) cancelAnimationFrame(tickRafRef.current);
     const start = performance.now();
     let lastTickAt = start;
     const tick = () => {
       const elapsed = performance.now() - start;
       const t = Math.min(1, elapsed / totalDuration);
-      // tick interval grows exponentially as we slow down (60ms -> 320ms)
       const interval = 60 + Math.pow(t, 3) * 280;
       if (performance.now() - lastTickAt >= interval) {
-        playTick(t > 0.85); // higher pitch in the slow-motion final phase
+        playTick(t > 0.85);
         lastTickAt = performance.now();
       }
-      if (t < 1 && tickIntervalRef.current !== null) {
-        tickIntervalRef.current = window.requestAnimationFrame(tick);
+      if (t < 1) {
+        tickRafRef.current = requestAnimationFrame(tick);
       }
     };
-    // store rAF id in same ref slot (we just need a cleanup mechanism)
-    tickIntervalRef.current = window.requestAnimationFrame(tick);
+    tickRafRef.current = requestAnimationFrame(tick);
   };
 
-  const stopTicksRAF = () => {
-    if (tickIntervalRef.current !== null) {
-      window.cancelAnimationFrame(tickIntervalRef.current);
-      tickIntervalRef.current = null;
+  const stopTicks = () => {
+    if (tickRafRef.current !== null) {
+      cancelAnimationFrame(tickRafRef.current);
+      tickRafRef.current = null;
     }
   };
-
-  useEffect(() => () => stopTicksRAF(), []);
+  useEffect(() => () => stopTicks(), []);
 
   const handleSpin = async () => {
     if (!user || !profile || spinning) return;
@@ -154,6 +226,7 @@ export default function RoulettePage() {
     setSpinning(true);
     setResult(null);
     setGlow(false);
+    setLegendaryBurst(false);
 
     const { data, error } = await supabase.rpc('spin_roulette');
     if (error || !data) {
@@ -161,36 +234,42 @@ export default function RoulettePage() {
       toast.error(error?.message || 'Erro ao girar');
       return;
     }
-    const reward = (data as { reward: number }).reward;
+    const reward = (data as { reward: number; winner_index: number }).reward;
+    const winnerIndex = (data as { reward: number; winner_index: number }).winner_index;
 
-    // Build strip with winner placed at known index
-    const built = buildStrip(reward);
+    // Build strip with EXACT winner from server
+    const built = buildStrip(winnerIndex);
     setStrip(built);
 
-    // Reset position (instant) so the animation always starts from a clean state
     setTransition('none');
     setOffset(0);
 
-    // Force layout flush before applying the moving transition
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const center = containerWidth / 2;
-        // Slight jitter inside the winning cell so it doesn't always align dead-centre
-        const jitter = (Math.random() * 0.6 - 0.3) * (ITEM_WIDTH * 0.5);
+        // Pequeno jitter dentro da célula (sem estourar para item vizinho)
+        const jitter = (Math.random() * 0.4 - 0.2) * (ITEM_WIDTH * 0.4);
         const targetOffset = built.winIndex * ITEM_WIDTH + ITEM_WIDTH / 2 - center + jitter;
 
-        // Two-phase animation via single cubic-bezier that mimics fast cruise -> slow-motion finish
-        const duration = 6.2; // seconds (longer = more slow-mo)
+        const duration = 6.2;
         setTransition(`transform ${duration}s cubic-bezier(0.08, 0.82, 0.16, 1)`);
         setOffset(-targetOffset);
         scheduleTicks(duration * 1000);
 
         window.setTimeout(async () => {
-          stopTicksRAF();
+          stopTicks();
           setSpinning(false);
           setResult(reward);
           setGlow(true);
-          playWinSound();
+
+          if (reward >= 50) {
+            playEpicWinSound();
+            setLegendaryBurst(true);
+            window.setTimeout(() => setLegendaryBurst(false), 2800);
+          } else {
+            playWinSound();
+          }
+
           await refreshProfile();
           toast.success(`🎉 Você ganhou ${reward}G!`, { duration: 4000 });
           window.setTimeout(() => setGlow(false), 2500);
@@ -239,8 +318,16 @@ export default function RoulettePage() {
     toast.success('Saque solicitado! Aguarde o ADM liberar o pagamento.');
   };
 
-  // Items currently being rendered: real strip during/after spin, filler before
   const displayItems = strip.items.length > 0 ? strip.items : initialFiller;
+
+  // Generate 24 particles for legendary burst
+  const particles = useMemo(() => Array.from({ length: 24 }, (_, i) => ({
+    id: i,
+    angle: (i / 24) * Math.PI * 2,
+    distance: 100 + Math.random() * 140,
+    delay: Math.random() * 0.2,
+    duration: 1.4 + Math.random() * 0.8,
+  })), []);
 
   return (
     <div className="space-y-6 animate-slide-up">
@@ -265,62 +352,89 @@ export default function RoulettePage() {
         </div>
       </div>
 
-      {/* Horizontal carousel roulette */}
+      {/* Horizontal carousel + legendary burst overlay */}
       <div className="flex flex-col items-center gap-6">
-        <div
-          ref={containerRef}
-          className="relative w-full max-w-3xl h-40 rounded-xl border-2 border-gold/40 overflow-hidden bg-gradient-to-b from-background via-card to-background"
-          style={{
-            boxShadow: glow
-              ? '0 0 60px hsl(45 100% 50% / 0.7), inset 0 0 40px hsl(45 100% 50% / 0.2)'
-              : '0 0 30px hsl(0 100% 50% / 0.25), inset 0 0 30px rgba(0,0,0,0.6)',
-            transition: 'box-shadow 0.4s ease',
-          }}
-        >
-          {/* Side fades */}
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-24 z-20 bg-gradient-to-r from-background to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-24 z-20 bg-gradient-to-l from-background to-transparent" />
-
-          {/* Center marker */}
-          <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-[2px] bg-gold z-30 shadow-[0_0_12px_hsl(45,100%,50%,0.9)]" />
-          <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 z-30">
-            <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[14px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_8px_hsl(45,100%,50%,0.9)]" />
-          </div>
-          <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 z-30 rotate-180">
-            <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[14px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_8px_hsl(45,100%,50%,0.9)]" />
-          </div>
-
-          {/* Moving strip */}
+        <div className="relative w-full max-w-3xl">
           <div
-            className="absolute top-1/2 -translate-y-1/2 flex items-center will-change-transform"
+            ref={containerRef}
+            className="relative w-full h-40 rounded-xl border-2 border-gold/40 overflow-hidden bg-gradient-to-b from-background via-card to-background"
             style={{
-              transform: `translate3d(${offset}px, 0, 0)`,
-              transition,
-              left: 0,
+              boxShadow: glow
+                ? (result !== null && result >= 50
+                  ? '0 0 80px hsl(0 100% 50% / 0.9), inset 0 0 50px hsl(0 100% 50% / 0.35)'
+                  : '0 0 60px hsl(45 100% 50% / 0.7), inset 0 0 40px hsl(45 100% 50% / 0.2)')
+                : '0 0 30px hsl(0 100% 50% / 0.25), inset 0 0 30px rgba(0,0,0,0.6)',
+              transition: 'box-shadow 0.4s ease',
             }}
           >
-            {displayItems.map((p, i) => {
-              const isWinner = strip.items.length > 0 && i === strip.winIndex && !spinning && result !== null;
-              return (
-                <div
-                  key={i}
-                  className="w-[110px] shrink-0 mx-1 h-28 rounded-lg flex flex-col items-center justify-center font-heading transition-transform"
-                  style={{
-                    background: `linear-gradient(180deg, ${p.color}, hsl(0 0% 8%))`,
-                    color: p.text,
-                    boxShadow: isWinner
-                      ? `0 0 24px ${p.color}, inset 0 0 16px hsl(45 100% 50% / 0.5)`
-                      : 'inset 0 0 12px rgba(0,0,0,0.5)',
-                    border: isWinner ? '2px solid hsl(45 100% 50%)' : '1px solid hsl(0 0% 0% / 0.4)',
-                    transform: isWinner ? 'scale(1.05)' : 'scale(1)',
-                  }}
-                >
-                  <span className="text-lg tracking-wide" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{p.label}</span>
-                  <span className="text-[9px] uppercase opacity-80 mt-1 font-display">{p.rarity}</span>
-                </div>
-              );
-            })}
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-24 z-20 bg-gradient-to-r from-background to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-24 z-20 bg-gradient-to-l from-background to-transparent" />
+
+            <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-[2px] bg-gold z-30 shadow-[0_0_12px_hsl(45,100%,50%,0.9)]" />
+            <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 z-30">
+              <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[14px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_8px_hsl(45,100%,50%,0.9)]" />
+            </div>
+            <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 z-30 rotate-180">
+              <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[14px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_8px_hsl(45,100%,50%,0.9)]" />
+            </div>
+
+            <div
+              className="absolute top-1/2 -translate-y-1/2 flex items-center will-change-transform"
+              style={{
+                transform: `translate3d(${offset}px, 0, 0)`,
+                transition,
+                left: 0,
+              }}
+            >
+              {displayItems.map((p, i) => {
+                const isWinner = strip.items.length > 0 && i === strip.winIndex && !spinning && result !== null;
+                return (
+                  <div
+                    key={i}
+                    className="w-[110px] shrink-0 mx-1 h-28 rounded-lg flex flex-col items-center justify-center font-heading transition-transform"
+                    style={{
+                      background: `linear-gradient(180deg, ${p.color}, hsl(0 0% 8%))`,
+                      color: p.text,
+                      boxShadow: isWinner
+                        ? `0 0 24px ${p.color}, inset 0 0 16px hsl(45 100% 50% / 0.5)`
+                        : 'inset 0 0 12px rgba(0,0,0,0.5)',
+                      border: isWinner ? '2px solid hsl(45 100% 50%)' : '1px solid hsl(0 0% 0% / 0.4)',
+                      transform: isWinner ? 'scale(1.05)' : 'scale(1)',
+                    }}
+                  >
+                    <span className="text-lg tracking-wide" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{p.label}</span>
+                    <span className="text-[9px] uppercase opacity-80 mt-1 font-display">{p.rarity}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+
+          {/* Legendary fireworks overlay (50G+) */}
+          {legendaryBurst && (
+            <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
+              <div className="absolute inset-0 bg-destructive/15 mix-blend-screen animate-pulse rounded-xl" />
+              {particles.map(p => {
+                const x = Math.cos(p.angle) * p.distance;
+                const y = Math.sin(p.angle) * p.distance;
+                return (
+                  <span
+                    key={p.id}
+                    className="absolute left-1/2 top-1/2 w-2 h-2 rounded-full bg-destructive"
+                    style={{
+                      boxShadow: '0 0 12px hsl(0 100% 55%), 0 0 24px hsl(0 100% 55% / 0.6)',
+                      animation: `firework-${p.id} ${p.duration}s ease-out ${p.delay}s forwards`,
+                    }}
+                  />
+                );
+              })}
+              <style>{particles.map(p => {
+                const x = Math.cos(p.angle) * p.distance;
+                const y = Math.sin(p.angle) * p.distance;
+                return `@keyframes firework-${p.id}{0%{transform:translate(-50%,-50%) scale(1);opacity:1}100%{transform:translate(calc(${x}px - 50%), calc(${y}px - 50%)) scale(0.2);opacity:0}}`;
+              }).join('')}</style>
+            </div>
+          )}
         </div>
 
         <button
@@ -340,10 +454,44 @@ export default function RoulettePage() {
 
         {result !== null && !spinning && (
           <div className="text-center animate-scale-in">
-            <p className="text-3xl font-heading text-gold text-glow-gold">🎉 +{result}G!</p>
+            <p className={`text-3xl font-heading text-glow ${result >= 50 ? 'text-destructive' : 'text-gold'}`}>
+              🎉 +{result}G! {result >= 50 && '⚡ LENDÁRIO'}
+            </p>
             <p className="text-xs text-muted-foreground font-display mt-1">Resultado validado pelo servidor</p>
           </div>
         )}
+      </div>
+
+      {/* Histórico realtime da comunidade */}
+      <div className="bg-card rounded-lg neon-border p-5">
+        <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2">
+          <History size={16} /> GIROS RECENTES DA COMUNIDADE
+        </h3>
+        <div className="space-y-2 max-h-72 overflow-y-auto">
+          {history.length === 0 && (
+            <p className="text-center text-muted-foreground text-sm font-display">Nenhum giro registrado ainda</p>
+          )}
+          {history.map(h => (
+            <div key={h.id} className={`flex items-center justify-between p-2 rounded-md font-display text-xs ${
+              h.reward >= 100 ? 'bg-destructive/10 border border-destructive/30' :
+              h.reward >= 50 ? 'bg-gold/10 border border-gold/30' :
+              'bg-secondary/40'
+            }`}>
+              <div className="flex items-center gap-2 min-w-0">
+                {h.reward >= 100 && <Crown size={12} className="text-destructive shrink-0" />}
+                <span className="truncate text-foreground">{h.username}</span>
+              </div>
+              <span className={`font-heading ${
+                h.reward >= 100 ? 'text-destructive' :
+                h.reward >= 50 ? 'text-gold' :
+                'text-foreground'
+              }`}>+{h.reward}G</span>
+              <span className="text-muted-foreground text-[10px] shrink-0">
+                {new Date(h.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="bg-card rounded-lg neon-border p-5">
