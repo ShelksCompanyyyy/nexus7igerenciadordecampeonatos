@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabaseClient';
 const QUICK_LINKS = [
   { path: '/ranking', label: 'Ranking', icon: Trophy, desc: 'Ver classificação' },
   { path: '/teams', label: 'Lines', icon: Users, desc: 'Equipes do clã' },
-  { path: '/matches', label: 'Partidas', icon: Swords, desc: 'Jogos e resultados' },
+  { path: '/matchcw', label: 'MatchCW', icon: Swords, desc: 'Clã vs Clã' },
   { path: '/roulette', label: 'Roleta', icon: Dices, desc: 'Gire e ganhe' },
   { path: '/training', label: 'XTreino', icon: Target, desc: 'Treinos agendados' },
   { path: '/news', label: 'Notícias', icon: Newspaper, desc: 'Avisos do clã' },
@@ -48,17 +48,12 @@ export default function HomePage() {
   return (
     <div className="space-y-8 animate-slide-up">
       {isNewUser && (
-        <Link to="/tutorial" className="block bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 border border-primary/40 rounded-xl p-5 hover:border-primary/60 transition-all group animate-slide-up">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-all">
-              <BookOpen size={28} className="text-primary" />
-            </div>
-            <div className="flex-1">
-              <h2 className="font-heading text-lg text-primary text-glow-sm">📖 TUTORIAL DO APP</h2>
-              <p className="text-sm text-foreground font-display mt-1">Aprenda a usar todas as funcionalidades do app!</p>
-              <p className="text-xs text-muted-foreground font-display mt-1 italic">⭐ Recomendado ler o tutorial, para melhor entendimento do app</p>
-            </div>
-            <Zap size={20} className="text-primary animate-pulse" />
+        <Link to="/tutorial" className="block bg-primary/10 border border-primary/30 rounded-lg px-3 py-2 hover:border-primary/60 transition-all group">
+          <div className="flex items-center gap-2">
+            <BookOpen size={14} className="text-primary shrink-0" />
+            <span className="font-heading text-[11px] text-primary">TUTORIAL</span>
+            <span className="text-[10px] text-muted-foreground font-display truncate">Aprenda a usar o app</span>
+            <Zap size={12} className="text-primary ml-auto" />
           </div>
         </Link>
       )}
@@ -167,24 +162,6 @@ export default function HomePage() {
         </div>
       )}
 
-      <div className="bg-card rounded-lg neon-border p-5">
-        <h3 className="font-heading text-sm text-primary mb-2 flex items-center gap-2"><Trophy size={16} /> PREMIAÇÃO DO CAMPEONATO</h3>
-        <p className="text-xs text-muted-foreground font-display mb-4">Premiação para o campeonato de Lines contra Lines</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 bg-gradient-to-b from-gold/10 to-transparent rounded-lg border border-gold/30">
-            <p className="font-heading text-gold text-lg">🥇 1° LUGAR</p>
-            <p className="text-sm text-muted-foreground font-display mt-2">Pot total já contabilizado os 15%</p>
-          </div>
-          <div className="p-4 bg-gradient-to-b from-metallic/10 to-transparent rounded-lg border border-metallic/30">
-            <p className="font-heading text-metallic text-lg">🥈 2° LUGAR</p>
-            <p className="text-sm text-muted-foreground font-display mt-2">Entrada gratuita para o próximo campeonato</p>
-          </div>
-          <div className="p-4 bg-gradient-to-b from-primary/10 to-transparent rounded-lg border border-primary/30">
-            <p className="font-heading text-primary text-lg">🥉 3° LUGAR</p>
-            <p className="text-sm text-muted-foreground font-display mt-2">4 Rodadas grátis na roleta para cada jogador</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
