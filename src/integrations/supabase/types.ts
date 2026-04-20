@@ -166,6 +166,92 @@ export type Database = {
         }
         Relationships: []
       }
+      matchcw: {
+        Row: {
+          clan_a_id: string
+          clan_b_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          requested_by: string
+          rounds: number | null
+          scheduled_date: string | null
+          scheduled_time: string | null
+          score_a: number | null
+          score_b: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          clan_a_id: string
+          clan_b_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          requested_by: string
+          rounds?: number | null
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          score_a?: number | null
+          score_b?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          clan_a_id?: string
+          clan_b_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          requested_by?: string
+          rounds?: number | null
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          score_a?: number | null
+          score_b?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      matchcw_messages: {
+        Row: {
+          clan_id: string
+          created_at: string
+          id: string
+          matchcw_id: string
+          message: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          clan_id: string
+          created_at?: string
+          id?: string
+          matchcw_id: string
+          message: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          clan_id?: string
+          created_at?: string
+          id?: string
+          matchcw_id?: string
+          message?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matchcw_messages_matchcw_id_fkey"
+            columns: ["matchcw_id"]
+            isOneToOne: false
+            referencedRelation: "matchcw"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           clan_id: string
@@ -571,6 +657,7 @@ export type Database = {
           losses: number | null
           name: string
           players: string[] | null
+          team_leader_id: string | null
           updated_at: string
           wins: number | null
         }
@@ -582,6 +669,7 @@ export type Database = {
           losses?: number | null
           name: string
           players?: string[] | null
+          team_leader_id?: string | null
           updated_at?: string
           wins?: number | null
         }
@@ -593,6 +681,7 @@ export type Database = {
           losses?: number | null
           name?: string
           players?: string[] | null
+          team_leader_id?: string | null
           updated_at?: string
           wins?: number | null
         }
@@ -791,6 +880,19 @@ export type Database = {
     }
     Functions: {
       admin_delete_user: { Args: { _target_user: string }; Returns: Json }
+      announce_purchase: {
+        Args: { _category: string; _item_name: string }
+        Returns: Json
+      }
+      confirm_matchcw: {
+        Args: {
+          _date: string
+          _match_id: string
+          _rounds?: number
+          _time: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -802,6 +904,10 @@ export type Database = {
         Args: { _clan_id: string; _user_id: string }
         Returns: boolean
       }
+      is_team_leader: {
+        Args: { _team_id: string; _user_id: string }
+        Returns: boolean
+      }
       promote_clan_member: {
         Args: {
           _clan_id: string
@@ -811,6 +917,10 @@ export type Database = {
         Returns: Json
       }
       redeem_promo_code: { Args: { _code: string }; Returns: Json }
+      request_matchcw: {
+        Args: { _clan_a: string; _clan_b: string; _notes?: string }
+        Returns: Json
+      }
       reset_user_golds:
         | {
             Args: { _clan_id?: string; _exclude_admins?: boolean }
@@ -824,6 +934,10 @@ export type Database = {
             }
             Returns: number
           }
+      respond_matchcw: {
+        Args: { _accept: boolean; _match_id: string }
+        Returns: Json
+      }
       spin_roulette: { Args: never; Returns: Json }
     }
     Enums: {

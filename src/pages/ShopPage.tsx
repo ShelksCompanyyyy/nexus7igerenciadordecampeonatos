@@ -39,6 +39,9 @@ export default function ShopPage() {
     if (item.id === 'extra_spin_5') updates.free_spins = (profile.free_spins || 0) + 5;
 
     await supabase.from('profiles').update(updates).eq('user_id', user.id);
+    if (['nick_color', 'frame', 'badge'].includes(item.category)) {
+      await supabase.rpc('announce_purchase', { _item_name: item.name, _category: item.category });
+    }
     await refreshProfile();
     toast.success(`${item.name} adquirido!`);
   };
