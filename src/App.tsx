@@ -8,7 +8,7 @@ import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
 import RankingPage from "@/pages/RankingPage";
 import TeamsPage, { TeamDetailPage } from "@/pages/TeamsPage";
-import MatchesPage from "@/pages/MatchesPage";
+import MatchCWPage from "@/pages/MatchCWPage";
 import TrainingPage from "@/pages/TrainingPage";
 import RoulettePage from "@/pages/RoulettePage";
 import ChatPage from "@/pages/ChatPage";
@@ -42,7 +42,8 @@ function AppRoutes() {
         <Route path="/ranking" element={<RankingPage />} />
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/teams/:id" element={<TeamDetailPage />} />
-        <Route path="/matches" element={<MatchesPage />} />
+        <Route path="/matchcw" element={<MatchCWPage />} />
+        <Route path="/matches" element={<MatchCWPage />} />
         <Route path="/training" element={<TrainingPage />} />
         <Route path="/roulette" element={<RoulettePage />} />
         <Route path="/chat" element={<ChatPage />} />

@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/ranking', label: 'Ranking', icon: Trophy },
   { path: '/teams', label: 'Times', icon: Users },
-  { path: '/matches', label: 'Partidas', icon: Swords },
+  { path: '/matchcw', label: 'MatchCW', icon: Swords },
   { path: '/training', label: 'XTreino', icon: Target },
   { path: '/roulette', label: 'Roleta', icon: Dices },
   { path: '/shop', label: 'Loja', icon: ShoppingBag },
