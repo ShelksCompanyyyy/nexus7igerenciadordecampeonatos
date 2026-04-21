@@ -102,7 +102,6 @@ export default function ChatPage() {
               <p className="text-muted-foreground font-display text-sm">Nenhuma mensagem ainda. Seja o primeiro!</p>
             </div>
           )}
-          {messages.map(msg => (
           {messages.map(msg => {
             const author = authorMap[msg.user_id];
             const frameStyle = author?.frame_id ? getFrameStyle(author.frame_id) : null;
