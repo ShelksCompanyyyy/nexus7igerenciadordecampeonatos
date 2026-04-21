@@ -169,7 +169,7 @@ export type Database = {
       matchcw: {
         Row: {
           clan_a_id: string
-          clan_b_id: string
+          clan_b_id: string | null
           created_at: string
           id: string
           notes: string | null
@@ -184,7 +184,7 @@ export type Database = {
         }
         Insert: {
           clan_a_id: string
-          clan_b_id: string
+          clan_b_id?: string | null
           created_at?: string
           id?: string
           notes?: string | null
@@ -199,7 +199,7 @@ export type Database = {
         }
         Update: {
           clan_a_id?: string
-          clan_b_id?: string
+          clan_b_id?: string | null
           created_at?: string
           id?: string
           notes?: string | null
@@ -700,12 +700,15 @@ export type Database = {
           clan_id: string
           created_at: string
           id: string
+          participant_names: string[] | null
+          photo_url: string | null
           player_stats: Json | null
           score_a: number | null
           score_b: number | null
           status: string | null
           team_a_id: string | null
           team_b_id: string | null
+          title: string | null
           training_date: string
           training_time: string | null
           updated_at: string
@@ -714,12 +717,15 @@ export type Database = {
           clan_id: string
           created_at?: string
           id?: string
+          participant_names?: string[] | null
+          photo_url?: string | null
           player_stats?: Json | null
           score_a?: number | null
           score_b?: number | null
           status?: string | null
           team_a_id?: string | null
           team_b_id?: string | null
+          title?: string | null
           training_date: string
           training_time?: string | null
           updated_at?: string
@@ -728,12 +734,15 @@ export type Database = {
           clan_id?: string
           created_at?: string
           id?: string
+          participant_names?: string[] | null
+          photo_url?: string | null
           player_stats?: Json | null
           score_a?: number | null
           score_b?: number | null
           status?: string | null
           team_a_id?: string | null
           team_b_id?: string | null
+          title?: string | null
           training_date?: string
           training_time?: string | null
           updated_at?: string
@@ -922,7 +931,7 @@ export type Database = {
       }
       redeem_promo_code: { Args: { _code: string }; Returns: Json }
       request_matchcw: {
-        Args: { _clan_a: string; _clan_b: string; _notes?: string }
+        Args: { _clan_a: string; _clan_b?: string; _notes?: string }
         Returns: Json
       }
       reset_user_golds:

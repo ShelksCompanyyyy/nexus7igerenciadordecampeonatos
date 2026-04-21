@@ -36,7 +36,6 @@ export default function MatchCWPage() {
   const [matches, setMatches] = useState<MatchCW[]>([]);
   const [isClanLeader, setIsClanLeader] = useState(false);
   const [showRequest, setShowRequest] = useState(false);
-  const [targetClanId, setTargetClanId] = useState('');
   const [notes, setNotes] = useState('');
   const [openChatId, setOpenChatId] = useState<string | null>(null);
 
@@ -46,7 +45,6 @@ export default function MatchCWPage() {
     const { data: m } = await supabase
       .from('matchcw')
       .select('*')
-      .or(`clan_a_id.eq.${myClanId},clan_b_id.eq.${myClanId}`)
       .order('created_at', { ascending: false });
     setMatches((m || []) as MatchCW[]);
   }, [myClanId]);
@@ -66,15 +64,14 @@ export default function MatchCWPage() {
     return () => { supabase.removeChannel(ch); };
   }, [myClanId, user, loadAll]);
 
-  const clanName = (id: string) => clans.find(c => c.id === id)?.name || '???';
+  const clanName = (id: string | null) => (id ? clans.find(c => c.id === id)?.name || '???' : 'AGUARDANDO...');
 
   const canManage = isClanLeader || role === 'superadmin';
 
   const sendRequest = async () => {
-    if (!targetClanId) { toast.error('Escolha um clã para desafiar'); return; }
-    const { error } = await supabase.rpc('request_matchcw', { _clan_a: myClanId, _clan_b: targetClanId, _notes: notes || null });
+    const { error } = await supabase.rpc('request_matchcw', { _clan_a: myClanId, _clan_b: undefined, _notes: notes || null });
     if (error) toast.error(error.message);
-    else { toast.success('⚔️ Pedido de MatchCW enviado!'); setShowRequest(false); setNotes(''); setTargetClanId(''); loadAll(); }
+    else { toast.success('⚔️ Procurando adversário...'); setShowRequest(false); setNotes(''); loadAll(); }
   };
 
   const respond = async (id: string, accept: boolean) => {
@@ -83,13 +80,16 @@ export default function MatchCWPage() {
     else { toast.success(accept ? 'Match aceito!' : 'Match recusado'); loadAll(); }
   };
 
-  const incoming = matches.filter(m => m.status === 'pending' && m.clan_b_id === myClanId);
-  const outgoing = matches.filter(m => m.status === 'pending' && m.clan_a_id === myClanId);
-  const accepted = matches.filter(m => m.status === 'accepted');
-  const confirmed = matches.filter(m => m.status === 'confirmed');
-  const history = matches.filter(m => ['declined','finalized'].includes(m.status));
+  const myMatches = matches.filter(m => m.clan_a_id === myClanId || m.clan_b_id === myClanId);
+  // Pedidos abertos de OUTROS clãs (procurando alguém)
+  const lookingForOpponent = matches.filter(m => m.status === 'pending' && !m.clan_b_id && m.clan_a_id !== myClanId);
+  // Meus pedidos enviados ainda em aberto
+  const outgoing = myMatches.filter(m => m.status === 'pending');
+  const accepted = myMatches.filter(m => m.status === 'accepted');
+  const confirmed = myMatches.filter(m => m.status === 'confirmed');
+  const history = myMatches.filter(m => ['declined','finalized'].includes(m.status));
 
-  const todayCount = matches.filter(m => new Date(m.created_at).toDateString() === new Date().toDateString() && m.status !== 'declined').length;
+  const todayCount = myMatches.filter(m => new Date(m.created_at).toDateString() === new Date().toDateString() && m.status !== 'declined').length;
 
   return (
     <div className="space-y-6 animate-slide-up">
@@ -115,33 +115,32 @@ export default function MatchCWPage() {
 
       {showRequest && canManage && (
         <div className="bg-card rounded-lg neon-border p-5 space-y-3">
-          <h3 className="font-heading text-sm text-primary">Novo Desafio</h3>
-          <select value={targetClanId} onChange={e => setTargetClanId(e.target.value)} className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm">
-            <option value="">Selecione o clã alvo</option>
-            {clans.filter(c => c.id !== myClanId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <h3 className="font-heading text-sm text-primary">🔍 Procurar MatchCW</h3>
+          <p className="text-xs text-muted-foreground font-display">Seu pedido ficará público — qualquer outro clã pode aceitar.</p>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Mensagem opcional..." rows={2}
             className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm" />
           <div className="flex gap-2">
-            <button onClick={sendRequest} className="px-4 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs">Enviar</button>
+            <button onClick={sendRequest} className="px-4 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs">Procurar Adversário</button>
             <button onClick={() => setShowRequest(false)} className="px-4 py-2 bg-secondary text-muted-foreground rounded font-heading text-xs">Cancelar</button>
           </div>
         </div>
       )}
 
-      {/* Pedidos recebidos */}
-      {incoming.length > 0 && (
-        <Section title="📩 PEDIDOS RECEBIDOS" tone="primary">
-          {incoming.map(m => (
-            <MatchRow key={m.id} m={m} clanName={clanName} actions={canManage && (
-              <div className="flex gap-2">
-                <button onClick={() => respond(m.id, true)} className="px-3 py-1.5 bg-success/15 text-success border border-success/30 rounded font-heading text-xs flex items-center gap-1"><Check size={12} /> Aceitar</button>
-                <button onClick={() => respond(m.id, false)} className="px-3 py-1.5 bg-destructive/15 text-destructive border border-destructive/30 rounded font-heading text-xs flex items-center gap-1"><X size={12} /> Recusar</button>
-              </div>
-            )} />
-          ))}
-        </Section>
-      )}
+      {/* Pedidos abertos de OUTROS clãs */}
+      <Section title="🔥 CLÃS PROCURANDO ADVERSÁRIO" tone="primary">
+        {lookingForOpponent.length === 0 && (
+          <p className="text-center text-muted-foreground text-sm font-display py-2">Nenhum clã está procurando agora</p>
+        )}
+        {lookingForOpponent.map(m => (
+          <MatchRow key={m.id} m={m} clanName={clanName} actions={canManage ? (
+            <button onClick={() => respond(m.id, true)} className="px-3 py-1.5 bg-success/15 text-success border border-success/30 rounded font-heading text-xs flex items-center gap-1">
+              <Check size={12} /> Aceitar Match
+            </button>
+          ) : (
+            <span className="text-xs text-muted-foreground font-display">Apenas líderes podem aceitar</span>
+          )} />
+        ))}
+      </Section>
 
       {/* Pedidos enviados */}
       {outgoing.length > 0 && (
