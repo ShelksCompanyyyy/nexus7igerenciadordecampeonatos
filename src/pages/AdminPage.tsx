@@ -644,7 +644,12 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
   };
 
   return (
-    <div className="bg-secondary/50 p-4 rounded-lg">
+    <div className={`bg-secondary/50 p-4 rounded-lg ${!canEditThisLine ? 'opacity-70' : ''}`}>
+      {!canEditThisLine && (
+        <div className="mb-3 px-2 py-1 rounded bg-destructive/10 border border-destructive/30 text-destructive text-[10px] font-heading flex items-center gap-1">
+          <Lock size={10} /> ACESSO NEGADO — você não lidera esta line
+        </div>
+      )}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <label className="w-10 h-10 rounded-lg bg-background/50 border border-border flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary transition-colors group" title="Trocar logo da line">
