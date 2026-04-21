@@ -579,6 +579,18 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
   const teamPlayers = users.filter(u => players.includes(u.user_id));
   const availablePlayers = users.filter(u => !u.team_id && !players.includes(u.user_id));
   const teamLeaderId = (team as any).team_leader_id || '';
+  const { user: currentUser, role: actorRole } = useAuth();
+  const [isClanAdminFlag, setIsClanAdminFlag] = useState(false);
+  useEffect(() => {
+    if (!currentUser) return;
+    supabase.from('clan_members')
+      .select('role').eq('clan_id', team.clan_id).eq('user_id', currentUser.id).maybeSingle()
+      .then(({ data }) => setIsClanAdminFlag(!!data && (data.role === 'leader' || data.role === 'co_leader')));
+  }, [currentUser, team.clan_id]);
+  const isSuper = actorRole === 'superadmin';
+  const isThisTeamLeader = currentUser?.id && teamLeaderId === currentUser.id;
+  const canEditThisLine = isSuper || isClanAdminFlag || isThisTeamLeader;
+  const denyAccess = () => toast.error('Acesso negado: você só pode editar membros da sua própria line');
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
