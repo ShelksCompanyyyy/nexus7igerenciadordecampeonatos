@@ -8,12 +8,23 @@ import { toast } from 'sonner';
 export default function ChatPage() {
   const { user, profile, isSuperAdminUser } = useAuth();
   const [messages, setMessages] = useState<any[]>([]);
+  const [authorMap, setAuthorMap] = useState<Record<string, any>>({});
   const [text, setText] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const fetchMessages = async () => {
     const { data } = await supabase.from('chat_messages').select('*').order('created_at', { ascending: true }).limit(200);
     setMessages(data || []);
+    const ids = Array.from(new Set((data || []).map((m: any) => m.user_id).filter(Boolean)));
+    if (ids.length) {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('user_id,game_nick,username,avatar,colored_nick,nick_color_id,frame_id,badges')
+        .in('user_id', ids);
+      const map: Record<string, any> = {};
+      (profs || []).forEach((p: any) => { map[p.user_id] = p; });
+      setAuthorMap(map);
+    }
   };
 
   useEffect(() => {
@@ -44,6 +55,33 @@ export default function ChatPage() {
     else { setMessages([]); toast.success('Chat limpo!'); }
   };
 
+  const renderNick = (msg: any) => {
+    const author = authorMap[msg.user_id];
+    if (msg.username === 'SISTEMA') {
+      return <span className="text-gold font-heading">{msg.username}</span>;
+    }
+    const color = author?.colored_nick && author?.nick_color_id ? getNickColor(author.nick_color_id) : null;
+    const isGradient = color?.includes('gradient');
+    const style = color
+      ? isGradient
+        ? { background: color, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }
+        : { color, textShadow: `0 0 8px ${color}` }
+      : {};
+    return <span style={style as any}>{msg.username}</span>;
+  };
+
+  const renderBadges = (msg: any) => {
+    const author = authorMap[msg.user_id];
+    const badges: string[] = author?.badges || [];
+    if (!badges.length) return null;
+    return (
+      <span className="inline-flex gap-1 ml-1">
+        {badges.includes('badge_vip') && <span title="VIP" className="text-[10px] px-1 rounded bg-primary/20 text-primary border border-primary/40">VIP</span>}
+        {badges.includes('badge_legend') && <span title="Lendário" className="text-[10px] px-1 rounded bg-gold/20 text-gold border border-gold/40">★</span>}
+      </span>
+    );
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)] animate-slide-up">
       <div className="flex items-center justify-between mb-4">
@@ -64,20 +102,31 @@ export default function ChatPage() {
               <p className="text-muted-foreground font-display text-sm">Nenhuma mensagem ainda. Seja o primeiro!</p>
             </div>
           )}
-          {messages.map(msg => (
-            <div key={msg.id} className={`flex gap-3 ${msg.user_id === user?.id ? 'flex-row-reverse' : ''}`}>
-              <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-xs flex-shrink-0">
-                {msg.username[0]?.toUpperCase()}
-              </div>
-              <div className={`max-w-[70%] ${msg.user_id === user?.id ? 'text-right' : ''}`}>
-                <p className="text-xs font-heading mb-1">{msg.username}</p>
-                <div className={`p-3 rounded-lg ${msg.user_id === user?.id ? 'bg-primary/20 neon-border' : 'bg-secondary'}`}>
-                  <p className="text-sm text-foreground font-display">{msg.message}</p>
+          {messages.map(msg => {
+            const author = authorMap[msg.user_id];
+            const frameStyle = author?.frame_id ? getFrameStyle(author.frame_id) : null;
+            const isSystem = msg.username === 'SISTEMA';
+            return (
+              <div key={msg.id} className={`flex gap-3 ${msg.user_id === user?.id && !isSystem ? 'flex-row-reverse' : ''}`}>
+                <div
+                  className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading text-xs flex-shrink-0 overflow-hidden"
+                  style={frameStyle ? { border: frameStyle.border, boxShadow: frameStyle.boxShadow } : {}}
+                >
+                  {author?.avatar ? <img src={author.avatar} alt="" className="w-full h-full object-cover" /> : (isSystem ? '⚙️' : (msg.username?.[0]?.toUpperCase() || '?'))}
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">{new Date(msg.created_at).toLocaleTimeString('pt-BR')}</p>
+                <div className={`max-w-[70%] ${msg.user_id === user?.id && !isSystem ? 'text-right' : ''}`}>
+                  <p className="text-xs font-heading mb-1 flex items-center gap-1 flex-wrap">
+                    {renderNick(msg)}
+                    {renderBadges(msg)}
+                  </p>
+                  <div className={`p-3 rounded-lg ${isSystem ? 'bg-gold/10 border border-gold/30' : msg.user_id === user?.id ? 'bg-primary/20 neon-border' : 'bg-secondary'}`}>
+                    <p className={`text-sm font-display ${isSystem ? 'text-gold' : 'text-foreground'}`}>{msg.message}</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">{new Date(msg.created_at).toLocaleTimeString('pt-BR')}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <div ref={bottomRef} />
         </div>
         <div className="p-3 border-t border-border flex gap-2">

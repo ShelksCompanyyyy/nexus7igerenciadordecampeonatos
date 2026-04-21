@@ -572,6 +572,26 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
   const players = team.players || [];
   const teamPlayers = users.filter(u => players.includes(u.user_id));
   const availablePlayers = users.filter(u => !u.team_id && !players.includes(u.user_id));
+  const teamLeaderId = (team as any).team_leader_id || '';
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error('Imagem muito grande (máx 2MB)'); return; }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      const { error } = await supabase.from('teams').update({ logo: dataUrl }).eq('id', team.id);
+      if (error) { toast.error(error.message); return; }
+      onRefresh(); toast.success('Logo atualizado!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSetLeader = async (userId: string) => {
+    const { error } = await supabase.from('teams').update({ team_leader_id: userId || null }).eq('id', team.id);
+    if (error) { toast.error(error.message); return; }
+    onRefresh(); toast.success(userId ? 'Líder de line definido!' : 'Líder removido');
+  };
 
   const handleAddPlayer = async () => {
     if (!addingPlayer) return;
@@ -599,9 +619,10 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
     <div className="bg-secondary/50 p-4 rounded-lg">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-background/50 border border-border flex items-center justify-center overflow-hidden">
+          <label className="w-10 h-10 rounded-lg bg-background/50 border border-border flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary transition-colors group" title="Trocar logo da line">
             {team.logo ? <img src={team.logo} alt="" className="w-full h-full object-cover" /> : <Image size={16} className="text-muted-foreground" />}
-          </div>
+            <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+          </label>
           {editingName ? (
             <div className="flex items-center gap-2">
               <input value={teamName} onChange={e => setTeamName(e.target.value)} className="p-1 bg-secondary rounded border border-border text-foreground font-heading text-sm w-32" />
@@ -622,6 +643,14 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
             className="w-12 p-1 bg-secondary rounded border border-border text-destructive text-center text-xs" placeholder="L" />
           <button onClick={handleDelete} className="text-destructive p-1"><Trash size={14} /></button>
         </div>
+      </div>
+      <div className="mb-3">
+        <label className="text-[10px] text-muted-foreground font-display block mb-1">👑 Líder de Line</label>
+        <select value={teamLeaderId} onChange={e => handleSetLeader(e.target.value)}
+          className="w-full p-2 bg-background rounded border border-border text-foreground font-display text-xs">
+          <option value="">Sem líder</option>
+          {teamPlayers.map(p => <option key={p.user_id} value={p.user_id}>{p.game_nick || p.username}</option>)}
+        </select>
       </div>
       <div className="space-y-1 mb-3">
         {teamPlayers.map(p => (
@@ -828,27 +857,55 @@ function ClanSettingsTab({ clan, onRefresh }: { clan?: DBClan | null; onRefresh:
   const [name, setName] = useState(clan?.name || '');
   const [description, setDescription] = useState(clan?.description || '');
   const [adminCode, setAdminCode] = useState(clan?.admin_code || '');
+  const [logo, setLogo] = useState(clan?.logo || '');
+  const [banner, setBanner] = useState(clan?.banner || '');
 
   useEffect(() => {
     if (clan) {
       setName(clan.name);
       setDescription(clan.description || '');
       setAdminCode(clan.admin_code || '');
+      setLogo(clan.logo || '');
+      setBanner(clan.banner || '');
     }
   }, [clan]);
 
   if (!clan) return <p className="text-muted-foreground font-display text-center p-6">Clã não encontrado</p>;
 
   const handleSave = async () => {
-    const { error } = await supabase.from('clans').update({ name, description, admin_code: adminCode }).eq('id', clan.id);
+    const { error } = await supabase.from('clans').update({ name, description, admin_code: adminCode, logo, banner }).eq('id', clan.id);
     if (error) { toast.error('Erro: ' + error.message); return; }
     onRefresh(); toast.success('Configurações salvas!');
+  };
+
+  const upload = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error('Imagem muito grande (máx 2MB)'); return; }
+    const reader = new FileReader();
+    reader.onload = () => setter(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   return (
     <div className="space-y-4">
       <div className="bg-card rounded-lg border border-border p-4 space-y-4">
         <h3 className="font-heading text-xs text-primary flex items-center gap-2"><Settings size={14} /> CONFIGURAÇÕES DO CLÃ</h3>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-muted-foreground font-display block mb-1">Logo do Clã</label>
+            <label className="block w-full aspect-square rounded-lg bg-secondary border border-border flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary transition-colors">
+              {logo ? <img src={logo} alt="" className="w-full h-full object-cover" /> : <Image size={24} className="text-muted-foreground" />}
+              <input type="file" accept="image/*" onChange={upload(setLogo)} className="hidden" />
+            </label>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground font-display block mb-1">Banner do Clã</label>
+            <label className="block w-full aspect-square rounded-lg bg-secondary border border-border flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary transition-colors">
+              {banner ? <img src={banner} alt="" className="w-full h-full object-cover" /> : <Image size={24} className="text-muted-foreground" />}
+              <input type="file" accept="image/*" onChange={upload(setBanner)} className="hidden" />
+            </label>
+          </div>
+        </div>
         <div>
           <label className="text-xs text-muted-foreground font-display">Nome do Clã</label>
           <input value={name} onChange={e => setName(e.target.value)} className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm" />
