@@ -908,6 +908,10 @@ export type Database = {
         Args: { _team_id: string; _user_id: string }
         Returns: boolean
       }
+      manage_team_player: {
+        Args: { _action: string; _target_user: string; _team_id: string }
+        Returns: Json
+      }
       promote_clan_member: {
         Args: {
           _clan_id: string
@@ -939,6 +943,16 @@ export type Database = {
         Returns: Json
       }
       spin_roulette: { Args: never; Returns: Json }
+      update_player_stats: {
+        Args: {
+          _assists: number
+          _deaths: number
+          _kills: number
+          _mvps: number
+          _target_user: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "user" | "admin" | "superadmin"

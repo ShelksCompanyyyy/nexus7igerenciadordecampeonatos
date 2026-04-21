@@ -445,8 +445,14 @@ function ClanUserRow({ user, onRefresh }: { user: DBProfile; onRefresh: () => vo
   }, [user.user_id, user.clan_id]);
 
   const save = async () => {
-    const { error } = await supabase.from('profiles').update({ kills, deaths, assists, mvps }).eq('user_id', user.user_id);
-    if (error) { toast.error('Erro ao salvar: ' + error.message); return; }
+    const { error } = await supabase.rpc('update_player_stats', {
+      _target_user: user.user_id,
+      _kills: kills,
+      _deaths: deaths,
+      _assists: assists,
+      _mvps: mvps,
+    });
+    if (error) { toast.error(error.message); return; }
     setEditing(false);
     onRefresh();
     toast.success('KDA atualizado!');
@@ -595,18 +601,24 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
 
   const handleAddPlayer = async () => {
     if (!addingPlayer) return;
-    const newPlayers = [...players, addingPlayer];
-    await supabase.from('teams').update({ players: newPlayers }).eq('id', team.id);
-    await supabase.from('profiles').update({ team_id: team.id }).eq('user_id', addingPlayer);
+    const { error } = await supabase.rpc('manage_team_player', {
+      _team_id: team.id,
+      _target_user: addingPlayer,
+      _action: 'add',
+    });
+    if (error) { toast.error(error.message); return; }
     setAddingPlayer('');
     onRefresh();
     toast.success('Jogador adicionado!');
   };
 
   const handleRemovePlayer = async (playerId: string) => {
-    const newPlayers = players.filter(pid => pid !== playerId);
-    await supabase.from('teams').update({ players: newPlayers }).eq('id', team.id);
-    await supabase.from('profiles').update({ team_id: null }).eq('user_id', playerId);
+    const { error } = await supabase.rpc('manage_team_player', {
+      _team_id: team.id,
+      _target_user: playerId,
+      _action: 'remove',
+    });
+    if (error) { toast.error(error.message); return; }
     onRefresh();
   };
 
