@@ -772,62 +772,155 @@ function ClanMatchesTab({ clanMatches, clanTeams, clanId, onRefresh }: { clanMat
 
 // ======= CLAN TRAINING TAB =======
 function ClanTrainingTab({ clanTrainings, clanTeams, clanId, onRefresh }: { clanTrainings: DBTraining[]; clanTeams: DBTeam[]; clanId: string; onRefresh: () => void }) {
+  return <XtreinosTab clanTrainings={clanTrainings} clanTeams={clanTeams} clanId={clanId} onRefresh={onRefresh} />;
+}
+
+// ======= XTREINOS TAB =======
+function XtreinosTab({ clanTrainings, clanTeams, clanId, onRefresh }: { clanTrainings: DBTraining[]; clanTeams: DBTeam[]; clanId: string; onRefresh: () => void }) {
+  const [title, setTitle] = useState('');
   const [teamA, setTeamA] = useState('');
-  const [teamB, setTeamB] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+  const [participants, setParticipants] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [filterMonth, setFilterMonth] = useState<string>(new Date().toISOString().slice(0, 7));
+
+  const uploadPhoto = async (file: File): Promise<string | null> => {
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `${clanId}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('training-photos').upload(path, file, { upsert: false });
+    if (error) { toast.error('Erro upload: ' + error.message); return null; }
+    const { data } = supabase.storage.from('training-photos').getPublicUrl(path);
+    return data.publicUrl;
+  };
 
   const handleAdd = async () => {
-    if (!teamA || !teamB || !date) return;
-    const { error } = await supabase.from('trainings').insert({
-      team_a_id: teamA, team_b_id: teamB, training_date: date, training_time: time,
-      clan_id: clanId, score_a: 0, score_b: 0, status: 'scheduled', player_stats: {}
-    });
+    if (!date) { toast.error('Defina a data'); return; }
+    setUploading(true);
+    let photo_url: string | null = null;
+    if (photoFile) photo_url = await uploadPhoto(photoFile);
+    const names = participants.split(',').map(s => s.trim()).filter(Boolean);
+    const payload: any = {
+      clan_id: clanId,
+      training_date: date,
+      training_time: time || '',
+      team_a_id: teamA || null,
+      team_b_id: null,
+      score_a: 0,
+      score_b: 0,
+      status: 'scheduled',
+      player_stats: {},
+      title: title.trim(),
+      photo_url,
+      participant_names: names,
+    };
+    const { error } = await supabase.from('trainings').insert(payload);
+    setUploading(false);
     if (error) { toast.error('Erro: ' + error.message); return; }
-    setTeamA(''); setTeamB(''); setDate(''); setTime('');
-    onRefresh(); toast.success('Treino agendado!');
+    setTitle(''); setDate(''); setTime(''); setParticipants(''); setPhotoFile(null); setTeamA('');
+    onRefresh(); toast.success('🎯 Xtreino adicionado!');
   };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Excluir este treino?')) return;
+    await supabase.from('trainings').delete().eq('id', id);
+    onRefresh();
+  };
+
+  // Filtrar por mês selecionado
+  const filtered = clanTrainings.filter(t => (t.training_date || '').startsWith(filterMonth));
+  // Agrupar por dia
+  const byDay: Record<string, DBTraining[]> = {};
+  filtered.forEach(t => {
+    const d = t.training_date || 'sem-data';
+    if (!byDay[d]) byDay[d] = [];
+    byDay[d].push(t);
+  });
+  const sortedDays = Object.keys(byDay).sort((a, b) => b.localeCompare(a));
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <select value={teamA} onChange={e => setTeamA(e.target.value)} className="p-3 bg-secondary rounded border border-border text-foreground font-display text-sm">
-          <option value="">Time 1</option>
+      {/* Form criar */}
+      <div className="bg-secondary/30 p-4 rounded-lg neon-border space-y-3">
+        <h3 className="font-heading text-sm text-primary flex items-center gap-2"><Target size={14} /> NOVO XTREINO</h3>
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título do treino (ex: Treino Tático)"
+          className="w-full p-3 bg-background rounded border border-border text-foreground font-display text-sm" />
+        <div className="grid grid-cols-2 gap-3">
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            className="p-3 bg-background rounded border border-border text-foreground font-display text-sm" />
+          <input type="time" value={time} onChange={e => setTime(e.target.value)}
+            className="p-3 bg-background rounded border border-border text-foreground font-display text-sm" />
+        </div>
+        <select value={teamA} onChange={e => setTeamA(e.target.value)} className="w-full p-3 bg-background rounded border border-border text-foreground font-display text-sm">
+          <option value="">Selecionar line (opcional)</option>
           {clanTeams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
-        <select value={teamB} onChange={e => setTeamB(e.target.value)} className="p-3 bg-secondary rounded border border-border text-foreground font-display text-sm">
-          <option value="">Time 2</option>
-          {clanTeams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
-        <input type="date" value={date} onChange={e => setDate(e.target.value)} className="p-3 bg-secondary rounded border border-border text-foreground font-display text-sm" />
-        <input type="time" value={time} onChange={e => setTime(e.target.value)} className="p-3 bg-secondary rounded border border-border text-foreground font-display text-sm" />
+        <input value={participants} onChange={e => setParticipants(e.target.value)}
+          placeholder="Nomes dos participantes (separados por vírgula)"
+          className="w-full p-3 bg-background rounded border border-border text-foreground font-display text-sm" />
+        <label className="flex items-center gap-3 p-3 bg-background rounded border border-dashed border-border cursor-pointer hover:border-primary transition-colors">
+          <Image size={18} className="text-muted-foreground" />
+          <span className="text-xs font-display text-muted-foreground flex-1">{photoFile ? photoFile.name : 'Anexar foto do treino (opcional)'}</span>
+          <input type="file" accept="image/*" onChange={e => setPhotoFile(e.target.files?.[0] || null)} className="hidden" />
+        </label>
+        <button disabled={uploading} onClick={handleAdd}
+          className="w-full px-4 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs flex items-center justify-center gap-2 disabled:opacity-50">
+          <Plus size={14} /> {uploading ? 'ENVIANDO...' : 'AGENDAR XTREINO'}
+        </button>
       </div>
-      <button onClick={handleAdd} className="w-full px-4 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs flex items-center justify-center gap-2"><Plus size={14} /> AGENDAR TREINO</button>
-      {clanTrainings.map(t => {
-        const tA = clanTeams.find(te => te.id === t.team_a_id);
-        const tB = clanTeams.find(te => te.id === t.team_b_id);
-        return (
-          <div key={t.id} className="bg-secondary/50 p-4 rounded-lg flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="font-display text-foreground text-sm">{tA?.name} vs {tB?.name}</span>
-              <span className="text-xs text-muted-foreground">{t.training_date} {t.training_time}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <input type="number" value={t.score_a || 0} onChange={async e => { await supabase.from('trainings').update({ score_a: Number(e.target.value) }).eq('id', t.id); onRefresh(); }}
-                className="w-12 p-1 bg-secondary rounded border border-border text-foreground text-center text-sm" />
-              <span className="text-muted-foreground text-xs">x</span>
-              <input type="number" value={t.score_b || 0} onChange={async e => { await supabase.from('trainings').update({ score_b: Number(e.target.value) }).eq('id', t.id); onRefresh(); }}
-                className="w-12 p-1 bg-secondary rounded border border-border text-foreground text-center text-sm" />
-              <select value={t.status || 'scheduled'} onChange={async e => { await supabase.from('trainings').update({ status: e.target.value }).eq('id', t.id); onRefresh(); }}
-                className="p-1 bg-secondary rounded border border-border text-foreground text-xs ml-auto">
-                <option value="scheduled">Agendado</option>
-                <option value="completed">Concluído</option>
-              </select>
-            </div>
-          </div>
-        );
-      })}
-      {clanTrainings.length === 0 && <p className="text-center text-muted-foreground font-display p-6 text-sm">Nenhum treino</p>}
+
+      {/* Filtro por mês */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-heading text-muted-foreground">📅 Mês:</span>
+        <input type="month" value={filterMonth} onChange={e => setFilterMonth(e.target.value)}
+          className="p-2 bg-secondary rounded border border-border text-foreground font-display text-xs" />
+        <span className="text-xs font-display text-muted-foreground ml-auto">{filtered.length} treino(s)</span>
+      </div>
+
+      {/* Calendário/Lista por dia */}
+      {sortedDays.length === 0 && (
+        <p className="text-center text-muted-foreground font-display p-6 text-sm">Nenhum treino neste mês</p>
+      )}
+      {sortedDays.map(day => (
+        <div key={day} className="bg-card rounded-lg border border-border p-4 space-y-3">
+          <h4 className="font-heading text-xs text-primary border-b border-border pb-2">📆 {day}</h4>
+          {byDay[day].map(t => {
+            const lineName = clanTeams.find(te => te.id === t.team_a_id)?.name;
+            const tt = t as any;
+            return (
+              <div key={t.id} className="bg-secondary/40 p-3 rounded-lg space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <p className="font-heading text-sm text-foreground">{tt.title || 'Xtreino'}</p>
+                    <p className="text-[10px] text-muted-foreground font-display flex items-center gap-3 mt-1">
+                      {t.training_time && <span>⏰ {t.training_time}</span>}
+                      {lineName && <span>🛡️ {lineName}</span>}
+                    </p>
+                  </div>
+                  <button onClick={() => handleDelete(t.id)} className="text-destructive p-1 hover:bg-destructive/10 rounded"><Trash size={12} /></button>
+                </div>
+                {tt.photo_url && (
+                  <img src={tt.photo_url} alt="treino" className="w-full max-h-48 object-cover rounded border border-border" />
+                )}
+                {tt.participant_names && tt.participant_names.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {tt.participant_names.map((n: string, i: number) => (
+                      <span key={i} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-[10px] font-display border border-primary/20">{n}</span>
+                    ))}
+                  </div>
+                )}
+                <select value={t.status || 'scheduled'} onChange={async e => { await supabase.from('trainings').update({ status: e.target.value }).eq('id', t.id); onRefresh(); }}
+                  className="p-1 bg-background rounded border border-border text-foreground text-[10px] font-heading">
+                  <option value="scheduled">⏳ Agendado</option>
+                  <option value="completed">✅ Concluído</option>
+                  <option value="cancelled">❌ Cancelado</option>
+                </select>
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }
