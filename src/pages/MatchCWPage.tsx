@@ -36,7 +36,6 @@ export default function MatchCWPage() {
   const [matches, setMatches] = useState<MatchCW[]>([]);
   const [isClanLeader, setIsClanLeader] = useState(false);
   const [showRequest, setShowRequest] = useState(false);
-  const [targetClanId, setTargetClanId] = useState('');
   const [notes, setNotes] = useState('');
   const [openChatId, setOpenChatId] = useState<string | null>(null);
 
@@ -46,7 +45,6 @@ export default function MatchCWPage() {
     const { data: m } = await supabase
       .from('matchcw')
       .select('*')
-      .or(`clan_a_id.eq.${myClanId},clan_b_id.eq.${myClanId}`)
       .order('created_at', { ascending: false });
     setMatches((m || []) as MatchCW[]);
   }, [myClanId]);
@@ -66,15 +64,14 @@ export default function MatchCWPage() {
     return () => { supabase.removeChannel(ch); };
   }, [myClanId, user, loadAll]);
 
-  const clanName = (id: string) => clans.find(c => c.id === id)?.name || '???';
+  const clanName = (id: string | null) => (id ? clans.find(c => c.id === id)?.name || '???' : 'AGUARDANDO...');
 
   const canManage = isClanLeader || role === 'superadmin';
 
   const sendRequest = async () => {
-    if (!targetClanId) { toast.error('Escolha um clã para desafiar'); return; }
-    const { error } = await supabase.rpc('request_matchcw', { _clan_a: myClanId, _clan_b: targetClanId, _notes: notes || null });
+    const { error } = await supabase.rpc('request_matchcw', { _clan_a: myClanId, _clan_b: undefined, _notes: notes || null });
     if (error) toast.error(error.message);
-    else { toast.success('⚔️ Pedido de MatchCW enviado!'); setShowRequest(false); setNotes(''); setTargetClanId(''); loadAll(); }
+    else { toast.success('⚔️ Procurando adversário...'); setShowRequest(false); setNotes(''); loadAll(); }
   };
 
   const respond = async (id: string, accept: boolean) => {
@@ -83,13 +80,16 @@ export default function MatchCWPage() {
     else { toast.success(accept ? 'Match aceito!' : 'Match recusado'); loadAll(); }
   };
 
-  const incoming = matches.filter(m => m.status === 'pending' && m.clan_b_id === myClanId);
-  const outgoing = matches.filter(m => m.status === 'pending' && m.clan_a_id === myClanId);
-  const accepted = matches.filter(m => m.status === 'accepted');
-  const confirmed = matches.filter(m => m.status === 'confirmed');
-  const history = matches.filter(m => ['declined','finalized'].includes(m.status));
+  const myMatches = matches.filter(m => m.clan_a_id === myClanId || m.clan_b_id === myClanId);
+  // Pedidos abertos de OUTROS clãs (procurando alguém)
+  const lookingForOpponent = matches.filter(m => m.status === 'pending' && !m.clan_b_id && m.clan_a_id !== myClanId);
+  // Meus pedidos enviados ainda em aberto
+  const outgoing = myMatches.filter(m => m.status === 'pending');
+  const accepted = myMatches.filter(m => m.status === 'accepted');
+  const confirmed = myMatches.filter(m => m.status === 'confirmed');
+  const history = myMatches.filter(m => ['declined','finalized'].includes(m.status));
 
-  const todayCount = matches.filter(m => new Date(m.created_at).toDateString() === new Date().toDateString() && m.status !== 'declined').length;
+  const todayCount = myMatches.filter(m => new Date(m.created_at).toDateString() === new Date().toDateString() && m.status !== 'declined').length;
 
   return (
     <div className="space-y-6 animate-slide-up">
