@@ -606,6 +606,7 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
   };
 
   const handleSetLeader = async (userId: string) => {
+    if (!canEditThisLine) { denyAccess(); return; }
     const { error } = await supabase.from('teams').update({ team_leader_id: userId || null }).eq('id', team.id);
     if (error) { toast.error(error.message); return; }
     onRefresh(); toast.success(userId ? 'Líder de line definido!' : 'Líder removido');
@@ -613,6 +614,7 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
 
   const handleAddPlayer = async () => {
     if (!addingPlayer) return;
+    if (!canEditThisLine) { denyAccess(); return; }
     const { error } = await supabase.rpc('manage_team_player', {
       _team_id: team.id,
       _target_user: addingPlayer,
@@ -625,6 +627,7 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
   };
 
   const handleRemovePlayer = async (playerId: string) => {
+    if (!canEditThisLine) { denyAccess(); return; }
     const { error } = await supabase.rpc('manage_team_player', {
       _team_id: team.id,
       _target_user: playerId,
@@ -635,6 +638,7 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
   };
 
   const handleDelete = async () => {
+    if (!canEditThisLine) { denyAccess(); return; }
     await supabase.from('teams').delete().eq('id', team.id);
     onRefresh();
   };
