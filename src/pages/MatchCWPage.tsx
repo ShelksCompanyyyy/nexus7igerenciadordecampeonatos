@@ -45,6 +45,12 @@ export default function MatchCWPage() {
   const [showRequest, setShowRequest] = useState(false);
   const [notes, setNotes] = useState('');
   const [openChatId, setOpenChatId] = useState<string | null>(null);
+  const [reqDate, setReqDate] = useState('');
+  const [reqTime, setReqTime] = useState('');
+  const [reqRounds, setReqRounds] = useState(1);
+  const [isBet, setIsBet] = useState(false);
+  const [betAmount, setBetAmount] = useState(0);
+  const [balance, setBalance] = useState(0);
 
   const loadAll = useCallback(async () => {
     const { data: c } = await supabase.from('clans').select('id, name, logo').eq('is_banned', false);
@@ -64,6 +70,10 @@ export default function MatchCWPage() {
     supabase.from('clan_members').select('role').eq('clan_id', myClanId).eq('user_id', user.id).maybeSingle()
       .then(({ data }) => setIsClanLeader(!!data && (data.role === 'leader' || data.role === 'co_leader')));
 
+    // Carrega saldo em reais
+    supabase.from('economy').select('balance').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => setBalance(Number(data?.balance || 0)));
+
     const ch = supabase
       .channel('matchcw-feed')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matchcw' }, () => loadAll())
@@ -76,9 +86,24 @@ export default function MatchCWPage() {
   const canManage = isClanLeader || role === 'superadmin';
 
   const sendRequest = async () => {
-    const { error } = await supabase.rpc('request_matchcw', { _clan_a: myClanId, _clan_b: undefined, _notes: notes || null });
+    if (isBet && betAmount <= 0) { toast.error('Defina o valor da aposta'); return; }
+    if (isBet && betAmount > balance) { toast.error(`Saldo insuficiente. Disponível: R$ ${balance.toFixed(2)}`); return; }
+    const { error } = await supabase.rpc('request_matchcw', {
+      _clan_a: myClanId,
+      _clan_b: undefined,
+      _notes: notes || null,
+      _date: reqDate || null,
+      _time: reqTime || null,
+      _rounds: reqRounds,
+      _is_bet: isBet,
+      _bet_amount: isBet ? betAmount : 0,
+    });
     if (error) toast.error(error.message);
-    else { toast.success('⚔️ Procurando adversário...'); setShowRequest(false); setNotes(''); loadAll(); }
+    else {
+      toast.success(isBet ? `⚔️ Aposta de R$ ${betAmount.toFixed(2)} bloqueada!` : '⚔️ Procurando adversário...');
+      setShowRequest(false); setNotes(''); setReqDate(''); setReqTime(''); setReqRounds(1); setIsBet(false); setBetAmount(0);
+      loadAll();
+    }
   };
 
   const respond = async (id: string, accept: boolean) => {
