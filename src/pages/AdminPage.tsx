@@ -693,6 +693,14 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
           {teamPlayers.map(p => <option key={p.user_id} value={p.user_id}>{p.game_nick || p.username}</option>)}
         </select>
       </div>
+      <div className="mb-3">
+        <label className="text-[10px] text-muted-foreground font-display block mb-1">🎖️ Vice-Líder de Line</label>
+        <select value={teamCoLeaderId} onChange={e => handleSetCoLeader(e.target.value)}
+          className="w-full p-2 bg-background rounded border border-border text-foreground font-display text-xs">
+          <option value="">Sem vice-líder</option>
+          {teamPlayers.filter(p => p.user_id !== teamLeaderId).map(p => <option key={p.user_id} value={p.user_id}>{p.game_nick || p.username}</option>)}
+        </select>
+      </div>
       <div className="space-y-1 mb-3">
         {teamPlayers.map(p => (
           <div key={p.id} className="flex items-center justify-between text-xs bg-background/50 p-2 rounded">
