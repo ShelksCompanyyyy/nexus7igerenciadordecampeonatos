@@ -168,11 +168,17 @@ export type Database = {
       }
       matchcw: {
         Row: {
+          bet_amount: number | null
+          bet_status: string | null
           clan_a_id: string
           clan_b_id: string | null
           created_at: string
           id: string
+          is_bet_match: boolean
           notes: string | null
+          proposed_date: string | null
+          proposed_rounds: number | null
+          proposed_time: string | null
           requested_by: string
           rounds: number | null
           scheduled_date: string | null
@@ -181,13 +187,20 @@ export type Database = {
           score_b: number | null
           status: string
           updated_at: string
+          winner_clan_id: string | null
         }
         Insert: {
+          bet_amount?: number | null
+          bet_status?: string | null
           clan_a_id: string
           clan_b_id?: string | null
           created_at?: string
           id?: string
+          is_bet_match?: boolean
           notes?: string | null
+          proposed_date?: string | null
+          proposed_rounds?: number | null
+          proposed_time?: string | null
           requested_by: string
           rounds?: number | null
           scheduled_date?: string | null
@@ -196,13 +209,20 @@ export type Database = {
           score_b?: number | null
           status?: string
           updated_at?: string
+          winner_clan_id?: string | null
         }
         Update: {
+          bet_amount?: number | null
+          bet_status?: string | null
           clan_a_id?: string
           clan_b_id?: string | null
           created_at?: string
           id?: string
+          is_bet_match?: boolean
           notes?: string | null
+          proposed_date?: string | null
+          proposed_rounds?: number | null
+          proposed_time?: string | null
           requested_by?: string
           rounds?: number | null
           scheduled_date?: string | null
@@ -211,8 +231,47 @@ export type Database = {
           score_b?: number | null
           status?: string
           updated_at?: string
+          winner_clan_id?: string | null
         }
         Relationships: []
+      }
+      matchcw_bets: {
+        Row: {
+          amount: number
+          clan_id: string
+          created_at: string
+          id: string
+          matchcw_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          clan_id: string
+          created_at?: string
+          id?: string
+          matchcw_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          clan_id?: string
+          created_at?: string
+          id?: string
+          matchcw_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matchcw_bets_matchcw_id_fkey"
+            columns: ["matchcw_id"]
+            isOneToOne: false
+            referencedRelation: "matchcw"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       matchcw_messages: {
         Row: {
@@ -657,6 +716,7 @@ export type Database = {
           losses: number | null
           name: string
           players: string[] | null
+          team_co_leader_id: string | null
           team_leader_id: string | null
           updated_at: string
           wins: number | null
@@ -669,6 +729,7 @@ export type Database = {
           losses?: number | null
           name: string
           players?: string[] | null
+          team_co_leader_id?: string | null
           team_leader_id?: string | null
           updated_at?: string
           wins?: number | null
@@ -681,6 +742,7 @@ export type Database = {
           losses?: number | null
           name?: string
           players?: string[] | null
+          team_co_leader_id?: string | null
           team_leader_id?: string | null
           updated_at?: string
           wins?: number | null
@@ -902,6 +964,15 @@ export type Database = {
         }
         Returns: Json
       }
+      finalize_matchcw: {
+        Args: {
+          _match_id: string
+          _score_a: number
+          _score_b: number
+          _winner_clan: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -914,6 +985,10 @@ export type Database = {
         Returns: boolean
       }
       is_team_leader: {
+        Args: { _team_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_team_leader_or_co: {
         Args: { _team_id: string; _user_id: string }
         Returns: boolean
       }
@@ -930,10 +1005,24 @@ export type Database = {
         Returns: Json
       }
       redeem_promo_code: { Args: { _code: string }; Returns: Json }
-      request_matchcw: {
-        Args: { _clan_a: string; _clan_b?: string; _notes?: string }
-        Returns: Json
-      }
+      request_matchcw:
+        | {
+            Args: { _clan_a: string; _clan_b?: string; _notes?: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _bet_amount?: number
+              _clan_a: string
+              _clan_b?: string
+              _date?: string
+              _is_bet?: boolean
+              _notes?: string
+              _rounds?: number
+              _time?: string
+            }
+            Returns: Json
+          }
       reset_user_golds:
         | {
             Args: { _clan_id?: string; _exclude_admins?: boolean }
