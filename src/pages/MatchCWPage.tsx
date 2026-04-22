@@ -8,7 +8,7 @@ interface Clan { id: string; name: string; logo: string | null; }
 interface MatchCW {
   id: string;
   clan_a_id: string;
-  clan_b_id: string;
+  clan_b_id: string | null;
   requested_by: string;
   status: 'pending' | 'accepted' | 'declined' | 'confirmed' | 'finalized';
   scheduled_date: string | null;
@@ -51,6 +51,11 @@ export default function MatchCWPage() {
   const [isBet, setIsBet] = useState(false);
   const [betAmount, setBetAmount] = useState(0);
   const [balance, setBalance] = useState(0);
+  const [showDeposit, setShowDeposit] = useState(false);
+  const [depositAmount, setDepositAmount] = useState(50);
+  const [depositProof, setDepositProof] = useState<File | null>(null);
+  const [myDeposits, setMyDeposits] = useState<Array<{ id: string; amount: number; status: string; created_at: string }>>([]);
+  const [myBets, setMyBets] = useState<Array<{ id: string; matchcw_id: string; amount: number; status: string }>>([]);
 
   const loadAll = useCallback(async () => {
     const { data: c } = await supabase.from('clans').select('id, name, logo').eq('is_banned', false);
@@ -60,7 +65,15 @@ export default function MatchCWPage() {
       .select('*')
       .order('created_at', { ascending: false });
     setMatches((m || []) as MatchCW[]);
-  }, [myClanId]);
+    if (user) {
+      const { data: dep } = await supabase.from('deposits').select('id, amount, status, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(8);
+      setMyDeposits((dep || []) as never);
+      const { data: b } = await supabase.from('matchcw_bets').select('id, matchcw_id, amount, status').eq('user_id', user.id);
+      setMyBets((b || []) as never);
+      const { data: e } = await supabase.from('economy').select('balance').eq('user_id', user.id).maybeSingle();
+      setBalance(Number(e?.balance || 0));
+    }
+  }, [myClanId, user]);
 
   useEffect(() => {
     if (!myClanId || !user) return;
