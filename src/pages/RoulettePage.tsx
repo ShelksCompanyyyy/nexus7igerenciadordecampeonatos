@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { SPIN_PACKAGES, PIX_KEY, MIN_WITHDRAWAL } from '@/lib/store';
 import { toast } from 'sonner';
-import { Dices, Gift, Copy, Wallet, Sparkles, History, Crown } from 'lucide-react';
+import { Dices, Gift, Copy, Wallet, Sparkles, History, Crown, Trophy, Medal, Award } from 'lucide-react';
 
 // Prêmios — ÍNDICES devem bater 1:1 com winner_index retornado pelo RPC spin_roulette
 const PRIZES = [
@@ -39,6 +39,13 @@ interface SpinHistoryRow {
   username?: string;
 }
 
+interface RankRow {
+  user_id: string;
+  username: string;
+  total: number;
+  spins: number;
+}
+
 export default function RoulettePage() {
   const { user, profile, refreshProfile } = useAuth();
   const [spinning, setSpinning] = useState(false);
@@ -50,6 +57,7 @@ export default function RoulettePage() {
   const [glow, setGlow] = useState(false);
   const [legendaryBurst, setLegendaryBurst] = useState(false);
   const [history, setHistory] = useState<SpinHistoryRow[]>([]);
+  const [ranking, setRanking] = useState<RankRow[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const tickRafRef = useRef<number | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
