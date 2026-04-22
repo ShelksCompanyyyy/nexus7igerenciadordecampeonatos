@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { Swords, Send, Check, X, Plus, Calendar, Clock, MessageCircle, History, Crown } from 'lucide-react';
+import { Swords, Send, Check, X, Plus, Calendar, Clock, MessageCircle, History, Crown, DollarSign, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Clan { id: string; name: string; logo: string | null; }
@@ -18,6 +18,13 @@ interface MatchCW {
   score_a: number;
   score_b: number;
   created_at: string;
+  proposed_date: string | null;
+  proposed_time: string | null;
+  proposed_rounds: number | null;
+  is_bet_match: boolean;
+  bet_amount: number;
+  bet_status: string;
+  winner_clan_id: string | null;
 }
 interface MatchMessage {
   id: string;
