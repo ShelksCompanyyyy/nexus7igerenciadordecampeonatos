@@ -579,6 +579,7 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
   const teamPlayers = users.filter(u => players.includes(u.user_id));
   const availablePlayers = users.filter(u => !u.team_id && !players.includes(u.user_id));
   const teamLeaderId = (team as any).team_leader_id || '';
+  const teamCoLeaderId = (team as any).team_co_leader_id || '';
   const { user: currentUser, role: actorRole } = useAuth();
   const [isClanAdminFlag, setIsClanAdminFlag] = useState(false);
   useEffect(() => {
@@ -588,7 +589,7 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
       .then(({ data }) => setIsClanAdminFlag(!!data && (data.role === 'leader' || data.role === 'co_leader')));
   }, [currentUser, team.clan_id]);
   const isSuper = actorRole === 'superadmin';
-  const isThisTeamLeader = currentUser?.id && teamLeaderId === currentUser.id;
+  const isThisTeamLeader = currentUser?.id && (teamLeaderId === currentUser.id || teamCoLeaderId === currentUser.id);
   const canEditThisLine = isSuper || isClanAdminFlag || isThisTeamLeader;
   const denyAccess = () => toast.error('Acesso negado: você só pode editar membros da sua própria line');
 
@@ -610,6 +611,13 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
     const { error } = await supabase.from('teams').update({ team_leader_id: userId || null }).eq('id', team.id);
     if (error) { toast.error(error.message); return; }
     onRefresh(); toast.success(userId ? 'Líder de line definido!' : 'Líder removido');
+  };
+
+  const handleSetCoLeader = async (userId: string) => {
+    if (!canEditThisLine) { denyAccess(); return; }
+    const { error } = await supabase.from('teams').update({ team_co_leader_id: userId || null } as never).eq('id', team.id);
+    if (error) { toast.error(error.message); return; }
+    onRefresh(); toast.success(userId ? 'Vice-líder definido!' : 'Vice-líder removido');
   };
 
   const handleAddPlayer = async () => {
