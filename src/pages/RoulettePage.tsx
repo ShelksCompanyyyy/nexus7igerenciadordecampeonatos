@@ -98,6 +98,31 @@ export default function RoulettePage() {
       .in('user_id', userIds);
     const map = new Map(profs?.map(p => [p.user_id, p.game_nick || p.username]) || []);
     setHistory(spins.map(s => ({ ...s, username: map.get(s.user_id) || 'Jogador' })));
+
+    // Ranking dos últimos 7 dias — agrega ganho total por usuário
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: weekSpins } = await supabase
+      .from('spins')
+      .select('user_id, reward')
+      .gte('created_at', sevenDaysAgo);
+    if (weekSpins) {
+      const agg = new Map<string, { total: number; spins: number }>();
+      for (const s of weekSpins) {
+        const cur = agg.get(s.user_id) || { total: 0, spins: 0 };
+        agg.set(s.user_id, { total: cur.total + (s.reward || 0), spins: cur.spins + 1 });
+      }
+      const ids = Array.from(agg.keys());
+      const { data: rprofs } = await supabase
+        .from('profiles')
+        .select('user_id, game_nick, username')
+        .in('user_id', ids);
+      const nameMap = new Map(rprofs?.map(p => [p.user_id, p.game_nick || p.username]) || []);
+      const rows: RankRow[] = Array.from(agg.entries())
+        .map(([uid, v]) => ({ user_id: uid, username: nameMap.get(uid) || 'Jogador', total: v.total, spins: v.spins }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 10);
+      setRanking(rows);
+    }
   };
 
   useEffect(() => {
