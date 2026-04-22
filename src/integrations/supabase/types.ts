@@ -115,6 +115,51 @@ export type Database = {
         }
         Relationships: []
       }
+      deposits: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          method: string
+          notes: string | null
+          pix_key: string | null
+          proof_url: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          pix_key?: string | null
+          proof_url?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          pix_key?: string | null
+          proof_url?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       economy: {
         Row: {
           balance: number
@@ -955,6 +1000,10 @@ export type Database = {
         Args: { _category: string; _item_name: string }
         Returns: Json
       }
+      approve_deposit: {
+        Args: { _approve: boolean; _deposit_id: string }
+        Returns: Json
+      }
       confirm_matchcw: {
         Args: {
           _date: string
@@ -1005,24 +1054,19 @@ export type Database = {
         Returns: Json
       }
       redeem_promo_code: { Args: { _code: string }; Returns: Json }
-      request_matchcw:
-        | {
-            Args: { _clan_a: string; _clan_b?: string; _notes?: string }
-            Returns: Json
-          }
-        | {
-            Args: {
-              _bet_amount?: number
-              _clan_a: string
-              _clan_b?: string
-              _date?: string
-              _is_bet?: boolean
-              _notes?: string
-              _rounds?: number
-              _time?: string
-            }
-            Returns: Json
-          }
+      request_matchcw: {
+        Args: {
+          _bet_amount?: number
+          _clan_a: string
+          _clan_b?: string
+          _date?: string
+          _is_bet?: boolean
+          _notes?: string
+          _rounds?: number
+          _time?: string
+        }
+        Returns: Json
+      }
       reset_user_golds:
         | {
             Args: { _clan_id?: string; _exclude_admins?: boolean }
