@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { SPIN_PACKAGES, PIX_KEY, MIN_WITHDRAWAL } from '@/lib/store';
 import { toast } from 'sonner';
-import { Dices, Gift, Copy, Wallet, Sparkles, History, Crown } from 'lucide-react';
+import { Dices, Gift, Copy, Wallet, Sparkles, History, Crown, Trophy, Medal, Award } from 'lucide-react';
 
 // Prêmios — ÍNDICES devem bater 1:1 com winner_index retornado pelo RPC spin_roulette
 const PRIZES = [
@@ -39,6 +39,13 @@ interface SpinHistoryRow {
   username?: string;
 }
 
+interface RankRow {
+  user_id: string;
+  username: string;
+  total: number;
+  spins: number;
+}
+
 export default function RoulettePage() {
   const { user, profile, refreshProfile } = useAuth();
   const [spinning, setSpinning] = useState(false);
@@ -50,6 +57,7 @@ export default function RoulettePage() {
   const [glow, setGlow] = useState(false);
   const [legendaryBurst, setLegendaryBurst] = useState(false);
   const [history, setHistory] = useState<SpinHistoryRow[]>([]);
+  const [ranking, setRanking] = useState<RankRow[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const tickRafRef = useRef<number | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -90,6 +98,31 @@ export default function RoulettePage() {
       .in('user_id', userIds);
     const map = new Map(profs?.map(p => [p.user_id, p.game_nick || p.username]) || []);
     setHistory(spins.map(s => ({ ...s, username: map.get(s.user_id) || 'Jogador' })));
+
+    // Ranking dos últimos 7 dias — agrega ganho total por usuário
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: weekSpins } = await supabase
+      .from('spins')
+      .select('user_id, reward')
+      .gte('created_at', sevenDaysAgo);
+    if (weekSpins) {
+      const agg = new Map<string, { total: number; spins: number }>();
+      for (const s of weekSpins) {
+        const cur = agg.get(s.user_id) || { total: 0, spins: 0 };
+        agg.set(s.user_id, { total: cur.total + (s.reward || 0), spins: cur.spins + 1 });
+      }
+      const ids = Array.from(agg.keys());
+      const { data: rprofs } = await supabase
+        .from('profiles')
+        .select('user_id, game_nick, username')
+        .in('user_id', ids);
+      const nameMap = new Map(rprofs?.map(p => [p.user_id, p.game_nick || p.username]) || []);
+      const rows: RankRow[] = Array.from(agg.entries())
+        .map(([uid, v]) => ({ user_id: uid, username: nameMap.get(uid) || 'Jogador', total: v.total, spins: v.spins }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 10);
+      setRanking(rows);
+    }
   };
 
   useEffect(() => {
@@ -465,9 +498,51 @@ export default function RoulettePage() {
       {/* Histórico realtime da comunidade */}
       <div className="bg-card rounded-lg neon-border p-5">
         <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2">
-          <History size={16} /> GIROS RECENTES DA COMUNIDADE
+          <Trophy size={16} className="text-gold" /> RANKING DA SEMANA · TOP 3
         </h3>
-        <div className="space-y-2 max-h-72 overflow-y-auto">
+        <p className="text-[10px] text-muted-foreground font-display mb-3">Soma total de ouro ganho na roleta nos últimos 7 dias</p>
+        <div className="grid grid-cols-3 gap-2 mb-5">
+          {[1, 0, 2].map((rankIdx) => {
+            const r = ranking[rankIdx];
+            if (!r) return <div key={rankIdx} className="bg-secondary/40 rounded p-3 text-center opacity-50">
+              <p className="text-[10px] text-muted-foreground font-display">—</p>
+            </div>;
+            const isFirst = rankIdx === 0;
+            const isSecond = rankIdx === 1;
+            const Icon = isFirst ? Trophy : isSecond ? Medal : Award;
+            const colorClass = isFirst ? 'border-gold/60 from-gold/20 to-gold/5 text-gold' :
+                               isSecond ? 'border-muted-foreground/60 from-muted-foreground/20 to-muted-foreground/5 text-muted-foreground' :
+                               'border-destructive/60 from-destructive/20 to-destructive/5 text-destructive';
+            return (
+              <div key={rankIdx} className={`bg-gradient-to-b ${colorClass} border rounded-lg p-3 text-center ${isFirst ? 'scale-110 z-10' : ''}`}>
+                <Icon size={isFirst ? 28 : 22} className="mx-auto mb-1" />
+                <p className="text-[10px] font-heading uppercase">#{rankIdx + 1}</p>
+                <p className="text-xs font-heading text-foreground truncate mt-1">{r.username}</p>
+                <p className={`text-sm font-heading mt-1`}>{r.total}G</p>
+                <p className="text-[9px] text-muted-foreground font-display">{r.spins} {r.spins === 1 ? 'giro' : 'giros'}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        {ranking.length > 3 && (
+          <div className="space-y-1 mb-5 border-t border-border pt-3">
+            <p className="text-[10px] font-heading text-muted-foreground mb-2">DEMAIS COLOCAÇÕES</p>
+            {ranking.slice(3).map((r, i) => (
+              <div key={r.user_id} className="flex items-center justify-between text-xs font-display p-2 bg-secondary/40 rounded">
+                <span className="text-muted-foreground">#{i + 4}</span>
+                <span className="text-foreground flex-1 ml-3 truncate">{r.username}</span>
+                <span className="font-heading text-gold">{r.total}G</span>
+                <span className="text-muted-foreground text-[10px] ml-2">{r.spins}x</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <h4 className="font-heading text-xs text-primary mb-3 flex items-center gap-2 border-t border-border pt-3">
+          <History size={14} /> GIROS RECENTES (AO VIVO)
+        </h4>
+        <div className="space-y-2 max-h-60 overflow-y-auto">
           {history.length === 0 && (
             <p className="text-center text-muted-foreground text-sm font-display">Nenhum giro registrado ainda</p>
           )}

@@ -2,11 +2,11 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
-import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Plus, Trash, Check, X, Search, Edit, Image, Crown, BarChart3, Settings, Lock, Copy, Gift } from 'lucide-react';
+import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Plus, Trash, Check, X, Search, Edit, Image, Crown, BarChart3, Settings, Lock, Copy, Gift, History as HistoryIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import PromoCodesPanel from '@/components/admin/PromoCodesPanel';
 
-type SuperTab = 'dashboard' | 'clans' | 'users' | 'withdrawals' | 'spins' | 'economy' | 'clan-manage' | 'promo';
+type SuperTab = 'dashboard' | 'clans' | 'users' | 'withdrawals' | 'spins' | 'economy' | 'clan-manage' | 'promo' | 'deposits';
 type ClanTab = 'dashboard' | 'members' | 'teams' | 'matches' | 'training' | 'news' | 'settings';
 
 const CHART_COLORS = ['hsl(0,100%,50%)', 'hsl(45,100%,50%)', 'hsl(120,70%,50%)', 'hsl(200,100%,50%)', 'hsl(280,100%,50%)', 'hsl(30,100%,50%)'];
@@ -124,6 +124,7 @@ function SuperAdminPanel() {
     { id: 'withdrawals', label: 'Saques', icon: Wallet },
     { id: 'spins', label: 'Giros', icon: Dices },
     { id: 'economy', label: 'Economia', icon: DollarSign },
+    { id: 'deposits', label: 'Depósitos', icon: Wallet },
     { id: 'promo', label: 'Códigos', icon: Gift },
   ];
 
@@ -249,6 +250,7 @@ function SuperAdminPanel() {
         </div>
       )}
       {tab === 'promo' && <PromoCodesPanel />}
+      {tab === 'deposits' && <DepositsTab />}
     </div>
   );
 }
@@ -1085,6 +1087,107 @@ function ClanSettingsTab({ clan, onRefresh }: { clan?: DBClan | null; onRefresh:
 
 // ======= SUPER ADMIN SUB-TABS =======
 function SuperClansTab({ clans, users, onRefresh }: { clans: DBClan[]; users: DBProfile[]; onRefresh: () => void }) {
+  return <SuperClansTabImpl clans={clans} users={users} onRefresh={onRefresh} />;
+}
+
+// ======= DEPOSITS TAB =======
+interface DBDeposit {
+  id: string; user_id: string; amount: number; status: string; method: string;
+  proof_url: string | null; pix_key: string | null; notes: string | null;
+  created_at: string;
+}
+function DepositsTab() {
+  const [deposits, setDeposits] = useState<DBDeposit[]>([]);
+  const [profilesMap, setProfilesMap] = useState<Map<string, { username: string; game_nick: string; unique_id: string }>>(new Map());
+
+  const load = useCallback(async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any).from('deposits').select('*').order('created_at', { ascending: false });
+    const list = (data || []) as DBDeposit[];
+    setDeposits(list);
+    const ids = Array.from(new Set(list.map(d => d.user_id)));
+    if (ids.length) {
+      const { data: profs } = await supabase.from('profiles').select('user_id, username, game_nick, unique_id').in('user_id', ids);
+      const m = new Map<string, { username: string; game_nick: string; unique_id: string }>();
+      profs?.forEach(p => m.set(p.user_id, { username: p.username, game_nick: p.game_nick, unique_id: p.unique_id }));
+      setProfilesMap(m);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('deposits-admin')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'deposits' }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+
+  const action = async (id: string, approve: boolean) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.rpc as any)('approve_deposit', { _deposit_id: id, _approve: approve });
+    if (error) { toast.error(error.message); return; }
+    toast.success(approve ? '✅ Depósito aprovado e creditado' : '❌ Depósito rejeitado');
+    load();
+  };
+
+  const pending = deposits.filter(d => d.status === 'pending');
+  const processed = deposits.filter(d => d.status !== 'pending');
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-heading text-sm text-gold flex items-center gap-2"><Wallet size={16}/> DEPÓSITOS PENDENTES ({pending.length})</h3>
+      {pending.length === 0 && <p className="text-center text-muted-foreground font-display p-6 text-sm">Nenhum depósito pendente</p>}
+      {pending.map(d => {
+        const p = profilesMap.get(d.user_id);
+        return (
+          <div key={d.id} className="p-4 rounded-lg border border-warning/40 bg-warning/5">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <span className="font-heading text-success text-lg">R$ {Number(d.amount).toFixed(2)}</span>
+              <span className="text-xs px-2 py-1 rounded bg-warning/20 text-warning font-display">⏳ Pendente</span>
+            </div>
+            <div className="space-y-1 text-sm font-display">
+              <p className="text-muted-foreground">👤 <span className="text-foreground">{p?.username || 'Desconhecido'} ({p?.game_nick || '—'})</span></p>
+              <p className="text-muted-foreground">🆔 <span className="text-foreground">#{p?.unique_id || '—'}</span></p>
+              <p className="text-muted-foreground">💳 Método: <span className="text-foreground uppercase">{d.method}</span></p>
+              <p className="text-muted-foreground text-xs">📅 {new Date(d.created_at).toLocaleString('pt-BR')}</p>
+              {d.proof_url && (
+                <a href={d.proof_url} target="_blank" rel="noreferrer" className="inline-block mt-2 text-xs text-primary underline">📎 Ver comprovante</a>
+              )}
+            </div>
+            <div className="flex gap-2 mt-3 pt-3 border-t border-border">
+              <button onClick={() => action(d.id, true)} className="flex-1 py-2 bg-success/20 text-success rounded font-heading text-xs hover:bg-success/30">✅ APROVAR E CREDITAR</button>
+              <button onClick={() => action(d.id, false)} className="flex-1 py-2 bg-destructive/20 text-destructive rounded font-heading text-xs hover:bg-destructive/30">❌ REJEITAR</button>
+            </div>
+          </div>
+        );
+      })}
+
+      {processed.length > 0 && (
+        <>
+          <h3 className="font-heading text-sm text-muted-foreground flex items-center gap-2 pt-4"><HistoryIcon size={14}/> HISTÓRICO</h3>
+          {processed.slice(0, 30).map(d => {
+            const p = profilesMap.get(d.user_id);
+            return (
+              <div key={d.id} className={`p-3 rounded border flex items-center justify-between gap-2 ${d.status === 'approved' ? 'border-success/30 bg-success/5' : 'border-destructive/30 bg-destructive/5'}`}>
+                <div className="text-xs font-display min-w-0">
+                  <p className="text-foreground truncate">{p?.username || '—'}</p>
+                  <p className="text-[10px] text-muted-foreground">{new Date(d.created_at).toLocaleDateString('pt-BR')}</p>
+                </div>
+                <span className="font-heading text-foreground">R$ {Number(d.amount).toFixed(2)}</span>
+                <span className={`text-[10px] font-display px-2 py-1 rounded ${d.status === 'approved' ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'}`}>
+                  {d.status === 'approved' ? '✅ Aprovado' : '❌ Rejeitado'}
+                </span>
+              </div>
+            );
+          })}
+        </>
+      )}
+    </div>
+  );
+}
+
+function SuperClansTabImpl({ clans, users, onRefresh }: { clans: DBClan[]; users: DBProfile[]; onRefresh: () => void }) {
   const handleToggleBan = async (clan: DBClan) => {
     const newState = !clan.is_banned;
     const { error } = await supabase.from('clans').update({ is_banned: newState }).eq('id', clan.id);

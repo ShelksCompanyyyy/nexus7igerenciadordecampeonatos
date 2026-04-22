@@ -8,7 +8,7 @@ interface Clan { id: string; name: string; logo: string | null; }
 interface MatchCW {
   id: string;
   clan_a_id: string;
-  clan_b_id: string;
+  clan_b_id: string | null;
   requested_by: string;
   status: 'pending' | 'accepted' | 'declined' | 'confirmed' | 'finalized';
   scheduled_date: string | null;
@@ -51,6 +51,11 @@ export default function MatchCWPage() {
   const [isBet, setIsBet] = useState(false);
   const [betAmount, setBetAmount] = useState(0);
   const [balance, setBalance] = useState(0);
+  const [showDeposit, setShowDeposit] = useState(false);
+  const [depositAmount, setDepositAmount] = useState(50);
+  const [depositProof, setDepositProof] = useState<File | null>(null);
+  const [myDeposits, setMyDeposits] = useState<Array<{ id: string; amount: number; status: string; created_at: string }>>([]);
+  const [myBets, setMyBets] = useState<Array<{ id: string; matchcw_id: string; amount: number; status: string }>>([]);
 
   const loadAll = useCallback(async () => {
     const { data: c } = await supabase.from('clans').select('id, name, logo').eq('is_banned', false);
@@ -60,7 +65,15 @@ export default function MatchCWPage() {
       .select('*')
       .order('created_at', { ascending: false });
     setMatches((m || []) as MatchCW[]);
-  }, [myClanId]);
+    if (user) {
+      const { data: dep } = await supabase.from('deposits').select('id, amount, status, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(8);
+      setMyDeposits((dep || []) as never);
+      const { data: b } = await supabase.from('matchcw_bets').select('id, matchcw_id, amount, status').eq('user_id', user.id);
+      setMyBets((b || []) as never);
+      const { data: e } = await supabase.from('economy').select('balance').eq('user_id', user.id).maybeSingle();
+      setBalance(Number(e?.balance || 0));
+    }
+  }, [myClanId, user]);
 
   useEffect(() => {
     if (!myClanId || !user) return;
@@ -70,18 +83,38 @@ export default function MatchCWPage() {
     supabase.from('clan_members').select('role').eq('clan_id', myClanId).eq('user_id', user.id).maybeSingle()
       .then(({ data }) => setIsClanLeader(!!data && (data.role === 'leader' || data.role === 'co_leader')));
 
-    // Carrega saldo em reais
-    supabase.from('economy').select('balance').eq('user_id', user.id).maybeSingle()
-      .then(({ data }) => setBalance(Number(data?.balance || 0)));
-
     const ch = supabase
       .channel('matchcw-feed')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matchcw' }, () => loadAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits', filter: `user_id=eq.${user.id}` }, () => loadAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'matchcw_bets', filter: `user_id=eq.${user.id}` }, () => loadAll())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [myClanId, user, loadAll]);
 
   const clanName = (id: string | null) => (id ? clans.find(c => c.id === id)?.name || '???' : 'AGUARDANDO...');
+  const lockedTotal = myBets.filter(b => b.status === 'locked').reduce((s, b) => s + Number(b.amount), 0);
+
+  const submitDeposit = async () => {
+    if (!user) return;
+    if (depositAmount <= 0) { toast.error('Valor inválido'); return; }
+    let proofUrl: string | null = null;
+    if (depositProof) {
+      const path = `${user.id}/${Date.now()}_${depositProof.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+      const { error: upErr } = await supabase.storage.from('deposit-proofs').upload(path, depositProof);
+      if (upErr) { toast.error('Erro no upload: ' + upErr.message); return; }
+      const { data } = supabase.storage.from('deposit-proofs').getPublicUrl(path);
+      proofUrl = data.publicUrl;
+    }
+    const { error } = await supabase.from('deposits').insert({
+      user_id: user.id, amount: depositAmount, method: 'pix',
+      proof_url: proofUrl, pix_key: '6d16f765-9587-494c-9f4b-4c12941c716d',
+    });
+    if (error) { toast.error(error.message); return; }
+    navigator.clipboard.writeText('6d16f765-9587-494c-9f4b-4c12941c716d');
+    toast.success(`✅ Pedido enviado! Chave PIX copiada. Após confirmação do ADM, R$ ${depositAmount.toFixed(2)} será creditado.`);
+    setShowDeposit(false); setDepositAmount(50); setDepositProof(null); loadAll();
+  };
 
   const canManage = isClanLeader || role === 'superadmin';
 
@@ -107,6 +140,15 @@ export default function MatchCWPage() {
   };
 
   const respond = async (id: string, accept: boolean) => {
+    const m = matches.find(x => x.id === id);
+    if (accept && m?.is_bet_match) {
+      const need = Number(m.bet_amount);
+      if (balance < need) {
+        toast.error(`Saldo insuficiente. Você precisa de R$ ${need.toFixed(2)}. Seu saldo: R$ ${balance.toFixed(2)}. Faça um depósito.`);
+        return;
+      }
+      if (!confirm(`Confirmar aceite? R$ ${need.toFixed(2)} será BLOQUEADO (escrow) do seu saldo até o resultado.`)) return;
+    }
     const { error } = await supabase.rpc('respond_matchcw', { _match_id: id, _accept: accept });
     if (error) toast.error(error.message);
     else { toast.success(accept ? 'Match aceito!' : 'Match recusado'); loadAll(); }
@@ -152,6 +194,74 @@ export default function MatchCWPage() {
           )}
         </div>
       </div>
+
+      {/* Painel de saldo + escrow + depósito */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="bg-card neon-border rounded-lg p-4">
+          <p className="text-[10px] text-muted-foreground font-display uppercase">💰 Saldo MatchCW</p>
+          <p className="font-heading text-gold text-xl mt-1">R$ {balance.toFixed(2)}</p>
+          <p className="text-[10px] text-muted-foreground font-display mt-1">Disponível para apostar</p>
+        </div>
+        <div className="bg-card border border-warning/30 rounded-lg p-4">
+          <p className="text-[10px] text-muted-foreground font-display uppercase">🔒 Em Escrow (Locked)</p>
+          <p className="font-heading text-warning text-xl mt-1">R$ {lockedTotal.toFixed(2)}</p>
+          <p className="text-[10px] text-muted-foreground font-display mt-1">{myBets.filter(b => b.status === 'locked').length} aposta(s) em andamento</p>
+        </div>
+        <button onClick={() => setShowDeposit(s => !s)}
+          className="bg-gradient-to-br from-success/20 to-success/5 border border-success/30 rounded-lg p-4 text-left hover:from-success/30 transition-all">
+          <p className="text-[10px] text-muted-foreground font-display uppercase">💳 Depositar dinheiro</p>
+          <p className="font-heading text-success text-xl mt-1 flex items-center gap-2">+ Adicionar saldo</p>
+          <p className="text-[10px] text-muted-foreground font-display mt-1">PIX manual · ADM aprova</p>
+        </button>
+      </div>
+
+      {/* Painel de depósito */}
+      {showDeposit && (
+        <div className="bg-card rounded-lg border border-success/30 p-5 space-y-3">
+          <h3 className="font-heading text-sm text-success">💳 Solicitar Depósito PIX</h3>
+          <div className="bg-secondary/50 rounded p-3 space-y-2">
+            <p className="text-xs font-display text-foreground">1. Envie o PIX para a chave abaixo:</p>
+            <div className="flex items-center justify-between gap-2 bg-background/60 rounded p-2">
+              <code className="text-xs text-gold break-all">6d16f765-9587-494c-9f4b-4c12941c716d</code>
+              <button onClick={() => { navigator.clipboard.writeText('6d16f765-9587-494c-9f4b-4c12941c716d'); toast.success('Chave copiada!'); }}
+                className="text-xs text-primary shrink-0 underline">Copiar</button>
+            </div>
+            <p className="text-xs font-display text-foreground mt-2">2. Anexe o comprovante e confirme:</p>
+          </div>
+          <div>
+            <label className="text-[10px] text-muted-foreground font-display block mb-1">Valor do depósito (R$)</label>
+            <input type="number" min={5} step="0.01" value={depositAmount} onChange={e => setDepositAmount(Number(e.target.value))}
+              className="w-full p-2 bg-secondary rounded border border-success/30 text-sm font-display text-foreground" />
+          </div>
+          <div>
+            <label className="text-[10px] text-muted-foreground font-display block mb-1">Comprovante (opcional)</label>
+            <input type="file" accept="image/*,application/pdf" onChange={e => setDepositProof(e.target.files?.[0] || null)}
+              className="w-full text-xs text-muted-foreground font-display" />
+          </div>
+          <p className="text-[10px] text-muted-foreground font-display">⏳ Após o ADM confirmar, R$ {depositAmount.toFixed(2)} será creditado no seu saldo MatchCW automaticamente.</p>
+          <div className="flex gap-2">
+            <button onClick={submitDeposit} className="px-4 py-2 bg-success/20 text-success border border-success/40 rounded font-heading text-xs">Enviar Pedido</button>
+            <button onClick={() => setShowDeposit(false)} className="px-4 py-2 bg-secondary text-muted-foreground rounded font-heading text-xs">Cancelar</button>
+          </div>
+          {myDeposits.length > 0 && (
+            <div className="border-t border-border pt-3 space-y-1">
+              <p className="text-[10px] font-heading text-muted-foreground">MEUS DEPÓSITOS RECENTES</p>
+              {myDeposits.map(d => (
+                <div key={d.id} className="flex items-center justify-between text-xs font-display p-2 bg-secondary/40 rounded">
+                  <span className="text-foreground">R$ {Number(d.amount).toFixed(2)}</span>
+                  <span className={
+                    d.status === 'approved' ? 'text-success' :
+                    d.status === 'rejected' ? 'text-destructive' : 'text-warning'
+                  }>
+                    {d.status === 'approved' ? '✅ Aprovado' : d.status === 'rejected' ? '❌ Rejeitado' : '⏳ Pendente'}
+                  </span>
+                  <span className="text-muted-foreground text-[10px]">{new Date(d.created_at).toLocaleDateString('pt-BR')}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {!canManage && (
         <div className="bg-card rounded-lg border border-border p-4 text-center">
