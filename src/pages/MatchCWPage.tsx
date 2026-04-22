@@ -248,13 +248,16 @@ export default function MatchCWPage() {
       {confirmed.length > 0 && (
         <Section title="✅ CW MARCADOS" tone="gold">
           {confirmed.map(m => (
-            <MatchRow key={m.id} m={m} clanName={clanName} actions={
-              <div className="text-xs text-gold font-display flex items-center gap-3">
-                <span className="flex items-center gap-1"><Calendar size={12} /> {m.scheduled_date}</span>
-                <span className="flex items-center gap-1"><Clock size={12} /> {m.scheduled_time}</span>
-                <span>{m.rounds} {m.rounds === 1 ? 'partida' : 'partidas'}</span>
-              </div>
-            } />
+            <div key={m.id} className="space-y-2">
+              <MatchRow m={m} clanName={clanName} actions={
+                <div className="text-xs text-gold font-display flex items-center gap-3 flex-wrap">
+                  <span className="flex items-center gap-1"><Calendar size={12} /> {m.scheduled_date}</span>
+                  <span className="flex items-center gap-1"><Clock size={12} /> {m.scheduled_time}</span>
+                  <span>{m.rounds} {m.rounds === 1 ? 'partida' : 'partidas'}</span>
+                </div>
+              } />
+              {canManage && <FinalizePanel m={m} clanName={clanName} onFinalize={finalize} />}
+            </div>
           ))}
         </Section>
       )}
