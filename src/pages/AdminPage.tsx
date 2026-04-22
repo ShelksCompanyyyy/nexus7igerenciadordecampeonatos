@@ -6,7 +6,7 @@ import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Pl
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import PromoCodesPanel from '@/components/admin/PromoCodesPanel';
 
-type SuperTab = 'dashboard' | 'clans' | 'users' | 'withdrawals' | 'spins' | 'economy' | 'clan-manage' | 'promo';
+type SuperTab = 'dashboard' | 'clans' | 'users' | 'withdrawals' | 'spins' | 'economy' | 'clan-manage' | 'promo' | 'deposits';
 type ClanTab = 'dashboard' | 'members' | 'teams' | 'matches' | 'training' | 'news' | 'settings';
 
 const CHART_COLORS = ['hsl(0,100%,50%)', 'hsl(45,100%,50%)', 'hsl(120,70%,50%)', 'hsl(200,100%,50%)', 'hsl(280,100%,50%)', 'hsl(30,100%,50%)'];
@@ -124,6 +124,7 @@ function SuperAdminPanel() {
     { id: 'withdrawals', label: 'Saques', icon: Wallet },
     { id: 'spins', label: 'Giros', icon: Dices },
     { id: 'economy', label: 'Economia', icon: DollarSign },
+    { id: 'deposits', label: 'Depósitos', icon: Wallet },
     { id: 'promo', label: 'Códigos', icon: Gift },
   ];
 
@@ -249,6 +250,7 @@ function SuperAdminPanel() {
         </div>
       )}
       {tab === 'promo' && <PromoCodesPanel />}
+      {tab === 'deposits' && <DepositsTab />}
     </div>
   );
 }
