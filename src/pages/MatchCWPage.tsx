@@ -394,3 +394,52 @@ function CoordChat({ match, myClanId, username, userId, onConfirm }: {
     </div>
   );
 }
+
+function FinalizePanel({ m, clanName, onFinalize }: {
+  m: MatchCW; clanName: (id: string) => string;
+  onFinalize: (m: MatchCW, winnerClan: string, sa: number, sb: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [sa, setSa] = useState(0);
+  const [sb, setSb] = useState(0);
+  const [winner, setWinner] = useState<string>(m.clan_a_id);
+  return (
+    <div className="bg-background border border-gold/30 rounded p-3">
+      {!open ? (
+        <button onClick={() => setOpen(true)} className="w-full px-3 py-2 bg-gold/15 text-gold border border-gold/30 rounded font-heading text-xs flex items-center justify-center gap-1">
+          <Trophy size={12}/> Finalizar e declarar vencedor
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-xs font-heading text-gold">🏆 RESULTADO FINAL</p>
+          {m.is_bet_match && (
+            <p className="text-[10px] text-muted-foreground font-display bg-gold/10 p-2 rounded">
+              💰 Aposta total: R$ {(Number(m.bet_amount) * 2).toFixed(2)} → Vencedor recebe R$ {(Number(m.bet_amount) * 2 * 0.85).toFixed(2)} (15% taxa do site)
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-muted-foreground font-display">{clanName(m.clan_a_id)}</label>
+              <input type="number" min={0} value={sa} onChange={e => setSa(Number(e.target.value))} className="w-full p-2 bg-secondary rounded text-xs border border-border" />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground font-display">{clanName(m.clan_b_id)}</label>
+              <input type="number" min={0} value={sb} onChange={e => setSb(Number(e.target.value))} className="w-full p-2 bg-secondary rounded text-xs border border-border" />
+            </div>
+          </div>
+          <select value={winner} onChange={e => setWinner(e.target.value)} className="w-full p-2 bg-secondary rounded text-xs font-display border border-border">
+            <option value={m.clan_a_id}>Vencedor: {clanName(m.clan_a_id)}</option>
+            <option value={m.clan_b_id}>Vencedor: {clanName(m.clan_b_id)}</option>
+          </select>
+          <div className="flex gap-2">
+            <button onClick={() => { onFinalize(m, winner, sa, sb); setOpen(false); }}
+              className="flex-1 px-3 py-2 bg-gold/20 text-gold border border-gold/40 rounded font-heading text-xs">Confirmar Resultado</button>
+            <button onClick={() => setOpen(false)} className="px-3 py-2 bg-secondary text-muted-foreground rounded font-heading text-xs">
+              <X size={12}/>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
