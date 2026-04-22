@@ -79,7 +79,22 @@ export default function AdminPage() {
   if (!currentUser || !profile) return null;
   if (isSuperAdminUser) return <SuperAdminPanel />;
   if (role === 'admin') return <ClanAdminPanel clanId={profile.clan_id || ''} currentUserId={currentUser.id} />;
-  return <div className="text-center text-muted-foreground p-12 font-display">Sem permissão</div>;
+  return <LineLeaderGate clanId={profile.clan_id || ''} currentUserId={currentUser.id} />;
+}
+
+// Liberador para líder/vice de line: dá acesso à mesma view de ClanAdminPanel
+function LineLeaderGate({ clanId, currentUserId }: { clanId: string; currentUserId: string }) {
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!clanId || !currentUserId) { setAllowed(false); return; }
+    supabase.from('teams').select('id').eq('clan_id', clanId)
+      .or(`team_leader_id.eq.${currentUserId},team_co_leader_id.eq.${currentUserId}`)
+      .limit(1)
+      .then(({ data }) => setAllowed(!!data && data.length > 0));
+  }, [clanId, currentUserId]);
+  if (allowed === null) return <div className="text-center text-muted-foreground p-12 font-display">Carregando…</div>;
+  if (!allowed) return <div className="text-center text-muted-foreground p-12 font-display">Sem permissão</div>;
+  return <ClanAdminPanel clanId={clanId} currentUserId={currentUserId} />;
 }
 
 // ==================== SUPER ADMIN PANEL ====================
