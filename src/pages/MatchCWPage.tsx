@@ -112,6 +112,20 @@ export default function MatchCWPage() {
     else { toast.success(accept ? 'Match aceito!' : 'Match recusado'); loadAll(); }
   };
 
+  const finalize = async (m: MatchCW, winnerClan: string, sa: number, sb: number) => {
+    const { data, error } = await supabase.rpc('finalize_matchcw', {
+      _match_id: m.id, _score_a: sa, _score_b: sb, _winner_clan: winnerClan,
+    });
+    if (error) { toast.error(error.message); return; }
+    if (m.is_bet_match && data) {
+      const d = data as { winner_payout?: number; site_fee?: number };
+      toast.success(`🏆 Pago R$ ${Number(d.winner_payout||0).toFixed(2)} ao vencedor (taxa site: R$ ${Number(d.site_fee||0).toFixed(2)})`);
+    } else {
+      toast.success('Match finalizado!');
+    }
+    loadAll();
+  };
+
   const myMatches = matches.filter(m => m.clan_a_id === myClanId || m.clan_b_id === myClanId);
   // Pedidos abertos de OUTROS clãs (procurando alguém)
   const lookingForOpponent = matches.filter(m => m.status === 'pending' && !m.clan_b_id && m.clan_a_id !== myClanId);
