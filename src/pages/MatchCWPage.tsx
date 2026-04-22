@@ -83,18 +83,38 @@ export default function MatchCWPage() {
     supabase.from('clan_members').select('role').eq('clan_id', myClanId).eq('user_id', user.id).maybeSingle()
       .then(({ data }) => setIsClanLeader(!!data && (data.role === 'leader' || data.role === 'co_leader')));
 
-    // Carrega saldo em reais
-    supabase.from('economy').select('balance').eq('user_id', user.id).maybeSingle()
-      .then(({ data }) => setBalance(Number(data?.balance || 0)));
-
     const ch = supabase
       .channel('matchcw-feed')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matchcw' }, () => loadAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits', filter: `user_id=eq.${user.id}` }, () => loadAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'matchcw_bets', filter: `user_id=eq.${user.id}` }, () => loadAll())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [myClanId, user, loadAll]);
 
   const clanName = (id: string | null) => (id ? clans.find(c => c.id === id)?.name || '???' : 'AGUARDANDO...');
+  const lockedTotal = myBets.filter(b => b.status === 'locked').reduce((s, b) => s + Number(b.amount), 0);
+
+  const submitDeposit = async () => {
+    if (!user) return;
+    if (depositAmount <= 0) { toast.error('Valor inválido'); return; }
+    let proofUrl: string | null = null;
+    if (depositProof) {
+      const path = `${user.id}/${Date.now()}_${depositProof.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+      const { error: upErr } = await supabase.storage.from('deposit-proofs').upload(path, depositProof);
+      if (upErr) { toast.error('Erro no upload: ' + upErr.message); return; }
+      const { data } = supabase.storage.from('deposit-proofs').getPublicUrl(path);
+      proofUrl = data.publicUrl;
+    }
+    const { error } = await supabase.from('deposits').insert({
+      user_id: user.id, amount: depositAmount, method: 'pix',
+      proof_url: proofUrl, pix_key: '6d16f765-9587-494c-9f4b-4c12941c716d',
+    });
+    if (error) { toast.error(error.message); return; }
+    navigator.clipboard.writeText('6d16f765-9587-494c-9f4b-4c12941c716d');
+    toast.success(`✅ Pedido enviado! Chave PIX copiada. Após confirmação do ADM, R$ ${depositAmount.toFixed(2)} será creditado.`);
+    setShowDeposit(false); setDepositAmount(50); setDepositProof(null); loadAll();
+  };
 
   const canManage = isClanLeader || role === 'superadmin';
 
