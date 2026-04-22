@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { Swords, Send, Check, X, Plus, Calendar, Clock, MessageCircle, History, Crown } from 'lucide-react';
+import { Swords, Send, Check, X, Plus, Calendar, Clock, MessageCircle, History, Crown, DollarSign, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Clan { id: string; name: string; logo: string | null; }
@@ -18,6 +18,13 @@ interface MatchCW {
   score_a: number;
   score_b: number;
   created_at: string;
+  proposed_date: string | null;
+  proposed_time: string | null;
+  proposed_rounds: number | null;
+  is_bet_match: boolean;
+  bet_amount: number;
+  bet_status: string;
+  winner_clan_id: string | null;
 }
 interface MatchMessage {
   id: string;
@@ -38,6 +45,12 @@ export default function MatchCWPage() {
   const [showRequest, setShowRequest] = useState(false);
   const [notes, setNotes] = useState('');
   const [openChatId, setOpenChatId] = useState<string | null>(null);
+  const [reqDate, setReqDate] = useState('');
+  const [reqTime, setReqTime] = useState('');
+  const [reqRounds, setReqRounds] = useState(1);
+  const [isBet, setIsBet] = useState(false);
+  const [betAmount, setBetAmount] = useState(0);
+  const [balance, setBalance] = useState(0);
 
   const loadAll = useCallback(async () => {
     const { data: c } = await supabase.from('clans').select('id, name, logo').eq('is_banned', false);
@@ -57,6 +70,10 @@ export default function MatchCWPage() {
     supabase.from('clan_members').select('role').eq('clan_id', myClanId).eq('user_id', user.id).maybeSingle()
       .then(({ data }) => setIsClanLeader(!!data && (data.role === 'leader' || data.role === 'co_leader')));
 
+    // Carrega saldo em reais
+    supabase.from('economy').select('balance').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => setBalance(Number(data?.balance || 0)));
+
     const ch = supabase
       .channel('matchcw-feed')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matchcw' }, () => loadAll())
@@ -69,15 +86,44 @@ export default function MatchCWPage() {
   const canManage = isClanLeader || role === 'superadmin';
 
   const sendRequest = async () => {
-    const { error } = await supabase.rpc('request_matchcw', { _clan_a: myClanId, _clan_b: undefined, _notes: notes || null });
+    if (isBet && betAmount <= 0) { toast.error('Defina o valor da aposta'); return; }
+    if (isBet && betAmount > balance) { toast.error(`Saldo insuficiente. Disponível: R$ ${balance.toFixed(2)}`); return; }
+    const { error } = await supabase.rpc('request_matchcw', {
+      _clan_a: myClanId,
+      _clan_b: undefined,
+      _notes: notes || null,
+      _date: reqDate || null,
+      _time: reqTime || null,
+      _rounds: reqRounds,
+      _is_bet: isBet,
+      _bet_amount: isBet ? betAmount : 0,
+    });
     if (error) toast.error(error.message);
-    else { toast.success('⚔️ Procurando adversário...'); setShowRequest(false); setNotes(''); loadAll(); }
+    else {
+      toast.success(isBet ? `⚔️ Aposta de R$ ${betAmount.toFixed(2)} bloqueada!` : '⚔️ Procurando adversário...');
+      setShowRequest(false); setNotes(''); setReqDate(''); setReqTime(''); setReqRounds(1); setIsBet(false); setBetAmount(0);
+      loadAll();
+    }
   };
 
   const respond = async (id: string, accept: boolean) => {
     const { error } = await supabase.rpc('respond_matchcw', { _match_id: id, _accept: accept });
     if (error) toast.error(error.message);
     else { toast.success(accept ? 'Match aceito!' : 'Match recusado'); loadAll(); }
+  };
+
+  const finalize = async (m: MatchCW, winnerClan: string, sa: number, sb: number) => {
+    const { data, error } = await supabase.rpc('finalize_matchcw', {
+      _match_id: m.id, _score_a: sa, _score_b: sb, _winner_clan: winnerClan,
+    });
+    if (error) { toast.error(error.message); return; }
+    if (m.is_bet_match && data) {
+      const d = data as { winner_payout?: number; site_fee?: number };
+      toast.success(`🏆 Pago R$ ${Number(d.winner_payout||0).toFixed(2)} ao vencedor (taxa site: R$ ${Number(d.site_fee||0).toFixed(2)})`);
+    } else {
+      toast.success('Match finalizado!');
+    }
+    loadAll();
   };
 
   const myMatches = matches.filter(m => m.clan_a_id === myClanId || m.clan_b_id === myClanId);
@@ -119,6 +165,39 @@ export default function MatchCWPage() {
           <p className="text-xs text-muted-foreground font-display">Seu pedido ficará público — qualquer outro clã pode aceitar.</p>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Mensagem opcional..." rows={2}
             className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm" />
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-[10px] text-muted-foreground font-display flex items-center gap-1 mb-1"><Calendar size={10}/> Data</label>
+              <input type="date" value={reqDate} onChange={e => setReqDate(e.target.value)} className="w-full p-2 bg-secondary rounded border border-border text-xs font-display" />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground font-display flex items-center gap-1 mb-1"><Clock size={10}/> Horário</label>
+              <input type="time" value={reqTime} onChange={e => setReqTime(e.target.value)} className="w-full p-2 bg-secondary rounded border border-border text-xs font-display" />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground font-display mb-1 block">Partidas</label>
+              <input type="number" min={1} max={10} value={reqRounds} onChange={e => setReqRounds(Number(e.target.value))} className="w-full p-2 bg-secondary rounded border border-border text-xs font-display" />
+            </div>
+          </div>
+          <div className="border-t border-border pt-3 space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={isBet} onChange={e => setIsBet(e.target.checked)} className="accent-gold" />
+              <span className="text-xs font-heading text-gold flex items-center gap-1"><DollarSign size={12}/> MatchCW APOSTADO</span>
+            </label>
+            {isBet && (
+              <div className="bg-gold/10 border border-gold/30 rounded p-3 space-y-2">
+                <p className="text-[10px] text-muted-foreground font-display">
+                  💰 Saldo atual: <span className="text-gold font-heading">R$ {balance.toFixed(2)}</span>
+                </p>
+                <input type="number" min={1} step="0.01" value={betAmount || ''} onChange={e => setBetAmount(Number(e.target.value))}
+                  placeholder="Valor da aposta (R$)" className="w-full p-2 bg-secondary rounded border border-gold/30 text-xs font-display text-gold" />
+                <p className="text-[10px] text-muted-foreground font-display leading-relaxed">
+                  ⚠️ O valor será debitado do seu saldo agora. O clã que aceitar deve cobrir o mesmo valor.<br/>
+                  🏆 Vencedor recebe <strong className="text-gold">R$ {(betAmount * 2 * 0.85).toFixed(2)}</strong> · Taxa do site: 15% (R$ {(betAmount * 2 * 0.15).toFixed(2)})
+                </p>
+              </div>
+            )}
+          </div>
           <div className="flex gap-2">
             <button onClick={sendRequest} className="px-4 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs">Procurar Adversário</button>
             <button onClick={() => setShowRequest(false)} className="px-4 py-2 bg-secondary text-muted-foreground rounded font-heading text-xs">Cancelar</button>
@@ -169,13 +248,16 @@ export default function MatchCWPage() {
       {confirmed.length > 0 && (
         <Section title="✅ CW MARCADOS" tone="gold">
           {confirmed.map(m => (
-            <MatchRow key={m.id} m={m} clanName={clanName} actions={
-              <div className="text-xs text-gold font-display flex items-center gap-3">
-                <span className="flex items-center gap-1"><Calendar size={12} /> {m.scheduled_date}</span>
-                <span className="flex items-center gap-1"><Clock size={12} /> {m.scheduled_time}</span>
-                <span>{m.rounds} {m.rounds === 1 ? 'partida' : 'partidas'}</span>
-              </div>
-            } />
+            <div key={m.id} className="space-y-2">
+              <MatchRow m={m} clanName={clanName} actions={
+                <div className="text-xs text-gold font-display flex items-center gap-3 flex-wrap">
+                  <span className="flex items-center gap-1"><Calendar size={12} /> {m.scheduled_date}</span>
+                  <span className="flex items-center gap-1"><Clock size={12} /> {m.scheduled_time}</span>
+                  <span>{m.rounds} {m.rounds === 1 ? 'partida' : 'partidas'}</span>
+                </div>
+              } />
+              {canManage && <FinalizePanel m={m} clanName={clanName} onFinalize={finalize} />}
+            </div>
           ))}
         </Section>
       )}
@@ -212,13 +294,30 @@ function Section({ title, tone, icon, children }: { title: string; tone: 'primar
 
 function MatchRow({ m, clanName, actions }: { m: MatchCW; clanName: (id: string) => string; actions?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between flex-wrap gap-3 p-3 bg-secondary/40 rounded-md">
-      <div className="flex items-center gap-2 text-sm font-display">
-        <span className="text-foreground font-heading">{clanName(m.clan_a_id)}</span>
-        <span className="text-primary font-heading">VS</span>
-        <span className="text-foreground font-heading">{clanName(m.clan_b_id)}</span>
+    <div className="p-3 bg-secondary/40 rounded-md space-y-2">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2 text-sm font-display">
+          <span className="text-foreground font-heading">{clanName(m.clan_a_id)}</span>
+          <span className="text-primary font-heading">VS</span>
+          <span className="text-foreground font-heading">{clanName(m.clan_b_id)}</span>
+          {m.is_bet_match && (
+            <span className="ml-2 px-2 py-0.5 bg-gold/20 text-gold border border-gold/40 rounded text-[10px] font-heading flex items-center gap-1">
+              <DollarSign size={10}/> R$ {Number(m.bet_amount).toFixed(2)}
+            </span>
+          )}
+        </div>
+        {actions}
       </div>
-      {actions}
+      {(m.proposed_date || m.proposed_time || m.proposed_rounds) && m.status === 'pending' && (
+        <div className="text-[11px] text-muted-foreground font-display flex items-center gap-3 pl-1">
+          {m.proposed_date && <span className="flex items-center gap-1"><Calendar size={10}/> {m.proposed_date}</span>}
+          {m.proposed_time && <span className="flex items-center gap-1"><Clock size={10}/> {m.proposed_time}</span>}
+          {m.proposed_rounds && <span>{m.proposed_rounds} {m.proposed_rounds === 1 ? 'partida' : 'partidas'}</span>}
+        </div>
+      )}
+      {m.notes && m.status === 'pending' && (
+        <p className="text-[11px] italic text-muted-foreground font-display pl-1">"{m.notes}"</p>
+      )}
     </div>
   );
 }
@@ -292,6 +391,55 @@ function CoordChat({ match, myClanId, username, userId, onConfirm }: {
         </div>
         <button onClick={confirm} className="mt-2 w-full px-3 py-2 bg-gold/20 text-gold border border-gold/40 rounded font-heading text-xs">Confirmar e Fechar Chat</button>
       </div>
+    </div>
+  );
+}
+
+function FinalizePanel({ m, clanName, onFinalize }: {
+  m: MatchCW; clanName: (id: string) => string;
+  onFinalize: (m: MatchCW, winnerClan: string, sa: number, sb: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [sa, setSa] = useState(0);
+  const [sb, setSb] = useState(0);
+  const [winner, setWinner] = useState<string>(m.clan_a_id);
+  return (
+    <div className="bg-background border border-gold/30 rounded p-3">
+      {!open ? (
+        <button onClick={() => setOpen(true)} className="w-full px-3 py-2 bg-gold/15 text-gold border border-gold/30 rounded font-heading text-xs flex items-center justify-center gap-1">
+          <Trophy size={12}/> Finalizar e declarar vencedor
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-xs font-heading text-gold">🏆 RESULTADO FINAL</p>
+          {m.is_bet_match && (
+            <p className="text-[10px] text-muted-foreground font-display bg-gold/10 p-2 rounded">
+              💰 Aposta total: R$ {(Number(m.bet_amount) * 2).toFixed(2)} → Vencedor recebe R$ {(Number(m.bet_amount) * 2 * 0.85).toFixed(2)} (15% taxa do site)
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-muted-foreground font-display">{clanName(m.clan_a_id)}</label>
+              <input type="number" min={0} value={sa} onChange={e => setSa(Number(e.target.value))} className="w-full p-2 bg-secondary rounded text-xs border border-border" />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground font-display">{clanName(m.clan_b_id)}</label>
+              <input type="number" min={0} value={sb} onChange={e => setSb(Number(e.target.value))} className="w-full p-2 bg-secondary rounded text-xs border border-border" />
+            </div>
+          </div>
+          <select value={winner} onChange={e => setWinner(e.target.value)} className="w-full p-2 bg-secondary rounded text-xs font-display border border-border">
+            <option value={m.clan_a_id}>Vencedor: {clanName(m.clan_a_id)}</option>
+            <option value={m.clan_b_id}>Vencedor: {clanName(m.clan_b_id)}</option>
+          </select>
+          <div className="flex gap-2">
+            <button onClick={() => { onFinalize(m, winner, sa, sb); setOpen(false); }}
+              className="flex-1 px-3 py-2 bg-gold/20 text-gold border border-gold/40 rounded font-heading text-xs">Confirmar Resultado</button>
+            <button onClick={() => setOpen(false)} className="px-3 py-2 bg-secondary text-muted-foreground rounded font-heading text-xs">
+              <X size={12}/>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -79,7 +79,22 @@ export default function AdminPage() {
   if (!currentUser || !profile) return null;
   if (isSuperAdminUser) return <SuperAdminPanel />;
   if (role === 'admin') return <ClanAdminPanel clanId={profile.clan_id || ''} currentUserId={currentUser.id} />;
-  return <div className="text-center text-muted-foreground p-12 font-display">Sem permissão</div>;
+  return <LineLeaderGate clanId={profile.clan_id || ''} currentUserId={currentUser.id} />;
+}
+
+// Liberador para líder/vice de line: dá acesso à mesma view de ClanAdminPanel
+function LineLeaderGate({ clanId, currentUserId }: { clanId: string; currentUserId: string }) {
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!clanId || !currentUserId) { setAllowed(false); return; }
+    supabase.from('teams').select('id').eq('clan_id', clanId)
+      .or(`team_leader_id.eq.${currentUserId},team_co_leader_id.eq.${currentUserId}`)
+      .limit(1)
+      .then(({ data }) => setAllowed(!!data && data.length > 0));
+  }, [clanId, currentUserId]);
+  if (allowed === null) return <div className="text-center text-muted-foreground p-12 font-display">Carregando…</div>;
+  if (!allowed) return <div className="text-center text-muted-foreground p-12 font-display">Sem permissão</div>;
+  return <ClanAdminPanel clanId={clanId} currentUserId={currentUserId} />;
 }
 
 // ==================== SUPER ADMIN PANEL ====================
@@ -579,6 +594,7 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
   const teamPlayers = users.filter(u => players.includes(u.user_id));
   const availablePlayers = users.filter(u => !u.team_id && !players.includes(u.user_id));
   const teamLeaderId = (team as any).team_leader_id || '';
+  const teamCoLeaderId = (team as any).team_co_leader_id || '';
   const { user: currentUser, role: actorRole } = useAuth();
   const [isClanAdminFlag, setIsClanAdminFlag] = useState(false);
   useEffect(() => {
@@ -588,7 +604,7 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
       .then(({ data }) => setIsClanAdminFlag(!!data && (data.role === 'leader' || data.role === 'co_leader')));
   }, [currentUser, team.clan_id]);
   const isSuper = actorRole === 'superadmin';
-  const isThisTeamLeader = currentUser?.id && teamLeaderId === currentUser.id;
+  const isThisTeamLeader = currentUser?.id && (teamLeaderId === currentUser.id || teamCoLeaderId === currentUser.id);
   const canEditThisLine = isSuper || isClanAdminFlag || isThisTeamLeader;
   const denyAccess = () => toast.error('Acesso negado: você só pode editar membros da sua própria line');
 
@@ -610,6 +626,13 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
     const { error } = await supabase.from('teams').update({ team_leader_id: userId || null }).eq('id', team.id);
     if (error) { toast.error(error.message); return; }
     onRefresh(); toast.success(userId ? 'Líder de line definido!' : 'Líder removido');
+  };
+
+  const handleSetCoLeader = async (userId: string) => {
+    if (!canEditThisLine) { denyAccess(); return; }
+    const { error } = await supabase.from('teams').update({ team_co_leader_id: userId || null } as never).eq('id', team.id);
+    if (error) { toast.error(error.message); return; }
+    onRefresh(); toast.success(userId ? 'Vice-líder definido!' : 'Vice-líder removido');
   };
 
   const handleAddPlayer = async () => {
@@ -683,6 +706,14 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
           className="w-full p-2 bg-background rounded border border-border text-foreground font-display text-xs">
           <option value="">Sem líder</option>
           {teamPlayers.map(p => <option key={p.user_id} value={p.user_id}>{p.game_nick || p.username}</option>)}
+        </select>
+      </div>
+      <div className="mb-3">
+        <label className="text-[10px] text-muted-foreground font-display block mb-1">🎖️ Vice-Líder de Line</label>
+        <select value={teamCoLeaderId} onChange={e => handleSetCoLeader(e.target.value)}
+          className="w-full p-2 bg-background rounded border border-border text-foreground font-display text-xs">
+          <option value="">Sem vice-líder</option>
+          {teamPlayers.filter(p => p.user_id !== teamLeaderId).map(p => <option key={p.user_id} value={p.user_id}>{p.game_nick || p.username}</option>)}
         </select>
       </div>
       <div className="space-y-1 mb-3">
