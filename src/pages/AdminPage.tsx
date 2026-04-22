@@ -1165,7 +1165,7 @@ function DepositsTab() {
 
       {processed.length > 0 && (
         <>
-          <h3 className="font-heading text-sm text-muted-foreground flex items-center gap-2 pt-4"><History size={14}/> HISTÓRICO</h3>
+          <h3 className="font-heading text-sm text-muted-foreground flex items-center gap-2 pt-4"><HistoryIcon size={14}/> HISTÓRICO</h3>
           {processed.slice(0, 30).map(d => {
             const p = profilesMap.get(d.user_id);
             return (
