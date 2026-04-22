@@ -277,13 +277,30 @@ function Section({ title, tone, icon, children }: { title: string; tone: 'primar
 
 function MatchRow({ m, clanName, actions }: { m: MatchCW; clanName: (id: string) => string; actions?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between flex-wrap gap-3 p-3 bg-secondary/40 rounded-md">
-      <div className="flex items-center gap-2 text-sm font-display">
-        <span className="text-foreground font-heading">{clanName(m.clan_a_id)}</span>
-        <span className="text-primary font-heading">VS</span>
-        <span className="text-foreground font-heading">{clanName(m.clan_b_id)}</span>
+    <div className="p-3 bg-secondary/40 rounded-md space-y-2">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2 text-sm font-display">
+          <span className="text-foreground font-heading">{clanName(m.clan_a_id)}</span>
+          <span className="text-primary font-heading">VS</span>
+          <span className="text-foreground font-heading">{clanName(m.clan_b_id)}</span>
+          {m.is_bet_match && (
+            <span className="ml-2 px-2 py-0.5 bg-gold/20 text-gold border border-gold/40 rounded text-[10px] font-heading flex items-center gap-1">
+              <DollarSign size={10}/> R$ {Number(m.bet_amount).toFixed(2)}
+            </span>
+          )}
+        </div>
+        {actions}
       </div>
-      {actions}
+      {(m.proposed_date || m.proposed_time || m.proposed_rounds) && m.status === 'pending' && (
+        <div className="text-[11px] text-muted-foreground font-display flex items-center gap-3 pl-1">
+          {m.proposed_date && <span className="flex items-center gap-1"><Calendar size={10}/> {m.proposed_date}</span>}
+          {m.proposed_time && <span className="flex items-center gap-1"><Clock size={10}/> {m.proposed_time}</span>}
+          {m.proposed_rounds && <span>{m.proposed_rounds} {m.proposed_rounds === 1 ? 'partida' : 'partidas'}</span>}
+        </div>
+      )}
+      {m.notes && m.status === 'pending' && (
+        <p className="text-[11px] italic text-muted-foreground font-display pl-1">"{m.notes}"</p>
+      )}
     </div>
   );
 }
