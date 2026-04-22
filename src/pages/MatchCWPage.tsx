@@ -140,6 +140,15 @@ export default function MatchCWPage() {
   };
 
   const respond = async (id: string, accept: boolean) => {
+    const m = matches.find(x => x.id === id);
+    if (accept && m?.is_bet_match) {
+      const need = Number(m.bet_amount);
+      if (balance < need) {
+        toast.error(`Saldo insuficiente. Você precisa de R$ ${need.toFixed(2)}. Seu saldo: R$ ${balance.toFixed(2)}. Faça um depósito.`);
+        return;
+      }
+      if (!confirm(`Confirmar aceite? R$ ${need.toFixed(2)} será BLOQUEADO (escrow) do seu saldo até o resultado.`)) return;
+    }
     const { error } = await supabase.rpc('respond_matchcw', { _match_id: id, _accept: accept });
     if (error) toast.error(error.message);
     else { toast.success(accept ? 'Match aceito!' : 'Match recusado'); loadAll(); }
