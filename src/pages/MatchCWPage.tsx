@@ -151,6 +151,39 @@ export default function MatchCWPage() {
           <p className="text-xs text-muted-foreground font-display">Seu pedido ficará público — qualquer outro clã pode aceitar.</p>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Mensagem opcional..." rows={2}
             className="w-full p-3 bg-secondary rounded border border-border text-foreground font-display text-sm" />
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-[10px] text-muted-foreground font-display flex items-center gap-1 mb-1"><Calendar size={10}/> Data</label>
+              <input type="date" value={reqDate} onChange={e => setReqDate(e.target.value)} className="w-full p-2 bg-secondary rounded border border-border text-xs font-display" />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground font-display flex items-center gap-1 mb-1"><Clock size={10}/> Horário</label>
+              <input type="time" value={reqTime} onChange={e => setReqTime(e.target.value)} className="w-full p-2 bg-secondary rounded border border-border text-xs font-display" />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground font-display mb-1 block">Partidas</label>
+              <input type="number" min={1} max={10} value={reqRounds} onChange={e => setReqRounds(Number(e.target.value))} className="w-full p-2 bg-secondary rounded border border-border text-xs font-display" />
+            </div>
+          </div>
+          <div className="border-t border-border pt-3 space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={isBet} onChange={e => setIsBet(e.target.checked)} className="accent-gold" />
+              <span className="text-xs font-heading text-gold flex items-center gap-1"><DollarSign size={12}/> MatchCW APOSTADO</span>
+            </label>
+            {isBet && (
+              <div className="bg-gold/10 border border-gold/30 rounded p-3 space-y-2">
+                <p className="text-[10px] text-muted-foreground font-display">
+                  💰 Saldo atual: <span className="text-gold font-heading">R$ {balance.toFixed(2)}</span>
+                </p>
+                <input type="number" min={1} step="0.01" value={betAmount || ''} onChange={e => setBetAmount(Number(e.target.value))}
+                  placeholder="Valor da aposta (R$)" className="w-full p-2 bg-secondary rounded border border-gold/30 text-xs font-display text-gold" />
+                <p className="text-[10px] text-muted-foreground font-display leading-relaxed">
+                  ⚠️ O valor será debitado do seu saldo agora. O clã que aceitar deve cobrir o mesmo valor.<br/>
+                  🏆 Vencedor recebe <strong className="text-gold">R$ {(betAmount * 2 * 0.85).toFixed(2)}</strong> · Taxa do site: 15% (R$ {(betAmount * 2 * 0.15).toFixed(2)})
+                </p>
+              </div>
+            )}
+          </div>
           <div className="flex gap-2">
             <button onClick={sendRequest} className="px-4 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs">Procurar Adversário</button>
             <button onClick={() => setShowRequest(false)} className="px-4 py-2 bg-secondary text-muted-foreground rounded font-heading text-xs">Cancelar</button>
