@@ -2,21 +2,33 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import { useState, useEffect } from 'react';
-import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, Settings, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell, UserPlus } from 'lucide-react';
+import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell, UserPlus, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
+// Itens completos do menu lateral (drawer mobile + sidebar desktop)
 const NAV_ITEMS = [
+  { path: '/', label: 'Home', icon: Home, accent: 'primary' as const },
+  { path: '/profile', label: 'Perfil', icon: UserCircle, accent: 'primary' as const },
+  { path: '/ranking', label: 'Ranking', icon: Trophy, accent: 'primary' as const },
+  { path: '/roulette', label: 'Roleta / PIX', icon: Dices, accent: 'primary' as const },
+  { path: '/shop', label: 'Loja NXS', icon: ShoppingBag, accent: 'primary' as const },
+  { path: '/chat', label: 'Chat Geral', icon: MessageSquare, accent: 'primary' as const },
+  { path: '/matchcw', label: 'Match CW', icon: Shield, accent: 'gold' as const },
+  { path: '/matchcw-bet', label: 'CW Apostado', icon: DollarSign, accent: 'gold' as const },
+  { path: '/friends', label: 'Amigos & Chat Privado', icon: UserPlus, accent: 'info' as const },
+  { path: '/matches', label: 'Partidas', icon: Swords, accent: 'primary' as const },
+  { path: '/teams', label: 'Times (Lines)', icon: Users, accent: 'primary' as const },
+  { path: '/training', label: 'X-Treinos', icon: Target, accent: 'primary' as const },
+  { path: '/news', label: 'Notícias', icon: Newspaper, accent: 'primary' as const },
+  { path: '/tutorial', label: 'Tutorial', icon: BookOpen, accent: 'primary' as const },
+];
+
+// Bottom nav fixa (mobile) — apenas atalhos principais
+const BOTTOM_NAV = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/ranking', label: 'Ranking', icon: Trophy },
-  { path: '/teams', label: 'Times', icon: Users },
-  { path: '/matchcw', label: 'MatchCW', icon: Swords },
-  { path: '/training', label: 'XTreino', icon: Target },
   { path: '/roulette', label: 'Roleta', icon: Dices },
   { path: '/shop', label: 'Loja', icon: ShoppingBag },
-  { path: '/news', label: 'Notícias', icon: Newspaper },
-  { path: '/chat', label: 'Chat', icon: MessageSquare },
-  { path: '/friends', label: 'Amigos', icon: UserPlus },
-  { path: '/tutorial', label: 'Tutorial', icon: BookOpen },
   { path: '/profile', label: 'Perfil', icon: UserCircle },
 ];
 
