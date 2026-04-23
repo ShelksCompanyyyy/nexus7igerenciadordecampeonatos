@@ -151,8 +151,10 @@ export default function FriendsPage() {
 
   const tabs: { id: TabKey; label: string; count: number }[] = [
     { id: 'friends', label: 'Amigos', count: accepted.length },
-    { id: 'requests', label: 'Pedidos', count: pendingIncoming.length },
     { id: 'add', label: 'Adicionar', count: 0 },
+  ];
+  const subTabs: { id: TabKey; label: string; count: number }[] = [
+    { id: 'requests', label: 'Pedidos', count: pendingIncoming.length },
     { id: 'blocked', label: 'Bloqueados', count: blocked.length },
   ];
 
@@ -166,16 +168,25 @@ export default function FriendsPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        {tabs.map(t => (
+      {/* Abas principais grandes (estilo das fotos) */}
+      <div className="grid grid-cols-2 gap-2">
+        {tabs.map(t => {
+          const active = tab === t.id;
+          return (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`py-3 rounded-md font-heading text-sm transition-all ${
+                active ? 'bg-primary text-primary-foreground' : 'bg-secondary/60 text-muted-foreground'
+              }`}>
+              {t.label}{t.count > 0 && ` (${t.count})`}
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex gap-2 text-xs">
+        {subTabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`px-3 py-2 rounded font-heading text-xs flex items-center gap-2 transition-all ${
-              tab === t.id ? 'gradient-primary text-primary-foreground box-glow-sm' : 'bg-secondary text-muted-foreground'
-            }`}>
-            {t.label}
-            {t.count > 0 && (
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${tab === t.id ? 'bg-background/30' : 'bg-primary/20 text-primary'}`}>{t.count}</span>
-            )}
+            className={`px-3 py-1.5 rounded font-display ${tab === t.id ? 'text-primary underline' : 'text-muted-foreground'}`}>
+            {t.label}{t.count > 0 && ` (${t.count})`}
           </button>
         ))}
       </div>

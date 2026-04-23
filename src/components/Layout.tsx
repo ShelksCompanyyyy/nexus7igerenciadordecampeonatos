@@ -2,21 +2,33 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import { useState, useEffect } from 'react';
-import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, Settings, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell, UserPlus } from 'lucide-react';
+import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell, UserPlus, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
+// Itens completos do menu lateral (drawer mobile + sidebar desktop)
 const NAV_ITEMS = [
+  { path: '/', label: 'Home', icon: Home, accent: 'primary' as const },
+  { path: '/profile', label: 'Perfil', icon: UserCircle, accent: 'primary' as const },
+  { path: '/ranking', label: 'Ranking', icon: Trophy, accent: 'primary' as const },
+  { path: '/roulette', label: 'Roleta / PIX', icon: Dices, accent: 'primary' as const },
+  { path: '/shop', label: 'Loja NXS', icon: ShoppingBag, accent: 'primary' as const },
+  { path: '/chat', label: 'Chat Geral', icon: MessageSquare, accent: 'primary' as const },
+  { path: '/matchcw', label: 'Match CW', icon: Shield, accent: 'gold' as const },
+  { path: '/matchcw-bet', label: 'CW Apostado', icon: DollarSign, accent: 'gold' as const },
+  { path: '/friends', label: 'Amigos & Chat Privado', icon: UserPlus, accent: 'info' as const },
+  { path: '/matches', label: 'Partidas', icon: Swords, accent: 'primary' as const },
+  { path: '/teams', label: 'Times (Lines)', icon: Users, accent: 'primary' as const },
+  { path: '/training', label: 'X-Treinos', icon: Target, accent: 'primary' as const },
+  { path: '/news', label: 'Notícias', icon: Newspaper, accent: 'primary' as const },
+  { path: '/tutorial', label: 'Tutorial', icon: BookOpen, accent: 'primary' as const },
+];
+
+// Bottom nav fixa (mobile) — apenas atalhos principais
+const BOTTOM_NAV = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/ranking', label: 'Ranking', icon: Trophy },
-  { path: '/teams', label: 'Times', icon: Users },
-  { path: '/matchcw', label: 'MatchCW', icon: Swords },
-  { path: '/training', label: 'XTreino', icon: Target },
   { path: '/roulette', label: 'Roleta', icon: Dices },
   { path: '/shop', label: 'Loja', icon: ShoppingBag },
-  { path: '/news', label: 'Notícias', icon: Newspaper },
-  { path: '/chat', label: 'Chat', icon: MessageSquare },
-  { path: '/friends', label: 'Amigos', icon: UserPlus },
-  { path: '/tutorial', label: 'Tutorial', icon: BookOpen },
   { path: '/profile', label: 'Perfil', icon: UserCircle },
 ];
 
@@ -118,12 +130,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-b border-border">
         <div className="flex items-center justify-between p-3">
-          <div className="flex items-center gap-2">
-            <img src={nexusLogo} alt="Nexus7i" className="w-8 h-8" />
-            <span className="font-heading text-xs text-primary">NEXUS7i</span>
-          </div>
+          <button onClick={() => navigate('/')} className="flex items-center gap-2">
+            <span className="font-heading text-lg text-primary text-glow tracking-wider">NEXUS7i</span>
+          </button>
           <div className="flex items-center gap-3">
-            <span className="text-gold text-xs font-display">{profile?.gold || 0}G</span>
+            <span className="text-gold text-sm font-heading">{profile?.gold || 0}G</span>
             <button onClick={() => navigate('/notifications')} className="relative text-foreground" aria-label="Notificações">
               <Bell size={20} />
               {unreadCount > 0 && (
@@ -139,38 +150,94 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu Drawer — estilo "MENU" das fotos */}
       {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-background/95 backdrop-blur-lg pt-16">
-          <nav className="p-4 space-y-2">
-            {NAV_ITEMS.map(item => (
-              <Link key={item.path} to={item.path} onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-md font-display transition-all ${
-                  location.pathname === item.path ? 'bg-primary/10 text-primary neon-border' : 'text-muted-foreground'
-                }`}
-              >
-                <item.icon size={20} />
-                {item.label}
-              </Link>
-            ))}
+        <div className="lg:hidden fixed inset-0 z-50 bg-background overflow-y-auto">
+          {/* Header do drawer */}
+          <div className="flex items-center justify-between p-4 border-b border-border/40">
+            <h2 className="font-heading text-3xl text-primary text-glow tracking-wider">MENU</h2>
+            <button onClick={() => setMobileOpen(false)} className="text-foreground p-1" aria-label="Fechar">
+              <X size={28} />
+            </button>
+          </div>
+
+          {/* Card do usuário */}
+          <div className="p-4">
+            <div className="bg-card neon-border rounded-xl p-4 flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center font-heading text-primary text-glow text-xl">
+                {profile?.username?.[0]?.toUpperCase() || 'U'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-heading text-foreground text-base truncate">{profile?.username}</p>
+                <span className="inline-block mt-1 px-2 py-0.5 border border-primary/60 rounded text-[10px] font-heading text-primary tracking-wider">
+                  {isAdminUser ? 'ADMIN' : 'JOGADOR'}
+                </span>
+              </div>
+              <div className="text-right">
+                <p className="font-heading text-gold text-sm">{profile?.gold || 0} NXS</p>
+                <p className="font-heading text-primary text-sm mt-0.5">{profile?.free_spins || 0} Giros</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Lista de itens */}
+          <nav className="px-4 pb-24">
+            {NAV_ITEMS.map(item => {
+              const active = location.pathname === item.path;
+              const accentText =
+                item.accent === 'gold' ? 'text-gold' :
+                item.accent === 'info' ? 'text-[hsl(200,100%,60%)]' :
+                'text-primary';
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center gap-4 py-4 border-b border-border/30 ${active ? 'opacity-100' : 'opacity-95'}`}
+                >
+                  <item.icon size={22} className={accentText} />
+                  <span className={`flex-1 font-display text-base ${accentText === 'text-primary' ? 'text-foreground' : accentText}`}>
+                    {item.label}
+                  </span>
+                  <ChevronRight size={18} className="text-muted-foreground" />
+                </Link>
+              );
+            })}
             {isAdminUser && ADMIN_ITEMS.map(item => (
               <Link key={item.path} to={item.path} onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-md font-display text-primary/70"
-              >
-                <item.icon size={20} />
-                {item.label}
+                className="flex items-center gap-4 py-4 border-b border-border/30">
+                <item.icon size={22} className="text-primary" />
+                <span className="flex-1 font-display text-base text-primary">{item.label}</span>
+                <ChevronRight size={18} className="text-muted-foreground" />
               </Link>
             ))}
             <button onClick={() => { handleLogout(); setMobileOpen(false); }}
-              className="flex items-center gap-3 px-4 py-3 rounded-md font-display text-destructive w-full mt-4">
-              <LogOut size={20} /> Sair
+              className="flex items-center gap-4 py-4 w-full text-left">
+              <LogOut size={22} className="text-destructive" />
+              <span className="flex-1 font-display text-base text-destructive">Sair</span>
             </button>
           </nav>
         </div>
       )}
 
+      {/* Bottom Nav fixa (mobile) — 5 atalhos */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-lg border-t border-border">
+        <div className="flex items-stretch justify-around">
+          {BOTTOM_NAV.map(item => {
+            const active = location.pathname === item.path;
+            return (
+              <Link key={item.path} to={item.path}
+                className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+                <item.icon size={20} className={active ? 'text-glow-sm' : ''} />
+                <span className={`text-[10px] font-display ${active ? 'text-primary' : 'text-muted-foreground'}`}>{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
       {/* Main Content */}
-      <main className="flex-1 lg:ml-64 pt-14 lg:pt-0">
+      <main className="flex-1 lg:ml-64 pt-14 pb-20 lg:pt-0 lg:pb-0">
         <div className="p-4 lg:p-6 max-w-7xl mx-auto">
           {children}
         </div>
