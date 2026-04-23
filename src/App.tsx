@@ -9,6 +9,7 @@ import HomePage from "@/pages/HomePage";
 import RankingPage from "@/pages/RankingPage";
 import TeamsPage, { TeamDetailPage } from "@/pages/TeamsPage";
 import MatchCWPage from "@/pages/MatchCWPage";
+import MatchCWBetPage from "@/pages/MatchCWBetPage";
 import TrainingPage from "@/pages/TrainingPage";
 import RoulettePage from "@/pages/RoulettePage";
 import ChatPage from "@/pages/ChatPage";
@@ -43,6 +44,7 @@ function AppRoutes() {
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/teams/:id" element={<TeamDetailPage />} />
         <Route path="/matchcw" element={<MatchCWPage />} />
+        <Route path="/matchcw-bet" element={<MatchCWBetPage />} />
         <Route path="/matches" element={<MatchCWPage />} />
         <Route path="/training" element={<TrainingPage />} />
         <Route path="/roulette" element={<RoulettePage />} />
