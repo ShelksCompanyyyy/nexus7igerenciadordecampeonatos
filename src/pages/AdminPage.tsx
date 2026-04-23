@@ -87,6 +87,9 @@ function LineLeaderGate({ clanId, currentUserId }: { clanId: string; currentUser
   const [allowed, setAllowed] = useState<boolean | null>(null);
   useEffect(() => {
     if (!clanId || !currentUserId) { setAllowed(false); return; }
+    // Validação de UUID antes de consultar para evitar "invalid input syntax for type uuid"
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRe.test(clanId) || !uuidRe.test(currentUserId)) { setAllowed(false); return; }
     supabase.from('teams').select('id').eq('clan_id', clanId)
       .or(`team_leader_id.eq.${currentUserId},team_co_leader_id.eq.${currentUserId}`)
       .limit(1)
