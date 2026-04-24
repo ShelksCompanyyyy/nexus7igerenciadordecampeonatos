@@ -2,34 +2,29 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import heroBg from '@/assets/hero-bg.jpg';
-import { Trophy, Users, Swords, Dices, Target, Newspaper, Zap, BookOpen } from 'lucide-react';
+import { Trophy, Swords, Target, Zap, BookOpen, Coins, Activity, ChevronRight, Plus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-
-const QUICK_LINKS = [
-  { path: '/ranking', label: 'Ranking', icon: Trophy, desc: 'Ver classificação' },
-  { path: '/teams', label: 'Lines', icon: Users, desc: 'Equipes do clã' },
-  { path: '/matchcw', label: 'MatchCW', icon: Swords, desc: 'Clã vs Clã' },
-  { path: '/roulette', label: 'Roleta', icon: Dices, desc: 'Gire e ganhe' },
-  { path: '/training', label: 'XTreino', icon: Target, desc: 'Treinos agendados' },
-  { path: '/news', label: 'Notícias', icon: Newspaper, desc: 'Avisos do clã' },
-];
 
 export default function HomePage() {
   const { profile, user } = useAuth();
   const clanId = profile?.clan_id || '';
   const [clan, setClan] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
-  const [matches, setMatches] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [matchcw, setMatchcw] = useState<any[]>([]);
+  const [trainings, setTrainings] = useState<any[]>([]);
 
   useEffect(() => {
     if (!clanId) return;
     supabase.from('clans').select('*').eq('id', clanId).single().then(({ data }) => setClan(data));
     supabase.from('profiles').select('*').eq('clan_id', clanId).then(({ data }) => setMembers(data || []));
-    supabase.from('matches').select('*').eq('clan_id', clanId).then(({ data }) => setMatches(data || []));
     supabase.from('teams').select('*').eq('clan_id', clanId).then(({ data }) => setTeams(data || []));
+    supabase.from('matchcw').select('*').or(`clan_a_id.eq.${clanId},clan_b_id.eq.${clanId}`)
+      .order('created_at', { ascending: false }).limit(5).then(({ data }) => setMatchcw(data || []));
+    supabase.from('trainings').select('*').eq('clan_id', clanId)
+      .order('training_date', { ascending: true }).limit(5).then(({ data }) => setTrainings(data || []));
   }, [clanId]);
 
   useEffect(() => {
@@ -40,13 +35,30 @@ export default function HomePage() {
   }, [user]);
 
   const topMvp = [...members].sort((a, b) => (b.mvps || 0) - (a.mvps || 0))[0];
-  const topKiller = [...members].sort((a, b) => (b.kills || 0) - (a.kills || 0))[0];
-  const upcomingMatches = matches.filter(m => m.status === 'upcoming').slice(0, 3);
+  const clanRank = clan ? `${clan.wins || 0}V / ${clan.losses || 0}D` : '—';
+  const nextMatchCW = matchcw.find(m => m.status === 'accepted' || m.status === 'pending');
+  const today = new Date().toISOString().slice(0, 10);
+  const nextTraining = trainings.find(t => (t.training_date || '') >= today) || trainings[0];
 
   const isNewUser = profile ? (new Date().getTime() - new Date(profile.created_at).getTime()) < 1000 * 60 * 60 * 24 * 3 : false;
 
+  const activity: { icon: any; text: string; sub: string; when: string }[] = [];
+  matchcw.slice(0, 2).forEach(m => activity.push({
+    icon: Swords,
+    text: m.status === 'pending' ? 'Desafio MatchCW pendente' : m.status === 'accepted' ? 'MatchCW aceito' : 'MatchCW finalizado',
+    sub: `${m.scheduled_date || m.proposed_date || ''} ${m.scheduled_time || m.proposed_time || ''}`.trim() || '—',
+    when: new Date(m.created_at).toLocaleDateString('pt-BR'),
+  }));
+  trainings.slice(0, 2).forEach(t => activity.push({
+    icon: Target,
+    text: t.title || 'Treino agendado',
+    sub: `${t.training_date} ${t.training_time || ''}`.trim(),
+    when: new Date(t.created_at).toLocaleDateString('pt-BR'),
+  }));
+  if (topMvp) activity.push({ icon: Trophy, text: `${topMvp.game_nick} é o TOP MVP`, sub: `${topMvp.mvps || 0} MVPs`, when: '' });
+
   return (
-    <div className="space-y-8 animate-slide-up">
+    <div className="space-y-6 animate-slide-up">
       {isNewUser && (
         <Link to="/tutorial" className="block bg-primary/10 border border-primary/30 rounded-lg px-3 py-2 hover:border-primary/60 transition-all group">
           <div className="flex items-center gap-2">
@@ -75,93 +87,116 @@ export default function HomePage() {
         </div>
       )}
 
-      <div className="relative rounded-xl overflow-hidden neon-border-strong" style={{ minHeight: '300px' }}>
+      {/* 1. BANNER PRINCIPAL */}
+      <div className="relative rounded-xl overflow-hidden neon-border-strong" style={{ minHeight: '260px' }}>
         {clan?.banner ? <img src={clan.banner} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" /> :
           <img src={heroBg} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-        <div className="relative z-10 flex flex-col items-center justify-center py-16 px-4 text-center">
-          {clan?.logo ? <img src={clan.logo} alt="" className="w-28 h-28 rounded-xl animate-float drop-shadow-[0_0_40px_hsl(0,100%,50%,0.6)] mb-4 object-cover" /> :
-            <img src={nexusLogo} alt="Nexus7i" className="w-28 h-28 animate-float drop-shadow-[0_0_40px_hsl(0,100%,50%,0.6)] mb-4" />}
+        <div className="relative z-10 flex flex-col items-center justify-center py-12 px-4 text-center">
+          {clan?.logo ? <img src={clan.logo} alt="" className="w-24 h-24 rounded-xl animate-float drop-shadow-[0_0_40px_hsl(0,100%,50%,0.6)] mb-3 object-cover" /> :
+            <img src={nexusLogo} alt="Nexus7i" className="w-24 h-24 animate-float drop-shadow-[0_0_40px_hsl(0,100%,50%,0.6)] mb-3" />}
           <h1 className="text-3xl md:text-5xl font-heading text-primary text-glow tracking-widest">{clan?.name || 'NEXUS7i'}</h1>
-          <p className="text-lg md:text-xl font-display text-foreground/80 tracking-[0.3em] mt-1">E-SPORTS</p>
-          <div className="flex items-center gap-2 mt-4 text-muted-foreground text-sm font-display">
-            <Zap size={14} className="text-primary" />
-            <span>Bem-vindo, <span className="text-primary">{profile?.username}</span></span>
-            <Zap size={14} className="text-primary" />
+          <p className="text-sm md:text-lg font-display text-foreground/80 tracking-[0.3em] mt-1">E-SPORTS</p>
+          <p className="mt-3 text-sm font-display text-muted-foreground">Bem-vindo, <span className="text-primary">{profile?.username}</span></p>
+          <div className="mt-3 inline-flex items-center gap-2 bg-card/80 border border-gold/40 rounded-full px-4 py-1.5">
+            <Coins size={14} className="text-gold" />
+            <span className="font-heading text-sm text-gold">{profile?.gold || 0}G</span>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {QUICK_LINKS.map(link => (
-          <Link key={link.path} to={link.path}
-            className="flex flex-col items-center gap-2 p-4 bg-card rounded-lg border border-border hover:neon-border transition-all group">
-            <link.icon size={28} className="text-primary group-hover:text-glow transition-all" />
-            <span className="font-heading text-xs text-foreground">{link.label}</span>
-            <span className="text-[10px] text-muted-foreground font-display">{link.desc}</span>
-          </Link>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-card rounded-lg neon-border p-5">
-          <h3 className="font-heading text-xs text-primary mb-3 flex items-center gap-2"><Trophy size={14} /> TOP MVP</h3>
-          {topMvp ? (
-            <div className="flex items-center gap-3">
-              {topMvp.avatar ? <img src={topMvp.avatar} alt="" className="w-12 h-12 rounded-full object-cover" /> :
-                <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-heading">{topMvp.game_nick?.[0]?.toUpperCase()}</div>}
-              <div>
-                <p className="font-display text-foreground">{topMvp.game_nick}</p>
-                <p className="text-primary text-sm font-heading">{topMvp.mvps || 0} MVPs</p>
-              </div>
-            </div>
-          ) : <p className="text-muted-foreground text-sm font-display">Nenhum MVP ainda</p>}
-        </div>
-        <div className="bg-card rounded-lg neon-border p-5">
-          <h3 className="font-heading text-xs text-primary mb-3 flex items-center gap-2"><Target size={14} /> MELHOR JOGADOR</h3>
-          {topKiller ? (
-            <div className="flex items-center gap-3">
-              {topKiller.avatar ? <img src={topKiller.avatar} alt="" className="w-12 h-12 rounded-full object-cover" /> :
-                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-foreground font-heading">{topKiller.game_nick?.[0]?.toUpperCase()}</div>}
-              <div>
-                <p className="font-display text-foreground">{topKiller.game_nick}</p>
-                <p className="text-sm text-muted-foreground font-display">{topKiller.kills || 0}K / {topKiller.deaths || 0}D / {topKiller.assists || 0}A</p>
-              </div>
-            </div>
-          ) : <p className="text-muted-foreground text-sm font-display">Sem dados</p>}
-        </div>
-        <div className="bg-card rounded-lg neon-border p-5">
-          <h3 className="font-heading text-xs text-primary mb-3 flex items-center gap-2"><Zap size={14} /> ESTATÍSTICAS</h3>
-          <div className="space-y-2 font-display text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Membros</span><span className="text-foreground">{members.length}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Lines</span><span className="text-foreground">{teams.length}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Partidas</span><span className="text-foreground">{matches.length}</span></div>
+      {/* 2. CARDS RESUMO */}
+      <div className="grid grid-cols-2 gap-3">
+        <Link to="/ranking" className="bg-card rounded-lg neon-border p-4 hover:border-primary/60 transition-all group">
+          <div className="flex items-center justify-between mb-2">
+            <Trophy size={16} className="text-primary" />
+            <ChevronRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
           </div>
-        </div>
+          <p className="text-[10px] font-heading text-muted-foreground tracking-wider">RANKING DO CLÃ</p>
+          <p className="font-heading text-base text-foreground mt-1 truncate">{clan?.name || '—'}</p>
+          <p className="text-xs font-display text-primary mt-0.5">{clanRank}</p>
+        </Link>
+
+        <Link to="/matchcw" className="bg-card rounded-lg neon-border p-4 hover:border-primary/60 transition-all group">
+          <div className="flex items-center justify-between mb-2">
+            <Swords size={16} className="text-primary" />
+            <ChevronRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
+          </div>
+          <p className="text-[10px] font-heading text-muted-foreground tracking-wider">PRÓX. MATCHCW</p>
+          {nextMatchCW ? (
+            <>
+              <p className="font-heading text-base text-foreground mt-1">{nextMatchCW.scheduled_date || nextMatchCW.proposed_date || 'A definir'}</p>
+              <p className="text-xs font-display text-primary mt-0.5">{(nextMatchCW.status || '').toUpperCase()}</p>
+            </>
+          ) : (
+            <>
+              <p className="font-heading text-base text-foreground mt-1">Nenhum</p>
+              <p className="text-xs font-display text-muted-foreground mt-0.5">Crie um agora</p>
+            </>
+          )}
+        </Link>
+
+        <Link to="/training" className="bg-card rounded-lg neon-border p-4 hover:border-primary/60 transition-all group">
+          <div className="flex items-center justify-between mb-2">
+            <Target size={16} className="text-primary" />
+            <ChevronRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
+          </div>
+          <p className="text-[10px] font-heading text-muted-foreground tracking-wider">PRÓX. TREINO</p>
+          {nextTraining ? (
+            <>
+              <p className="font-heading text-base text-foreground mt-1 truncate">{nextTraining.title || 'Treino'}</p>
+              <p className="text-xs font-display text-primary mt-0.5">{nextTraining.training_date} {nextTraining.training_time || ''}</p>
+            </>
+          ) : (
+            <>
+              <p className="font-heading text-base text-foreground mt-1">Sem treinos</p>
+              <p className="text-xs font-display text-muted-foreground mt-0.5">Agendar</p>
+            </>
+          )}
+        </Link>
+
+        <Link to="/shop" className="bg-card rounded-lg border border-gold/40 p-4 hover:border-gold transition-all group">
+          <div className="flex items-center justify-between mb-2">
+            <Coins size={16} className="text-gold" />
+            <ChevronRight size={14} className="text-muted-foreground group-hover:text-gold transition-colors" />
+          </div>
+          <p className="text-[10px] font-heading text-muted-foreground tracking-wider">SALDO / GIROS</p>
+          <p className="font-heading text-base text-gold mt-1">{profile?.gold || 0}G</p>
+          <p className="text-xs font-display text-muted-foreground mt-0.5">{profile?.free_spins || 0} giros grátis</p>
+        </Link>
       </div>
 
-      {upcomingMatches.length > 0 && (
-        <div className="bg-card rounded-lg neon-border p-5">
-          <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2"><Swords size={16} /> PRÓXIMOS JOGOS</h3>
+      {/* 3. CTA PRINCIPAL */}
+      <Link to="/matchcw"
+        className="flex items-center justify-center gap-2 w-full py-4 rounded-lg gradient-primary text-primary-foreground font-heading text-sm tracking-widest hover:opacity-90 transition-all neon-border-strong">
+        <Plus size={18} />
+        CRIAR MATCHCW
+      </Link>
+
+      {/* 4. ATIVIDADE RECENTE */}
+      <div className="bg-card rounded-lg neon-border p-5">
+        <h3 className="font-heading text-xs text-primary mb-4 flex items-center gap-2 tracking-wider">
+          <Activity size={14} /> ATIVIDADE RECENTE
+        </h3>
+        {activity.length === 0 ? (
+          <p className="text-muted-foreground text-sm font-display text-center py-4">Sem atividades recentes</p>
+        ) : (
           <div className="space-y-3">
-            {upcomingMatches.map(m => {
-              const tA = teams.find(t => t.id === m.team_a_id);
-              const tB = teams.find(t => t.id === m.team_b_id);
-              return (
-                <div key={m.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                  <span className="font-display text-foreground text-sm">{tA?.name || '???'}</span>
-                  <div className="flex flex-col items-center">
-                    <span className="text-primary font-heading text-xs">VS</span>
-                    <span className="text-[10px] text-muted-foreground">{m.match_date} {m.match_time}</span>
-                  </div>
-                  <span className="font-display text-foreground text-sm">{tB?.name || '???'}</span>
+            {activity.slice(0, 5).map((it, i) => (
+              <div key={i} className="flex items-center gap-3 pb-3 border-b border-border/50 last:border-0 last:pb-0">
+                <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center shrink-0">
+                  <it.icon size={14} className="text-primary" />
                 </div>
-              );
-            })}
+                <div className="flex-1 min-w-0">
+                  <p className="font-display text-sm text-foreground truncate">{it.text}</p>
+                  <p className="text-[11px] text-muted-foreground font-display truncate">{it.sub}</p>
+                </div>
+                {it.when && <span className="text-[10px] text-muted-foreground font-display shrink-0">{it.when}</span>}
+              </div>
+            ))}
           </div>
-        </div>
-      )}
-
+        )}
+      </div>
     </div>
   );
 }
