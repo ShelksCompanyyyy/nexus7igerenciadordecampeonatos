@@ -586,7 +586,7 @@ function ClanTeamsTab({ clanTeams, clanUsers, clanId, onRefresh }: { clanTeams: 
           className="flex-1 p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display text-sm" />
         <button onClick={handleAdd} className="px-4 gradient-primary text-primary-foreground rounded font-heading text-xs flex items-center gap-2"><Plus size={14} /> Criar</button>
       </div>
-      {clanTeams.map(team => <ClanTeamRow key={team.id} team={team} users={clanUsers} onRefresh={onRefresh} />)}
+      {clanTeams.map(team => <ClanTeamRow key={team.id} team={team} users={clanUsers} allTeams={clanTeams} onRefresh={onRefresh} />)}
       {clanTeams.length === 0 && <p className="text-center text-muted-foreground font-display p-6 text-sm">Nenhuma line criada</p>}
     </div>
   );
