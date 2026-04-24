@@ -499,10 +499,18 @@ export default function RoulettePage() {
         <button
           onClick={handleSpin}
           disabled={spinning || !canSpin}
-          className="px-10 py-4 gradient-primary text-primary-foreground font-heading rounded-lg disabled:opacity-50 transition-all hover:scale-105 box-glow text-sm tracking-widest relative overflow-hidden"
-          style={{ boxShadow: '0 0 30px hsl(0 100% 50% / 0.5)' }}
+          className="group relative px-10 py-4 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95 overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, hsl(0 100% 50%) 0%, hsl(15 100% 45%) 50%, hsl(0 100% 35%) 100%)',
+            boxShadow: '0 0 40px hsl(0 100% 50% / 0.6), inset 0 1px 0 hsl(0 100% 70% / 0.5), inset 0 -2px 6px hsl(0 100% 25% / 0.6)',
+          }}
         >
-          {spinning ? 'GIRANDO...' : canSpin ? `GIRAR GRÁTIS (${freeSpins})` : 'SEM ROLETAS GRÁTIS'}
+          <span className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-50 pointer-events-none" />
+          <span className="absolute inset-x-0 -top-1/2 h-full bg-gradient-to-b from-white/30 to-transparent blur-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+          <span className="relative font-heading text-primary-foreground text-sm tracking-[0.25em] flex items-center gap-2">
+            <Dices size={16} className={spinning ? 'animate-spin' : ''} />
+            {spinning ? 'GIRANDO...' : canSpin ? `GIRAR · ${freeSpins} GRÁTIS` : 'SEM GIROS'}
+          </span>
         </button>
 
         {!canSpin && !spinning && (
