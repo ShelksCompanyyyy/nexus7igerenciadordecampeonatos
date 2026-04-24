@@ -2,9 +2,10 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
-import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Plus, Trash, Check, X, Search, Edit, Image, Crown, BarChart3, Settings, Lock, Copy, Gift, History as HistoryIcon } from 'lucide-react';
+import { Shield, Users, Swords, Target, Newspaper, Wallet, Dices, DollarSign, Plus, Trash, Check, X, Search, Edit, Image, Crown, BarChart3, Settings, Lock, Copy, Gift, History as HistoryIcon, ArrowRightLeft } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import PromoCodesPanel from '@/components/admin/PromoCodesPanel';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 type SuperTab = 'dashboard' | 'clans' | 'users' | 'withdrawals' | 'spins' | 'economy' | 'clan-manage' | 'promo' | 'deposits';
 type ClanTab = 'dashboard' | 'members' | 'teams' | 'matches' | 'training' | 'news' | 'settings';
@@ -585,13 +586,13 @@ function ClanTeamsTab({ clanTeams, clanUsers, clanId, onRefresh }: { clanTeams: 
           className="flex-1 p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display text-sm" />
         <button onClick={handleAdd} className="px-4 gradient-primary text-primary-foreground rounded font-heading text-xs flex items-center gap-2"><Plus size={14} /> Criar</button>
       </div>
-      {clanTeams.map(team => <ClanTeamRow key={team.id} team={team} users={clanUsers} onRefresh={onRefresh} />)}
+      {clanTeams.map(team => <ClanTeamRow key={team.id} team={team} users={clanUsers} allTeams={clanTeams} onRefresh={onRefresh} />)}
       {clanTeams.length === 0 && <p className="text-center text-muted-foreground font-display p-6 text-sm">Nenhuma line criada</p>}
     </div>
   );
 }
 
-function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfile[]; onRefresh: () => void }) {
+function ClanTeamRow({ team, users, allTeams, onRefresh }: { team: DBTeam; users: DBProfile[]; allTeams?: DBTeam[]; onRefresh: () => void }) {
   const [addingPlayer, setAddingPlayer] = useState('');
   const [editingName, setEditingName] = useState(false);
   const [teamName, setTeamName] = useState(team.name);
@@ -604,6 +605,8 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
   const teamCoLeaderId = (team as any).team_co_leader_id || '';
   const { user: currentUser, role: actorRole } = useAuth();
   const [isClanAdminFlag, setIsClanAdminFlag] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<{ user: DBProfile; fromTeamName: string | null } | null>(null);
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!currentUser) return;
     supabase.from('clan_members')
@@ -614,6 +617,17 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
   const isThisTeamLeader = currentUser?.id && (teamLeaderId === currentUser.id || teamCoLeaderId === currentUser.id);
   const canEditThisLine = isSuper || isClanAdminFlag || isThisTeamLeader;
   const denyAccess = () => toast.error('Acesso negado: você só pode editar membros da sua própria line');
+
+  // Traduz mensagens vindas do RPC manage_team_player para algo amigável
+  const translateError = (msg: string): string => {
+    if (!msg) return 'Erro desconhecido';
+    if (/Line cheia/i.test(msg)) return '❌ Line cheia (máximo 5 jogadores). Remova alguém antes.';
+    if (/já está na line/i.test(msg)) return '⚠️ Esse jogador já está nesta line.';
+    if (/não pertence ao mesmo clã/i.test(msg)) return '🚫 Jogador não pertence ao mesmo clã da line.';
+    if (/Acesso negado/i.test(msg)) return '🔒 Acesso negado. Você não tem permissão para esta line.';
+    if (/Line não encontrada/i.test(msg)) return '❌ Line não encontrada.';
+    return msg;
+  };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -642,29 +656,57 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
     onRefresh(); toast.success(userId ? 'Vice-líder definido!' : 'Vice-líder removido');
   };
 
-  const handleAddPlayer = async () => {
+  // Adiciona/transfere jogador. Se ele já está em outra line, abre confirmação.
+  const handleAddPlayer = () => {
     if (!addingPlayer) return;
     if (!canEditThisLine) { denyAccess(); return; }
+    if (players.length >= 5) {
+      toast.error('❌ Line cheia (máximo 5 jogadores). Remova alguém antes.');
+      return;
+    }
+    const target = users.find(u => u.user_id === addingPlayer);
+    if (!target) return;
+    if (target.team_id && target.team_id !== team.id) {
+      // jogador já está em outra line — pede confirmação de transferência
+      const fromTeamName = allTeams?.find(t => t.id === target.team_id)?.name || null;
+      setTransferTarget({ user: target, fromTeamName });
+      return;
+    }
+    void doAddPlayer(addingPlayer);
+  };
+
+  const doAddPlayer = async (userId: string) => {
+    setBusy(true);
     const { error } = await supabase.rpc('manage_team_player', {
       _team_id: team.id,
-      _target_user: addingPlayer,
+      _target_user: userId,
       _action: 'add',
     });
-    if (error) { toast.error(error.message); return; }
+    setBusy(false);
+    if (error) { toast.error(translateError(error.message)); return; }
     setAddingPlayer('');
+    setTransferTarget(null);
     onRefresh();
-    toast.success('Jogador adicionado!');
+    toast.success('✅ Jogador adicionado à line!');
   };
 
   const handleRemovePlayer = async (playerId: string) => {
     if (!canEditThisLine) { denyAccess(); return; }
+    // Atualização otimista: se o jogador era líder/vice, limpamos esses campos antes do refresh
+    if (playerId === teamLeaderId) {
+      await supabase.from('teams').update({ team_leader_id: null }).eq('id', team.id);
+    }
+    if (playerId === teamCoLeaderId) {
+      await supabase.from('teams').update({ team_co_leader_id: null } as never).eq('id', team.id);
+    }
     const { error } = await supabase.rpc('manage_team_player', {
       _team_id: team.id,
       _target_user: playerId,
       _action: 'remove',
     });
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(translateError(error.message)); onRefresh(); return; }
     onRefresh();
+    toast.success('Jogador removido da line.');
   };
 
   const handleDelete = async () => {
@@ -675,6 +717,28 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
 
   return (
     <div className={`bg-secondary/50 p-4 rounded-lg ${!canEditThisLine ? 'opacity-70' : ''}`}>
+      <AlertDialog open={!!transferTarget} onOpenChange={(o) => !o && setTransferTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 font-heading text-primary">
+              <ArrowRightLeft size={18} /> Transferir jogador?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-display">
+              Transferir <span className="text-primary font-heading">{transferTarget?.user.game_nick || transferTarget?.user.username}</span>
+              {transferTarget?.fromTeamName ? <> da line <span className="text-foreground font-heading">{transferTarget.fromTeamName}</span></> : null}
+              {' '}para <span className="text-foreground font-heading">{team.name}</span>?
+              {' '}Ele será removido automaticamente da line anterior e perderá quaisquer cargos de líder/vice nela.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={busy} onClick={() => transferTarget && doAddPlayer(transferTarget.user.user_id)}>
+              {busy ? 'Transferindo...' : 'Confirmar transferência'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {!canEditThisLine && (
         <div className="mb-3 px-2 py-1 rounded bg-destructive/10 border border-destructive/30 text-destructive text-[10px] font-heading flex items-center gap-1">
           <Lock size={10} /> ACESSO NEGADO — você não lidera esta line
