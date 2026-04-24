@@ -668,7 +668,7 @@ function ClanTeamRow({ team, users, allTeams, onRefresh }: { team: DBTeam; users
     if (!target) return;
     if (target.team_id && target.team_id !== team.id) {
       // jogador já está em outra line — pede confirmação de transferência
-      const fromTeamName = (window as any).__teamNameById?.[target.team_id] || null;
+      const fromTeamName = allTeams?.find(t => t.id === target.team_id)?.name || null;
       setTransferTarget({ user: target, fromTeamName });
       return;
     }
