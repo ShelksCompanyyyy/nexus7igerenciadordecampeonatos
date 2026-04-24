@@ -592,12 +592,11 @@ function ClanTeamsTab({ clanTeams, clanUsers, clanId, onRefresh }: { clanTeams: 
   );
 }
 
-function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfile[]; onRefresh: () => void }) {
+function ClanTeamRow({ team, users, allTeams, onRefresh }: { team: DBTeam; users: DBProfile[]; allTeams?: DBTeam[]; onRefresh: () => void }) {
   const [addingPlayer, setAddingPlayer] = useState('');
   const [editingName, setEditingName] = useState(false);
   const [teamName, setTeamName] = useState(team.name);
   const players = team.players || [];
-  const allTeams = (window as any).__allTeams as DBTeam[] | undefined; // optional
   const teamPlayers = users.filter(u => players.includes(u.user_id));
   // Mostrar todos os membros do clã que ainda não estão NESTA line.
   // (Líderes podem transferir jogadores entre lines do mesmo clã.)
