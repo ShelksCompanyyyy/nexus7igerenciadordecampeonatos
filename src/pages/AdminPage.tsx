@@ -597,7 +597,9 @@ function ClanTeamRow({ team, users, onRefresh }: { team: DBTeam; users: DBProfil
   const [teamName, setTeamName] = useState(team.name);
   const players = team.players || [];
   const teamPlayers = users.filter(u => players.includes(u.user_id));
-  const availablePlayers = users.filter(u => !u.team_id && !players.includes(u.user_id));
+  // Mostrar todos os membros do clã que ainda não estão NESTA line.
+  // (Líderes podem transferir jogadores entre lines do mesmo clã.)
+  const availablePlayers = users.filter(u => !players.includes(u.user_id));
   const teamLeaderId = (team as any).team_leader_id || '';
   const teamCoLeaderId = (team as any).team_co_leader_id || '';
   const { user: currentUser, role: actorRole } = useAuth();
