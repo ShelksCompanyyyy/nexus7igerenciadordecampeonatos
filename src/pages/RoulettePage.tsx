@@ -364,23 +364,35 @@ export default function RoulettePage() {
 
   return (
     <div className="space-y-6 animate-slide-up">
-      <h1 className="text-2xl font-heading text-primary text-glow flex items-center gap-3">
-        <Dices size={28} /> ROLETA
-      </h1>
-
-      <div className="flex flex-wrap gap-3">
-        <div className="bg-card rounded-lg neon-border p-4 flex items-center gap-3 flex-1 min-w-[140px]">
-          <Wallet size={20} className="text-gold" />
-          <div>
-            <p className="text-xs text-muted-foreground font-display">Saldo</p>
-            <p className="font-heading text-gold text-lg">{gold}G</p>
+      {/* HERO HEADER */}
+      <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-card via-background to-card p-5">
+        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full bg-gold/10 blur-3xl pointer-events-none" />
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-primary/15 border border-primary/40 flex items-center justify-center shadow-[0_0_24px_hsl(0,100%,50%,0.4)]">
+              <Dices size={24} className="text-primary" />
+            </div>
+            <div>
+              <p className="text-[10px] font-heading text-muted-foreground tracking-[0.3em]">NEXUS · ROLETA</p>
+              <h1 className="text-2xl font-heading text-primary text-glow leading-tight">FORTUNA</h1>
+            </div>
           </div>
-        </div>
-        <div className="bg-card rounded-lg neon-border p-4 flex items-center gap-3 flex-1 min-w-[140px]">
-          <Sparkles size={20} className="text-primary" />
-          <div>
-            <p className="text-xs text-muted-foreground font-display">Giros Grátis</p>
-            <p className="font-heading text-primary text-lg">{freeSpins}</p>
+          <div className="flex items-center gap-2">
+            <div className="bg-background/60 backdrop-blur border border-gold/40 rounded-lg px-3 py-2 flex items-center gap-2">
+              <Wallet size={14} className="text-gold" />
+              <div className="leading-tight">
+                <p className="text-[9px] text-muted-foreground font-display">SALDO</p>
+                <p className="font-heading text-gold text-sm">{gold}G</p>
+              </div>
+            </div>
+            <div className="bg-background/60 backdrop-blur border border-primary/40 rounded-lg px-3 py-2 flex items-center gap-2">
+              <Sparkles size={14} className="text-primary" />
+              <div className="leading-tight">
+                <p className="text-[9px] text-muted-foreground font-display">GIROS</p>
+                <p className="font-heading text-primary text-sm">{freeSpins}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -388,18 +400,32 @@ export default function RoulettePage() {
       {/* Horizontal carousel + legendary burst overlay */}
       <div className="flex flex-col items-center gap-6">
         <div className="relative w-full max-w-3xl">
+          {/* Frame chrome top */}
+          <div className="flex items-center justify-between mb-2 px-1">
+            <span className="text-[10px] font-heading text-muted-foreground tracking-[0.3em]">◤ NEXUS WHEEL</span>
+            <div className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+              <span className="text-[10px] font-heading text-destructive tracking-widest">LIVE</span>
+            </div>
+          </div>
           <div
             ref={containerRef}
-            className="relative w-full h-40 rounded-xl border-2 border-gold/40 overflow-hidden bg-gradient-to-b from-background via-card to-background"
+            className="relative w-full h-40 rounded-xl border-2 border-gold/50 overflow-hidden bg-[radial-gradient(ellipse_at_center,hsl(0_0%_12%)_0%,hsl(0_0%_4%)_100%)]"
             style={{
               boxShadow: glow
                 ? (result !== null && result >= 50
                   ? '0 0 80px hsl(0 100% 50% / 0.9), inset 0 0 50px hsl(0 100% 50% / 0.35)'
                   : '0 0 60px hsl(45 100% 50% / 0.7), inset 0 0 40px hsl(45 100% 50% / 0.2)')
-                : '0 0 30px hsl(0 100% 50% / 0.25), inset 0 0 30px rgba(0,0,0,0.6)',
+                : '0 0 30px hsl(0 100% 50% / 0.25), inset 0 0 40px rgba(0,0,0,0.75)',
               transition: 'box-shadow 0.4s ease',
             }}
           >
+            {/* corner brackets — unique frame look */}
+            <span className="pointer-events-none absolute top-1.5 left-1.5 w-3 h-3 border-t-2 border-l-2 border-gold/70 z-30" />
+            <span className="pointer-events-none absolute top-1.5 right-1.5 w-3 h-3 border-t-2 border-r-2 border-gold/70 z-30" />
+            <span className="pointer-events-none absolute bottom-1.5 left-1.5 w-3 h-3 border-b-2 border-l-2 border-gold/70 z-30" />
+            <span className="pointer-events-none absolute bottom-1.5 right-1.5 w-3 h-3 border-b-2 border-r-2 border-gold/70 z-30" />
+
             <div className="pointer-events-none absolute inset-y-0 left-0 w-24 z-20 bg-gradient-to-r from-background to-transparent" />
             <div className="pointer-events-none absolute inset-y-0 right-0 w-24 z-20 bg-gradient-to-l from-background to-transparent" />
 
