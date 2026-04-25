@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { SPIN_PACKAGES, PIX_KEY, MIN_WITHDRAWAL } from '@/lib/store';
 import { toast } from 'sonner';
-import { Dices, Gift, Copy, Wallet, Sparkles, History, Crown, Trophy, Medal, Award } from 'lucide-react';
+import { Dices, Gift, Copy, Wallet, Sparkles, Trophy, Medal, Award } from 'lucide-react';
 
 // Prêmios — ÍNDICES devem bater 1:1 com winner_index retornado pelo RPC spin_roulette
 const PRIZES = [
@@ -20,7 +20,9 @@ const PRIZES = [
 
 const ITEM_WIDTH = 110; // px - matches w-[110px]
 
-// Build strip with the WINNER placed at exact index using server-provided winner_index
+// Build strip with the WINNER placed at exact index using server-provided winner_index.
+// IMPORTANT: nunca colocar outro item igual ao prêmio próximo do vencedor para evitar
+// o usuário "ler" o slot errado quando o jitter aproxima a borda.
 function buildStrip(winnerIndex: number, length = 60): { items: typeof PRIZES; winIndex: number } {
   const items: typeof PRIZES = [];
   for (let i = 0; i < length; i++) {
@@ -280,9 +282,11 @@ export default function RoulettePage() {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const center = containerWidth / 2;
-        // Pequeno jitter dentro da célula (sem estourar para item vizinho)
-        const jitter = (Math.random() * 0.4 - 0.2) * (ITEM_WIDTH * 0.4);
-        const targetOffset = built.winIndex * ITEM_WIDTH + ITEM_WIDTH / 2 - center + jitter;
+        // Sem jitter — alinha PERFEITAMENTE no centro do slot vencedor (corrige
+        // bug de mostrar 10G mas creditar 100G porque o jitter empurrava para o slot vizinho).
+        const itemMargin = 8; // mx-1 = 4px de cada lado = 8px total
+        const fullItemWidth = ITEM_WIDTH + itemMargin;
+        const targetOffset = built.winIndex * fullItemWidth + fullItemWidth / 2 - center;
 
         const duration = 6.2;
         setTransition(`transform ${duration}s cubic-bezier(0.08, 0.82, 0.16, 1)`);

@@ -220,6 +220,10 @@ export type Database = {
           created_at: string
           id: string
           is_bet_match: boolean
+          line_a_confirmed: boolean | null
+          line_a_id: string | null
+          line_b_confirmed: boolean | null
+          line_b_id: string | null
           notes: string | null
           proposed_date: string | null
           proposed_rounds: number | null
@@ -242,6 +246,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_bet_match?: boolean
+          line_a_confirmed?: boolean | null
+          line_a_id?: string | null
+          line_b_confirmed?: boolean | null
+          line_b_id?: string | null
           notes?: string | null
           proposed_date?: string | null
           proposed_rounds?: number | null
@@ -264,6 +272,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_bet_match?: boolean
+          line_a_confirmed?: boolean | null
+          line_a_id?: string | null
+          line_b_confirmed?: boolean | null
+          line_b_id?: string | null
           notes?: string | null
           proposed_date?: string | null
           proposed_rounds?: number | null
@@ -752,6 +764,68 @@ export type Database = {
         }
         Relationships: []
       }
+      support_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_staff: boolean
+          message: string
+          ticket_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_staff?: boolean
+          message: string
+          ticket_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_staff?: boolean
+          message?: string
+          ticket_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          created_at: string
+          id: string
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       teams: {
         Row: {
           clan_id: string
@@ -1004,6 +1078,7 @@ export type Database = {
         Args: { _approve: boolean; _deposit_id: string }
         Returns: Json
       }
+      cancel_matchcw: { Args: { _match_id: string }; Returns: Json }
       confirm_matchcw: {
         Args: {
           _date: string
@@ -1054,19 +1129,34 @@ export type Database = {
         Returns: Json
       }
       redeem_promo_code: { Args: { _code: string }; Returns: Json }
-      request_matchcw: {
-        Args: {
-          _bet_amount?: number
-          _clan_a: string
-          _clan_b?: string
-          _date?: string
-          _is_bet?: boolean
-          _notes?: string
-          _rounds?: number
-          _time?: string
-        }
-        Returns: Json
-      }
+      request_matchcw:
+        | {
+            Args: {
+              _bet_amount?: number
+              _clan_a: string
+              _clan_b?: string
+              _date?: string
+              _is_bet?: boolean
+              _notes?: string
+              _rounds?: number
+              _time?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _bet_amount?: number
+              _clan_a: string
+              _clan_b?: string
+              _date?: string
+              _is_bet?: boolean
+              _line_a?: string
+              _notes?: string
+              _rounds?: number
+              _time?: string
+            }
+            Returns: Json
+          }
       reset_user_golds:
         | {
             Args: { _clan_id?: string; _exclude_admins?: boolean }
@@ -1082,6 +1172,14 @@ export type Database = {
           }
       respond_matchcw: {
         Args: { _accept: boolean; _match_id: string }
+        Returns: Json
+      }
+      set_matchcw_line: {
+        Args: { _line_id: string; _match_id: string }
+        Returns: Json
+      }
+      set_team_role: {
+        Args: { _role: string; _target_user: string; _team_id: string }
         Returns: Json
       }
       spin_roulette: { Args: never; Returns: Json }
