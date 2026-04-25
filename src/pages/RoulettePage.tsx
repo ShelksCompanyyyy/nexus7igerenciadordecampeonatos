@@ -282,9 +282,11 @@ export default function RoulettePage() {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const center = containerWidth / 2;
-        // Pequeno jitter dentro da célula (sem estourar para item vizinho)
-        const jitter = (Math.random() * 0.4 - 0.2) * (ITEM_WIDTH * 0.4);
-        const targetOffset = built.winIndex * ITEM_WIDTH + ITEM_WIDTH / 2 - center + jitter;
+        // Sem jitter — alinha PERFEITAMENTE no centro do slot vencedor (corrige
+        // bug de mostrar 10G mas creditar 100G porque o jitter empurrava para o slot vizinho).
+        const itemMargin = 8; // mx-1 = 4px de cada lado = 8px total
+        const fullItemWidth = ITEM_WIDTH + itemMargin;
+        const targetOffset = built.winIndex * fullItemWidth + fullItemWidth / 2 - center;
 
         const duration = 6.2;
         setTransition(`transform ${duration}s cubic-bezier(0.08, 0.82, 0.16, 1)`);
