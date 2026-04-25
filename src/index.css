@@ -58,6 +58,78 @@
   }
 }
 
+/* === TEMA CLARO === */
+.theme-light {
+  --background: 0 0% 98%;
+  --foreground: 0 0% 8%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 10%;
+  --primary: 0 85% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 94%;
+  --secondary-foreground: 0 0% 12%;
+  --muted: 0 0% 92%;
+  --muted-foreground: 0 0% 40%;
+  --accent: 0 85% 55%;
+  --accent-foreground: 0 0% 100%;
+  --border: 0 0% 88%;
+  --input: 0 0% 92%;
+  --ring: 0 85% 50%;
+  --gold: 38 92% 45%;
+  --success: 142 70% 38%;
+  --warning: 32 92% 50%;
+  --surface-dark: 0 0% 96%;
+  --surface-card: 0 0% 100%;
+  --surface-elevated: 0 0% 94%;
+  --sidebar-background: 0 0% 96%;
+  --sidebar-foreground: 0 0% 15%;
+  --sidebar-accent: 0 0% 90%;
+  --sidebar-accent-foreground: 0 0% 10%;
+  --sidebar-border: 0 0% 86%;
+  --glow-sm: 0 0 6px hsl(0 85% 50% / 0.18);
+  --glow-md: 0 0 12px hsl(0 85% 50% / 0.22);
+  --glow-lg: 0 0 18px hsl(0 85% 50% / 0.28);
+}
+
+/* === TEMA NEON (cyberpunk roxo/ciano) === */
+.theme-neon {
+  --background: 270 40% 6%;
+  --foreground: 180 100% 92%;
+  --card: 270 40% 9%;
+  --card-foreground: 180 100% 92%;
+  --popover: 270 40% 9%;
+  --popover-foreground: 180 100% 92%;
+  --primary: 290 100% 65%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 270 40% 14%;
+  --secondary-foreground: 180 100% 90%;
+  --muted: 270 30% 18%;
+  --muted-foreground: 270 30% 70%;
+  --accent: 180 100% 60%;
+  --accent-foreground: 270 40% 6%;
+  --border: 290 60% 30%;
+  --input: 270 40% 14%;
+  --ring: 290 100% 65%;
+  --gold: 60 100% 60%;
+  --success: 145 100% 55%;
+  --warning: 30 100% 60%;
+  --surface-dark: 270 40% 5%;
+  --surface-card: 270 40% 9%;
+  --surface-elevated: 270 40% 14%;
+  --sidebar-background: 270 50% 5%;
+  --sidebar-foreground: 180 100% 90%;
+  --sidebar-accent: 270 40% 14%;
+  --sidebar-accent-foreground: 180 100% 95%;
+  --sidebar-border: 290 60% 30%;
+  --sidebar-primary: 290 100% 65%;
+  --glow-sm: 0 0 12px hsl(290 100% 65% / 0.5);
+  --glow-md: 0 0 24px hsl(290 100% 65% / 0.55), 0 0 48px hsl(180 100% 60% / 0.25);
+  --glow-lg: 0 0 36px hsl(290 100% 65% / 0.6), 0 0 72px hsl(180 100% 60% / 0.4), 0 0 120px hsl(290 100% 65% / 0.2);
+  --glow-gold: 0 0 24px hsl(60 100% 60% / 0.5);
+}
+
 @layer base {
   * {
     @apply border-border;
