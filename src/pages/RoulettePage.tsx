@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { SPIN_PACKAGES, PIX_KEY, MIN_WITHDRAWAL } from '@/lib/store';
 import { toast } from 'sonner';
-import { Dices, Gift, Copy, Wallet, Sparkles, History, Crown, Trophy, Medal, Award } from 'lucide-react';
+import { Dices, Gift, Copy, Wallet, Sparkles, Trophy, Medal, Award } from 'lucide-react';
 
 // Prêmios — ÍNDICES devem bater 1:1 com winner_index retornado pelo RPC spin_roulette
 const PRIZES = [
@@ -20,7 +20,9 @@ const PRIZES = [
 
 const ITEM_WIDTH = 110; // px - matches w-[110px]
 
-// Build strip with the WINNER placed at exact index using server-provided winner_index
+// Build strip with the WINNER placed at exact index using server-provided winner_index.
+// IMPORTANT: nunca colocar outro item igual ao prêmio próximo do vencedor para evitar
+// o usuário "ler" o slot errado quando o jitter aproxima a borda.
 function buildStrip(winnerIndex: number, length = 60): { items: typeof PRIZES; winIndex: number } {
   const items: typeof PRIZES = [];
   for (let i = 0; i < length; i++) {
