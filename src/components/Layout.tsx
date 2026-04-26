@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import { useState, useEffect } from 'react';
-import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell, UserPlus, ChevronRight } from 'lucide-react';
+import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell, UserPlus, ChevronRight, Settings, Info } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
 // Itens completos do menu lateral (drawer mobile + sidebar desktop)
@@ -20,6 +20,9 @@ const NAV_ITEMS = [
   { path: '/teams', label: 'Times (Lines)', icon: Users, accent: 'primary' as const },
   { path: '/training', label: 'X-Treinos', icon: Target, accent: 'primary' as const },
   { path: '/news', label: 'Notícias', icon: Newspaper, accent: 'primary' as const },
+  { path: '/support', label: 'Suporte', icon: MessageSquare, accent: 'info' as const },
+  { path: '/about', label: 'Sobre o Nexel', icon: Info, accent: 'info' as const },
+  { path: '/settings', label: 'Configurações', icon: Settings, accent: 'primary' as const },
   { path: '/tutorial', label: 'Tutorial', icon: BookOpen, accent: 'primary' as const },
 ];
 
@@ -79,10 +82,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar - Desktop */}
       <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-border fixed h-full z-40">
         <div className="p-4 flex items-center gap-3 border-b border-border">
-          <img src={nexusLogo} alt="Nexus7i" className="w-10 h-10 drop-shadow-[0_0_10px_hsl(0,100%,50%,0.5)]" />
+          <img src={nexusLogo} alt="Nexel" className="w-10 h-10 drop-shadow-[0_0_10px_hsl(0,100%,50%,0.5)]" />
           <div>
-            <h1 className="font-heading text-sm text-primary text-glow-sm tracking-wider">NEXUS7i</h1>
-            <p className="text-xs text-muted-foreground font-display">E-SPORTS</p>
+            <h1 className="font-heading text-sm text-primary text-glow-sm tracking-wider">NEXEL</h1>
+            <p className="text-[9px] text-muted-foreground font-display">FPS COMPETITIVE PLATFORM</p>
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
@@ -131,7 +134,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-b border-border">
         <div className="flex items-center justify-between p-3">
           <button onClick={() => navigate('/')} className="flex items-center gap-2">
-            <span className="font-heading text-lg text-primary text-glow tracking-wider">NEXUS7i</span>
+            <span className="font-heading text-lg text-primary text-glow tracking-wider">NEXEL</span>
           </button>
           <div className="flex items-center gap-3">
             <span className="text-gold text-sm font-heading">{profile?.gold || 0}G</span>
@@ -142,6 +145,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
+            </button>
+            <button onClick={() => navigate('/settings')} className="text-foreground" aria-label="Configurações">
+              <Settings size={20} />
             </button>
             <button onClick={() => setMobileOpen(!mobileOpen)} className="text-foreground">
               {mobileOpen ? <X size={24} /> : <Menu size={24} />}

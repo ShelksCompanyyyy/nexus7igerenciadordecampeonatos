@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexus7i-logo.png';
 import heroBg from '@/assets/hero-bg.jpg';
-import { Trophy, Swords, Target, Zap, BookOpen, Coins, Activity, ChevronRight, Plus } from 'lucide-react';
+import { Trophy, Swords, Target, Zap, BookOpen, Coins, Activity, ChevronRight, Plus, Info } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -94,9 +94,9 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
         <div className="relative z-10 flex flex-col items-center justify-center py-12 px-4 text-center">
           {clan?.logo ? <img src={clan.logo} alt="" className="w-24 h-24 rounded-xl animate-float drop-shadow-[0_0_40px_hsl(0,100%,50%,0.6)] mb-3 object-cover" /> :
-            <img src={nexusLogo} alt="Nexus7i" className="w-24 h-24 animate-float drop-shadow-[0_0_40px_hsl(0,100%,50%,0.6)] mb-3" />}
-          <h1 className="text-3xl md:text-5xl font-heading text-primary text-glow tracking-widest">{clan?.name || 'NEXUS7i'}</h1>
-          <p className="text-sm md:text-lg font-display text-foreground/80 tracking-[0.3em] mt-1">E-SPORTS</p>
+            <img src={nexusLogo} alt="Nexel" className="w-24 h-24 animate-float drop-shadow-[0_0_40px_hsl(0,100%,50%,0.6)] mb-3" />}
+          <h1 className="text-3xl md:text-5xl font-heading text-primary text-glow tracking-widest">{clan?.name || 'NEXEL'}</h1>
+          <p className="text-xs md:text-sm font-display text-foreground/80 tracking-[0.25em] mt-1">FPS COMPETITIVE PLATFORM</p>
           <p className="mt-3 text-sm font-display text-muted-foreground">Bem-vindo, <span className="text-primary">{profile?.username}</span></p>
           <div className="mt-3 inline-flex items-center gap-2 bg-card/80 border border-gold/40 rounded-full px-4 py-1.5">
             <Coins size={14} className="text-gold" />
@@ -197,6 +197,22 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      {/* 5. SOBRE O NEXEL */}
+      <Link to="/about" className="block bg-card rounded-lg border border-primary/30 p-5 hover:border-primary/60 transition-all">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-center shrink-0">
+            <Info size={18} className="text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-heading text-sm text-primary mb-1">O que é o Nexel?</h3>
+            <p className="text-xs font-display text-muted-foreground leading-relaxed">
+              Plataforma competitiva para jogadores de FPS gerenciar clãs, lines/times, treinos, campeonatos e muito mais em um só lugar.
+            </p>
+            <p className="text-[11px] font-heading text-primary mt-2">Saber mais →</p>
+          </div>
+        </div>
+      </Link>
     </div>
   );
 }
