@@ -3,7 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme, type Theme } from '@/contexts/ThemeContext';
 import { useI18n, type Locale } from '@/contexts/I18nContext';
 import {
-  UserCircle, Wallet, Bell, Palette, Lock, MessageCircle, LogOut, Globe, ChevronRight, Sun, Moon, Sparkles,
+  UserCircle, Wallet, Bell, Palette, Lock, MessageCircle, LogOut, Globe, ChevronRight,
+  Sun, Moon, Sparkles, Stars, Crown, Terminal,
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -12,10 +13,13 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useI18n();
 
-  const themeOptions: { id: Theme; label: string; icon: typeof Sun }[] = [
-    { id: 'dark', label: t('settings.theme.dark'), icon: Moon },
-    { id: 'light', label: t('settings.theme.light'), icon: Sun },
-    { id: 'neon', label: t('settings.theme.neon'), icon: Sparkles },
+  const themeOptions: { id: Theme; label: string; icon: typeof Sun; swatch: string }[] = [
+    { id: 'dark',     label: t('settings.theme.dark'),     icon: Moon,     swatch: 'linear-gradient(135deg,hsl(0,0%,8%),hsl(0,100%,50%))' },
+    { id: 'light',    label: t('settings.theme.light'),    icon: Sun,      swatch: 'linear-gradient(135deg,hsl(0,0%,98%),hsl(0,85%,55%))' },
+    { id: 'neon',     label: t('settings.theme.neon'),     icon: Sparkles, swatch: 'linear-gradient(135deg,hsl(290,100%,55%),hsl(180,100%,55%))' },
+    { id: 'midnight', label: t('settings.theme.midnight'), icon: Stars,    swatch: 'linear-gradient(135deg,hsl(220,50%,9%),hsl(210,100%,60%))' },
+    { id: 'gold',     label: t('settings.theme.gold'),     icon: Crown,    swatch: 'linear-gradient(135deg,hsl(35,25%,8%),hsl(45,100%,55%))' },
+    { id: 'matrix',   label: t('settings.theme.matrix'),   icon: Terminal, swatch: 'linear-gradient(135deg,hsl(140,30%,8%),hsl(140,100%,50%))' },
   ];
 
   const localeOptions: { id: Locale; label: string }[] = [
@@ -64,14 +68,21 @@ export default function SettingsPage() {
               <button
                 key={opt.id}
                 onClick={() => setTheme(opt.id)}
-                className={`flex flex-col items-center gap-1 py-3 rounded-lg border transition-all ${
+                className={`relative flex flex-col items-center gap-1.5 py-3 rounded-lg border transition-all overflow-hidden ${
                   active
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border bg-secondary/40 text-muted-foreground hover:text-foreground'
+                    ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/40'
+                    : 'border-border bg-secondary/40 text-muted-foreground hover:text-foreground hover:border-primary/40'
                 }`}
               >
-                <opt.icon size={18} />
-                <span className="text-xs font-display">{opt.label}</span>
+                <div
+                  className="w-8 h-8 rounded-full border border-border/60"
+                  style={{ background: opt.swatch }}
+                />
+                <opt.icon size={14} />
+                <span className="text-[11px] font-display">{opt.label}</span>
+                {active && (
+                  <span className="absolute top-1 right-1 text-[9px] font-heading text-primary">●</span>
+                )}
               </button>
             );
           })}
