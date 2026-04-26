@@ -770,6 +770,11 @@ function ClanTeamRow({ team, users, allTeams, onRefresh }: { team: DBTeam; users
           <Lock size={10} /> ACESSO NEGADO — você não lidera esta line
         </div>
       )}
+      {canEditThisLine && (
+        <div className="mb-3 px-2 py-1 rounded bg-success/10 border border-success/30 text-success text-[10px] font-heading flex items-center gap-1">
+          <Shield size={10} /> ACESSO LIBERADO — você pode gerenciar esta line
+        </div>
+      )}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <label className="w-10 h-10 rounded-lg bg-background/50 border border-border flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary transition-colors group" title="Trocar logo da line">
@@ -814,12 +819,49 @@ function ClanTeamRow({ team, users, allTeams, onRefresh }: { team: DBTeam; users
         </select>
       </div>
       <div className="space-y-1 mb-3">
-        {teamPlayers.map(p => (
-          <div key={p.id} className="flex items-center justify-between text-xs bg-background/50 p-2 rounded">
-            <span className="text-foreground font-display">{p.game_nick || p.username}</span>
-            <button onClick={() => handleRemovePlayer(p.user_id)} className="text-destructive"><X size={12} /></button>
-          </div>
-        ))}
+        {teamPlayers.map(p => {
+          const isLeader = p.user_id === teamLeaderId;
+          const isCo = p.user_id === teamCoLeaderId;
+          const roleTag = isLeader
+            ? { txt: '👑 LÍDER', cls: 'bg-gold/15 text-gold border-gold/40' }
+            : isCo
+              ? { txt: '🎖️ VICE', cls: 'bg-primary/15 text-primary border-primary/40' }
+              : { txt: 'MEMBRO', cls: 'bg-secondary text-muted-foreground border-border' };
+          return (
+            <div key={p.id} className="flex items-center justify-between gap-2 text-xs bg-background/50 p-2 rounded border border-border/40">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <span className="text-foreground font-display truncate">{p.game_nick || p.username}</span>
+                <span className={`text-[9px] font-heading px-1.5 py-0.5 rounded border whitespace-nowrap ${roleTag.cls}`}>{roleTag.txt}</span>
+              </div>
+              {canEditThisLine && (
+                <div className="flex items-center gap-1 shrink-0">
+                  {!isLeader && !isCo && (
+                    <>
+                      <button
+                        onClick={() => handleSetCoLeader(p.user_id)}
+                        className="text-[9px] font-heading px-1.5 py-1 rounded bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20"
+                        title="Promover a Vice-Líder de Line (ganha ADM)"
+                      >↑ VICE</button>
+                      <button
+                        onClick={() => handleSetLeader(p.user_id)}
+                        className="text-[9px] font-heading px-1.5 py-1 rounded bg-gold/10 text-gold border border-gold/30 hover:bg-gold/20"
+                        title="Promover a Líder de Line (ganha ADM)"
+                      >↑ LÍDER</button>
+                    </>
+                  )}
+                  {(isLeader || isCo) && (
+                    <button
+                      onClick={() => handleDemote(p.user_id)}
+                      className="text-[9px] font-heading px-1.5 py-1 rounded bg-secondary text-muted-foreground border border-border hover:text-destructive hover:border-destructive/40"
+                      title="Rebaixar a membro (remove ADM)"
+                    >↓ REBAIXAR</button>
+                  )}
+                  <button onClick={() => handleRemovePlayer(p.user_id)} className="text-destructive p-1 hover:bg-destructive/10 rounded" title="Remover da line"><X size={12} /></button>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
       {players.length < 5 && (
         <div className="flex gap-2">
