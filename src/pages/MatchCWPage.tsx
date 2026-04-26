@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { Shield, Send, Check, X, Calendar, Clock, MessageCircle, Crown, Trophy, RefreshCw } from 'lucide-react';
+import { Shield, Send, Check, X, Calendar, Clock, MessageCircle, Crown, Trophy, RefreshCw, Users as UsersIcon, CheckCircle2, Clock as ClockIcon, XCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
 interface Clan { id: string; name: string; logo: string | null; }
+interface Team { id: string; name: string; clan_id: string; }
 interface MatchCW {
   id: string;
   clan_a_id: string;
@@ -26,6 +27,10 @@ interface MatchCW {
   bet_amount: number;
   bet_status: string;
   winner_clan_id: string | null;
+  line_a_id: string | null;
+  line_b_id: string | null;
+  line_a_confirmed: boolean | null;
+  line_b_confirmed: boolean | null;
 }
 interface MatchMessage {
   id: string;
@@ -45,6 +50,7 @@ export default function MatchCWPage() {
   const { user, profile, role } = useAuth();
   const myClanId = profile?.clan_id || '';
   const [clans, setClans] = useState<Clan[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<MatchCW[]>([]);
   const [isClanLeader, setIsClanLeader] = useState(false);
   const [tab, setTab] = useState<Tab>('available');
@@ -60,6 +66,8 @@ export default function MatchCWPage() {
   const loadAll = useCallback(async () => {
     const { data: c } = await supabase.from('clans').select('id, name, logo').eq('is_banned', false);
     setClans(c || []);
+    const { data: t } = await supabase.from('teams').select('id, name, clan_id');
+    setTeams((t || []) as Team[]);
     const { data: m } = await supabase
       .from('matchcw')
       .select('*')
@@ -135,6 +143,21 @@ export default function MatchCWPage() {
     });
     if (error) { toast.error(error.message); return; }
     toast.success('🏆 Match finalizado!');
+    loadAll();
+  };
+
+  const cancelMatch = async (m: MatchCW) => {
+    if (!confirm(`Cancelar este MatchCW? ${m.is_bet_match ? 'A aposta será reembolsada.' : ''} Esta ação não pode ser desfeita.`)) return;
+    const { error } = await supabase.rpc('cancel_matchcw', { _match_id: m.id });
+    if (error) { toast.error(error.message); return; }
+    toast.success('🗑️ MatchCW cancelado');
+    loadAll();
+  };
+
+  const setLine = async (matchId: string, lineId: string) => {
+    const { error } = await supabase.rpc('set_matchcw_line', { _match_id: matchId, _line_id: lineId });
+    if (error) { toast.error(error.message); return; }
+    toast.success('✅ Line confirmada');
     loadAll();
   };
 
@@ -310,6 +333,19 @@ export default function MatchCWPage() {
                     <MessageCircle size={14} /> {openChatId === m.id ? 'Fechar Chat' : 'Coordenação (Chat)'}
                   </button>
                 )}
+
+                {/* Selector de Line + status de confirmação dupla */}
+                {(m.status === 'accepted' || m.status === 'confirmed') && (
+                  <LinePanel
+                    m={m}
+                    teams={teams}
+                    myClanId={myClanId}
+                    canManage={canManage}
+                    clanLabel={clanLabel}
+                    onSetLine={setLine}
+                  />
+                )}
+
                 {openChatId === m.id && canManage && user && (
                   <CoordChat match={m} myClanId={myClanId} username={profile?.game_nick || profile?.username || ''} userId={user.id} onConfirm={loadAll} />
                 )}
@@ -317,6 +353,16 @@ export default function MatchCWPage() {
                 {/* Finalizar para confirmados */}
                 {m.status === 'confirmed' && canManage && (
                   <FinalizePanel m={m} clanLabel={clanLabel} onFinalize={finalize} />
+                )}
+
+                {/* Cancelar (apenas líder envolvido, não finalizado) */}
+                {canManage && m.status !== 'finalized' && (
+                  <button
+                    onClick={() => cancelMatch(m)}
+                    className="w-full py-2 bg-destructive/10 text-destructive border border-destructive/30 rounded font-heading text-xs flex items-center justify-center gap-2 hover:bg-destructive/15"
+                  >
+                    <Trash2 size={14} /> Cancelar este CW
+                  </button>
                 )}
               </div>
             );
