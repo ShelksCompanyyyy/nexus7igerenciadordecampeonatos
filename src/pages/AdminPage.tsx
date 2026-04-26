@@ -644,16 +644,42 @@ function ClanTeamRow({ team, users, allTeams, onRefresh }: { team: DBTeam; users
 
   const handleSetLeader = async (userId: string) => {
     if (!canEditThisLine) { denyAccess(); return; }
-    const { error } = await supabase.from('teams').update({ team_leader_id: userId || null }).eq('id', team.id);
+    if (!userId) {
+      // limpando o cargo: só remover do campo da line; mantemos role admin se ele for vice em outra line
+      const { error } = await supabase.from('teams').update({ team_leader_id: null }).eq('id', team.id);
+      if (error) { toast.error(error.message); return; }
+      onRefresh(); toast.success('Líder removido'); return;
+    }
+    // Promove via RPC para conceder permissões de ADM (acesso ao painel)
+    const { error } = await supabase.rpc('set_team_role', {
+      _team_id: team.id, _target_user: userId, _role: 'leader',
+    });
     if (error) { toast.error(error.message); return; }
-    onRefresh(); toast.success(userId ? 'Líder de line definido!' : 'Líder removido');
+    onRefresh(); toast.success('👑 Promovido a Líder de Line! Permissões de ADM liberadas.');
   };
 
   const handleSetCoLeader = async (userId: string) => {
     if (!canEditThisLine) { denyAccess(); return; }
-    const { error } = await supabase.from('teams').update({ team_co_leader_id: userId || null } as never).eq('id', team.id);
+    if (!userId) {
+      const { error } = await supabase.from('teams').update({ team_co_leader_id: null } as never).eq('id', team.id);
+      if (error) { toast.error(error.message); return; }
+      onRefresh(); toast.success('Vice-líder removido'); return;
+    }
+    const { error } = await supabase.rpc('set_team_role', {
+      _team_id: team.id, _target_user: userId, _role: 'co_leader',
+    });
     if (error) { toast.error(error.message); return; }
-    onRefresh(); toast.success(userId ? 'Vice-líder definido!' : 'Vice-líder removido');
+    onRefresh(); toast.success('🎖️ Promovido a Vice-Líder de Line! Permissões de ADM liberadas.');
+  };
+
+  // Rebaixa para membro (remove cargos de liderança da line e revoga ADM se for o caso)
+  const handleDemote = async (userId: string) => {
+    if (!canEditThisLine) { denyAccess(); return; }
+    const { error } = await supabase.rpc('set_team_role', {
+      _team_id: team.id, _target_user: userId, _role: 'member',
+    });
+    if (error) { toast.error(error.message); return; }
+    onRefresh(); toast.success('↓ Rebaixado a membro');
   };
 
   // Adiciona/transfere jogador. Se ele já está em outra line, abre confirmação.
