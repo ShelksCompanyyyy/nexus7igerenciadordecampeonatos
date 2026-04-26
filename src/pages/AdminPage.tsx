@@ -993,9 +993,28 @@ function XtreinosTab({ clanTrainings, clanTeams, clanId, onRefresh }: { clanTrai
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Excluir este treino?')) return;
-    await supabase.from('trainings').delete().eq('id', id);
+    if (!confirm('Excluir este treino? Esta ação não pode ser desfeita.')) return;
+    const { error, count } = await supabase.from('trainings').delete({ count: 'exact' }).eq('id', id);
+    if (error) { toast.error('❌ Erro ao excluir: ' + error.message); return; }
+    if (count === 0) { toast.error('🔒 Sem permissão para excluir este treino.'); return; }
     onRefresh();
+    toast.success('🗑️ Treino excluído.');
+  };
+
+  const handleStatus = async (id: string, status: string) => {
+    const { error, count } = await supabase
+      .from('trainings')
+      .update({ status }, { count: 'exact' })
+      .eq('id', id);
+    if (error) { toast.error('❌ Erro: ' + error.message); return; }
+    if (count === 0) { toast.error('🔒 Sem permissão para alterar este treino.'); return; }
+    onRefresh();
+    const labels: Record<string, string> = {
+      scheduled: '⏳ Treino marcado como Agendado',
+      completed: '✅ Treino marcado como Concluído',
+      cancelled: '❌ Treino marcado como Cancelado',
+    };
+    toast.success(labels[status] || 'Status atualizado');
   };
 
   // Filtrar por mês selecionado
@@ -1080,7 +1099,7 @@ function XtreinosTab({ clanTrainings, clanTeams, clanId, onRefresh }: { clanTrai
                     ))}
                   </div>
                 )}
-                <select value={t.status || 'scheduled'} onChange={async e => { await supabase.from('trainings').update({ status: e.target.value }).eq('id', t.id); onRefresh(); }}
+                <select value={t.status || 'scheduled'} onChange={e => handleStatus(t.id, e.target.value)}
                   className="p-1 bg-background rounded border border-border text-foreground text-[10px] font-heading">
                   <option value="scheduled">⏳ Agendado</option>
                   <option value="completed">✅ Concluído</option>
