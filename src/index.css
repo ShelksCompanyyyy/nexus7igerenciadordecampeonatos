@@ -130,6 +130,119 @@
   --glow-gold: 0 0 24px hsl(60 100% 60% / 0.5);
 }
 
+/* === TEMA MIDNIGHT BLUE (azul profundo elegante) === */
+.theme-midnight {
+  --background: 220 50% 6%;
+  --foreground: 210 40% 96%;
+  --card: 220 50% 9%;
+  --card-foreground: 210 40% 96%;
+  --popover: 220 50% 9%;
+  --popover-foreground: 210 40% 96%;
+  --primary: 210 100% 60%;
+  --primary-foreground: 220 50% 6%;
+  --secondary: 220 40% 14%;
+  --secondary-foreground: 210 40% 96%;
+  --muted: 220 30% 18%;
+  --muted-foreground: 210 20% 70%;
+  --accent: 195 100% 55%;
+  --accent-foreground: 220 50% 6%;
+  --border: 215 50% 22%;
+  --input: 220 40% 14%;
+  --ring: 210 100% 60%;
+  --gold: 200 95% 65%;
+  --success: 160 80% 45%;
+  --warning: 35 95% 55%;
+  --surface-dark: 220 50% 5%;
+  --surface-card: 220 50% 9%;
+  --surface-elevated: 220 40% 14%;
+  --sidebar-background: 220 55% 5%;
+  --sidebar-foreground: 210 40% 92%;
+  --sidebar-accent: 220 40% 14%;
+  --sidebar-accent-foreground: 210 40% 96%;
+  --sidebar-border: 215 50% 22%;
+  --sidebar-primary: 210 100% 60%;
+  --glow-sm: 0 0 10px hsl(210 100% 60% / 0.4);
+  --glow-md: 0 0 20px hsl(210 100% 60% / 0.5), 0 0 40px hsl(195 100% 55% / 0.2);
+  --glow-lg: 0 0 30px hsl(210 100% 60% / 0.55), 0 0 60px hsl(195 100% 55% / 0.3);
+  --glow-gold: 0 0 20px hsl(200 95% 65% / 0.45);
+}
+
+/* === TEMA GOLD (esports premium dourado) === */
+.theme-gold {
+  --background: 35 25% 7%;
+  --foreground: 45 80% 95%;
+  --card: 35 25% 10%;
+  --card-foreground: 45 80% 95%;
+  --popover: 35 25% 10%;
+  --popover-foreground: 45 80% 95%;
+  --primary: 45 100% 55%;
+  --primary-foreground: 35 25% 7%;
+  --secondary: 35 20% 15%;
+  --secondary-foreground: 45 80% 95%;
+  --muted: 35 15% 18%;
+  --muted-foreground: 40 25% 65%;
+  --accent: 30 100% 55%;
+  --accent-foreground: 35 25% 7%;
+  --border: 40 40% 25%;
+  --input: 35 20% 15%;
+  --ring: 45 100% 55%;
+  --gold: 45 100% 55%;
+  --success: 140 70% 45%;
+  --warning: 25 100% 55%;
+  --destructive: 0 80% 55%;
+  --surface-dark: 35 25% 6%;
+  --surface-card: 35 25% 10%;
+  --surface-elevated: 35 20% 15%;
+  --sidebar-background: 35 30% 5%;
+  --sidebar-foreground: 45 80% 92%;
+  --sidebar-accent: 35 20% 15%;
+  --sidebar-accent-foreground: 45 80% 95%;
+  --sidebar-border: 40 40% 25%;
+  --sidebar-primary: 45 100% 55%;
+  --glow-sm: 0 0 10px hsl(45 100% 55% / 0.4);
+  --glow-md: 0 0 20px hsl(45 100% 55% / 0.5), 0 0 40px hsl(30 100% 55% / 0.25);
+  --glow-lg: 0 0 30px hsl(45 100% 55% / 0.6), 0 0 60px hsl(30 100% 55% / 0.35);
+  --glow-gold: 0 0 22px hsl(45 100% 55% / 0.55);
+}
+
+/* === TEMA MATRIX (verde hacker) === */
+.theme-matrix {
+  --background: 140 30% 5%;
+  --foreground: 130 80% 88%;
+  --card: 140 30% 8%;
+  --card-foreground: 130 80% 88%;
+  --popover: 140 30% 8%;
+  --popover-foreground: 130 80% 88%;
+  --primary: 140 100% 50%;
+  --primary-foreground: 140 30% 5%;
+  --secondary: 140 25% 13%;
+  --secondary-foreground: 130 80% 88%;
+  --muted: 140 20% 17%;
+  --muted-foreground: 130 30% 65%;
+  --accent: 160 100% 45%;
+  --accent-foreground: 140 30% 5%;
+  --border: 140 50% 22%;
+  --input: 140 25% 13%;
+  --ring: 140 100% 50%;
+  --gold: 70 100% 55%;
+  --success: 140 100% 50%;
+  --warning: 50 100% 55%;
+  --destructive: 0 90% 55%;
+  --surface-dark: 140 30% 4%;
+  --surface-card: 140 30% 8%;
+  --surface-elevated: 140 25% 13%;
+  --sidebar-background: 140 35% 4%;
+  --sidebar-foreground: 130 80% 88%;
+  --sidebar-accent: 140 25% 13%;
+  --sidebar-accent-foreground: 130 80% 92%;
+  --sidebar-border: 140 50% 22%;
+  --sidebar-primary: 140 100% 50%;
+  --glow-sm: 0 0 10px hsl(140 100% 50% / 0.45);
+  --glow-md: 0 0 22px hsl(140 100% 50% / 0.55), 0 0 40px hsl(160 100% 45% / 0.25);
+  --glow-lg: 0 0 32px hsl(140 100% 50% / 0.6), 0 0 60px hsl(160 100% 45% / 0.35);
+  --glow-gold: 0 0 22px hsl(70 100% 55% / 0.5);
+}
+
 @layer base {
   * {
     @apply border-border;

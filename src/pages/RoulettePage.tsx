@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { SPIN_PACKAGES, PIX_KEY, MIN_WITHDRAWAL } from '@/lib/store';
 import { toast } from 'sonner';
-import { Dices, Gift, Copy, Wallet, Sparkles, Trophy, Medal, Award } from 'lucide-react';
+import { Dices, Gift, Copy, Wallet, Sparkles, Trophy, Medal, Award, ShieldCheck, Zap, RefreshCw } from 'lucide-react';
 
 // Prêmios — ÍNDICES devem bater 1:1 com winner_index retornado pelo RPC spin_roulette
 const PRIZES = [
@@ -368,164 +368,225 @@ export default function RoulettePage() {
 
   return (
     <div className="space-y-6 animate-slide-up">
-      {/* HERO HEADER */}
-      <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-card via-background to-card p-5">
-        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full bg-gold/10 blur-3xl pointer-events-none" />
-        <div className="relative flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-primary/15 border border-primary/40 flex items-center justify-center shadow-[0_0_24px_hsl(0,100%,50%,0.4)]">
-              <Dices size={24} className="text-primary" />
-            </div>
-            <div>
-              <p className="text-[10px] font-heading text-muted-foreground tracking-[0.3em]">NEXUS · ROLETA</p>
-              <h1 className="text-2xl font-heading text-primary text-glow leading-tight">FORTUNA</h1>
-            </div>
+      {/* === HERO ROLETA — Premium Esports === */}
+      <div className="relative">
+        {/* Decorative ornaments above title */}
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <span className="h-px w-12 bg-gradient-to-r from-transparent via-gold to-transparent" />
+          <p className="text-[10px] font-heading text-gold/80 tracking-[0.4em]">/// NEXEL · ROLETA ///</p>
+          <span className="h-px w-12 bg-gradient-to-r from-transparent via-gold to-transparent" />
+        </div>
+        <h1 className="text-center text-2xl md:text-3xl font-heading leading-tight">
+          <span className="text-foreground">GIRE E GANHE </span>
+          <span className="text-gold text-glow-gold">PRÊMIOS</span>
+        </h1>
+        <div className="flex items-center justify-center gap-2 mt-2">
+          <span className="w-1 h-1 rounded-full bg-gold/70" />
+          <span className="h-px w-16 bg-gold/40" />
+          <span className="w-2 h-2 rotate-45 border border-gold/70" />
+          <span className="h-px w-16 bg-gold/40" />
+          <span className="w-1 h-1 rounded-full bg-gold/70" />
+        </div>
+
+        {/* Saldo / Giros chips */}
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <div className="bg-background/60 backdrop-blur border border-gold/40 rounded-lg px-3 py-1.5 flex items-center gap-2">
+            <Wallet size={12} className="text-gold" />
+            <p className="font-heading text-gold text-xs">{gold}G</p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="bg-background/60 backdrop-blur border border-gold/40 rounded-lg px-3 py-2 flex items-center gap-2">
-              <Wallet size={14} className="text-gold" />
-              <div className="leading-tight">
-                <p className="text-[9px] text-muted-foreground font-display">SALDO</p>
-                <p className="font-heading text-gold text-sm">{gold}G</p>
-              </div>
-            </div>
-            <div className="bg-background/60 backdrop-blur border border-primary/40 rounded-lg px-3 py-2 flex items-center gap-2">
-              <Sparkles size={14} className="text-primary" />
-              <div className="leading-tight">
-                <p className="text-[9px] text-muted-foreground font-display">GIROS</p>
-                <p className="font-heading text-primary text-sm">{freeSpins}</p>
-              </div>
-            </div>
+          <div className="bg-background/60 backdrop-blur border border-primary/40 rounded-lg px-3 py-1.5 flex items-center gap-2">
+            <Sparkles size={12} className="text-primary" />
+            <p className="font-heading text-primary text-xs">{freeSpins} {freeSpins === 1 ? 'GIRO' : 'GIROS'}</p>
           </div>
         </div>
       </div>
 
-      {/* Horizontal carousel + legendary burst overlay */}
-      <div className="flex flex-col items-center gap-6">
-        <div className="relative w-full max-w-3xl">
-          {/* Frame chrome top */}
-          <div className="flex items-center justify-between mb-2 px-1">
-            <span className="text-[10px] font-heading text-muted-foreground tracking-[0.3em]">◤ NEXUS WHEEL</span>
-            <div className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
-              <span className="text-[10px] font-heading text-destructive tracking-widest">LIVE</span>
-            </div>
-          </div>
-          <div
-            ref={containerRef}
-            className="relative w-full h-40 rounded-xl border-2 border-gold/50 overflow-hidden bg-[radial-gradient(ellipse_at_center,hsl(0_0%_12%)_0%,hsl(0_0%_4%)_100%)]"
-            style={{
-              boxShadow: glow
-                ? (result !== null && result >= 50
-                  ? '0 0 80px hsl(0 100% 50% / 0.9), inset 0 0 50px hsl(0 100% 50% / 0.35)'
-                  : '0 0 60px hsl(45 100% 50% / 0.7), inset 0 0 40px hsl(45 100% 50% / 0.2)')
-                : '0 0 30px hsl(0 100% 50% / 0.25), inset 0 0 40px rgba(0,0,0,0.75)',
-              transition: 'box-shadow 0.4s ease',
-            }}
-          >
-            {/* corner brackets — unique frame look */}
-            <span className="pointer-events-none absolute top-1.5 left-1.5 w-3 h-3 border-t-2 border-l-2 border-gold/70 z-30" />
-            <span className="pointer-events-none absolute top-1.5 right-1.5 w-3 h-3 border-t-2 border-r-2 border-gold/70 z-30" />
-            <span className="pointer-events-none absolute bottom-1.5 left-1.5 w-3 h-3 border-b-2 border-l-2 border-gold/70 z-30" />
-            <span className="pointer-events-none absolute bottom-1.5 right-1.5 w-3 h-3 border-b-2 border-r-2 border-gold/70 z-30" />
+      {/* === ROLETA STAGE (gold-framed strip + circular spin) === */}
+      <div className="relative">
+        {/* Outer gold halo */}
+        <div className="absolute -inset-2 rounded-[36px] bg-[radial-gradient(ellipse_at_center,hsl(var(--gold)/0.18),transparent_70%)] blur-2xl pointer-events-none" />
 
-            <div className="pointer-events-none absolute inset-y-0 left-0 w-24 z-20 bg-gradient-to-r from-background to-transparent" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-24 z-20 bg-gradient-to-l from-background to-transparent" />
-
-            <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-[2px] bg-gold z-30 shadow-[0_0_12px_hsl(45,100%,50%,0.9)]" />
-            <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 z-30">
-              <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[14px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_8px_hsl(45,100%,50%,0.9)]" />
-            </div>
-            <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 z-30 rotate-180">
-              <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[14px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_8px_hsl(45,100%,50%,0.9)]" />
-            </div>
-
-            <div
-              className="absolute top-1/2 -translate-y-1/2 flex items-center will-change-transform"
-              style={{
-                transform: `translate3d(${offset}px, 0, 0)`,
-                transition,
-                left: 0,
-              }}
-            >
-              {displayItems.map((p, i) => {
-                const isWinner = strip.items.length > 0 && i === strip.winIndex && !spinning && result !== null;
-                return (
-                  <div
-                    key={i}
-                    className="w-[110px] shrink-0 mx-1 h-28 rounded-lg flex flex-col items-center justify-center font-heading transition-transform"
-                    style={{
-                      background: `linear-gradient(180deg, ${p.color}, hsl(0 0% 8%))`,
-                      color: p.text,
-                      boxShadow: isWinner
-                        ? `0 0 24px ${p.color}, inset 0 0 16px hsl(45 100% 50% / 0.5)`
-                        : 'inset 0 0 12px rgba(0,0,0,0.5)',
-                      border: isWinner ? '2px solid hsl(45 100% 50%)' : '1px solid hsl(0 0% 0% / 0.4)',
-                      transform: isWinner ? 'scale(1.05)' : 'scale(1)',
-                    }}
-                  >
-                    <span className="text-lg tracking-wide" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{p.label}</span>
-                    <span className="text-[9px] uppercase opacity-80 mt-1 font-display">{p.rarity}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Legendary fireworks overlay (50G+) */}
-          {legendaryBurst && (
-            <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
-              <div className="absolute inset-0 bg-destructive/15 mix-blend-screen animate-pulse rounded-xl" />
-              {particles.map(p => {
-                const x = Math.cos(p.angle) * p.distance;
-                const y = Math.sin(p.angle) * p.distance;
-                return (
-                  <span
-                    key={p.id}
-                    className="absolute left-1/2 top-1/2 w-2 h-2 rounded-full bg-destructive"
-                    style={{
-                      boxShadow: '0 0 12px hsl(0 100% 55%), 0 0 24px hsl(0 100% 55% / 0.6)',
-                      animation: `firework-${p.id} ${p.duration}s ease-out ${p.delay}s forwards`,
-                    }}
-                  />
-                );
-              })}
-              <style>{particles.map(p => {
-                const x = Math.cos(p.angle) * p.distance;
-                const y = Math.sin(p.angle) * p.distance;
-                return `@keyframes firework-${p.id}{0%{transform:translate(-50%,-50%) scale(1);opacity:1}100%{transform:translate(calc(${x}px - 50%), calc(${y}px - 50%)) scale(0.2);opacity:0}}`;
-              }).join('')}</style>
-            </div>
-          )}
-        </div>
-
-        <button
-          onClick={handleSpin}
-          disabled={spinning || !canSpin}
-          className="group relative px-10 py-4 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95 overflow-hidden"
+        {/* Pill-shaped frame */}
+        <div
+          className="relative rounded-[28px] p-2 sm:p-3"
           style={{
-            background: 'linear-gradient(135deg, hsl(0 100% 50%) 0%, hsl(15 100% 45%) 50%, hsl(0 100% 35%) 100%)',
-            boxShadow: '0 0 40px hsl(0 100% 50% / 0.6), inset 0 1px 0 hsl(0 100% 70% / 0.5), inset 0 -2px 6px hsl(0 100% 25% / 0.6)',
+            background: 'linear-gradient(180deg, hsl(var(--gold)/0.55) 0%, hsl(var(--gold)/0.15) 50%, hsl(var(--gold)/0.55) 100%)',
+            boxShadow: '0 12px 40px hsl(0 0% 0% / 0.6), inset 0 0 0 1px hsl(var(--gold)/0.5)',
           }}
         >
-          <span className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-50 pointer-events-none" />
-          <span className="absolute inset-x-0 -top-1/2 h-full bg-gradient-to-b from-white/30 to-transparent blur-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-          <span className="relative font-heading text-primary-foreground text-sm tracking-[0.25em] flex items-center gap-2">
-            <Dices size={16} className={spinning ? 'animate-spin' : ''} />
-            {spinning ? 'GIRANDO...' : canSpin ? `GIRAR · ${freeSpins} GRÁTIS` : 'SEM GIROS'}
-          </span>
-        </button>
+          <div
+            className="relative rounded-[22px] overflow-hidden flex items-stretch"
+            style={{
+              background: 'linear-gradient(180deg, hsl(0 0% 10%) 0%, hsl(0 0% 4%) 100%)',
+              boxShadow: 'inset 0 0 30px rgba(0,0,0,0.85), inset 0 0 0 1px hsl(var(--gold)/0.35)',
+            }}
+          >
+            {/* === Carousel viewport === */}
+            <div
+              ref={containerRef}
+              className="relative flex-1 h-44 sm:h-52 overflow-hidden"
+              style={{
+                boxShadow: glow
+                  ? (result !== null && result >= 50
+                    ? '0 0 80px hsl(var(--primary) / 0.85), inset 0 0 50px hsl(var(--primary) / 0.3)'
+                    : '0 0 70px hsl(var(--gold) / 0.7), inset 0 0 40px hsl(var(--gold) / 0.22)')
+                  : 'inset 0 0 30px rgba(0,0,0,0.6)',
+                transition: 'box-shadow 0.4s ease',
+              }}
+            >
+              {/* corner brackets */}
+              <span className="pointer-events-none absolute top-1.5 left-1.5 w-3 h-3 border-t-2 border-l-2 border-gold/70 z-30" />
+              <span className="pointer-events-none absolute top-1.5 right-1.5 w-3 h-3 border-t-2 border-r-2 border-gold/70 z-30" />
+              <span className="pointer-events-none absolute bottom-1.5 left-1.5 w-3 h-3 border-b-2 border-l-2 border-gold/70 z-30" />
+              <span className="pointer-events-none absolute bottom-1.5 right-1.5 w-3 h-3 border-b-2 border-r-2 border-gold/70 z-30" />
+
+              {/* edge fades */}
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-16 z-20 bg-gradient-to-r from-background to-transparent" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-16 z-20 bg-gradient-to-l from-background to-transparent" />
+
+              {/* Center indicator — gold pillar + arrow */}
+              <div className="pointer-events-none absolute inset-y-2 left-1/2 -translate-x-1/2 w-[2px] bg-gradient-to-b from-transparent via-gold to-transparent z-30 shadow-[0_0_12px_hsl(var(--gold))]" />
+              <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 z-30">
+                <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[16px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_10px_hsl(var(--gold))]" />
+              </div>
+              <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 z-30 rotate-180">
+                <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[16px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_10px_hsl(var(--gold))]" />
+              </div>
+
+              {/* Strip */}
+              <div
+                className="absolute top-1/2 -translate-y-1/2 flex items-center will-change-transform"
+                style={{
+                  transform: `translate3d(${offset}px, 0, 0)`,
+                  transition,
+                  left: 0,
+                }}
+              >
+                {displayItems.map((p, i) => {
+                  const isWinner = strip.items.length > 0 && i === strip.winIndex && !spinning && result !== null;
+                  return (
+                    <div
+                      key={i}
+                      className="w-[110px] shrink-0 mx-1 h-32 sm:h-36 rounded-xl flex flex-col items-center justify-center font-heading transition-transform"
+                      style={{
+                        background: `linear-gradient(180deg, ${p.color} 0%, hsl(0 0% 6%) 100%)`,
+                        color: p.text,
+                        boxShadow: isWinner
+                          ? `0 0 28px ${p.color}, inset 0 0 18px hsl(var(--gold) / 0.55), inset 0 0 0 2px hsl(var(--gold))`
+                          : 'inset 0 0 14px rgba(0,0,0,0.55), inset 0 1px 0 hsl(0 0% 100% / 0.07)',
+                        border: isWinner ? '2px solid hsl(var(--gold))' : '1px solid hsl(0 0% 0% / 0.4)',
+                        transform: isWinner ? 'scale(1.06)' : 'scale(1)',
+                      }}
+                    >
+                      {/* coin/diamond glyph */}
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center mb-1.5"
+                        style={{
+                          background: `radial-gradient(circle, ${p.color} 0%, hsl(0 0% 6%) 90%)`,
+                          boxShadow: 'inset 0 0 8px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.4)',
+                        }}
+                      >
+                        <span className="text-base" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
+                          {p.gold >= 200 ? '👑' : p.gold >= 100 ? '💎' : p.gold >= 50 ? '🎁' : '🪙'}
+                        </span>
+                      </div>
+                      <span className="text-base sm:text-lg tracking-wide" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{p.label}</span>
+                      <span className="text-[9px] uppercase opacity-80 mt-0.5 font-display tracking-widest">{p.rarity}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Legendary fireworks overlay */}
+              {legendaryBurst && (
+                <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-primary/15 mix-blend-screen animate-pulse" />
+                  {particles.map(p => (
+                    <span
+                      key={p.id}
+                      className="absolute left-1/2 top-1/2 w-2 h-2 rounded-full bg-primary"
+                      style={{
+                        boxShadow: '0 0 12px hsl(var(--primary)), 0 0 24px hsl(var(--primary) / 0.6)',
+                        animation: `firework-${p.id} ${p.duration}s ease-out ${p.delay}s forwards`,
+                      }}
+                    />
+                  ))}
+                  <style>{particles.map(p => {
+                    const x = Math.cos(p.angle) * p.distance;
+                    const y = Math.sin(p.angle) * p.distance;
+                    return `@keyframes firework-${p.id}{0%{transform:translate(-50%,-50%) scale(1);opacity:1}100%{transform:translate(calc(${x}px - 50%), calc(${y}px - 50%)) scale(0.2);opacity:0}}`;
+                  }).join('')}</style>
+                </div>
+              )}
+            </div>
+
+            {/* === Circular GIRAR button — embedded right === */}
+            <div className="relative shrink-0 px-2 sm:px-3 flex items-center">
+              <button
+                onClick={handleSpin}
+                disabled={spinning || !canSpin}
+                className="group relative w-24 h-24 sm:w-32 sm:h-32 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-transform hover:scale-105 active:scale-95"
+                style={{
+                  background: 'radial-gradient(circle at 30% 30%, hsl(var(--gold)) 0%, hsl(var(--gold)/0.7) 45%, hsl(0 0% 8%) 100%)',
+                  boxShadow: '0 0 40px hsl(var(--gold) / 0.65), inset 0 2px 4px hsl(var(--gold)/0.6), inset 0 -4px 8px hsl(0 0% 0% / 0.7)',
+                }}
+                aria-label="Girar a roleta"
+              >
+                {/* inner ring */}
+                <span
+                  className="absolute inset-2 rounded-full flex flex-col items-center justify-center"
+                  style={{
+                    background: 'radial-gradient(circle, hsl(0 0% 4%) 0%, hsl(0 0% 8%) 100%)',
+                    boxShadow: 'inset 0 0 0 2px hsl(var(--gold)/0.7), inset 0 0 12px hsl(var(--gold)/0.25)',
+                  }}
+                >
+                  <RefreshCw size={20} className={`text-gold ${spinning ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
+                  <span className="font-heading text-gold text-[10px] sm:text-xs tracking-widest mt-1">
+                    {spinning ? 'GIRANDO' : 'GIRAR'}
+                  </span>
+                  <span className="font-display text-gold/70 text-[8px] tracking-wider">A ROLETA</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Trust badges row */}
+        <div className="mt-4 bg-card/60 backdrop-blur border border-border rounded-2xl p-3">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-1.5">
+              <ShieldCheck size={14} className="text-gold mx-auto sm:mx-0" />
+              <div className="leading-tight">
+                <p className="text-[10px] font-heading text-foreground tracking-wide">100% SEGURO</p>
+                <p className="text-[9px] text-muted-foreground font-display">Validado pelo servidor</p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-1.5 border-x border-border/40">
+              <Trophy size={14} className="text-gold mx-auto sm:mx-0" />
+              <div className="leading-tight">
+                <p className="text-[10px] font-heading text-foreground tracking-wide">PRÊMIOS REAIS</p>
+                <p className="text-[9px] text-muted-foreground font-display">Saque via Pix</p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-1.5">
+              <Zap size={14} className="text-gold mx-auto sm:mx-0" />
+              <div className="leading-tight">
+                <p className="text-[10px] font-heading text-foreground tracking-wide">INSTANTÂNEO</p>
+                <p className="text-[9px] text-muted-foreground font-display">Crédito na hora</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {!canSpin && !spinning && (
-          <p className="text-xs text-muted-foreground font-display text-center">
+          <p className="text-xs text-muted-foreground font-display text-center mt-3">
             Compre giros via Pix abaixo, resgate um código promocional ou aguarde uma premiação.
           </p>
         )}
 
         {result !== null && !spinning && (
-          <div className="text-center animate-scale-in">
-            <p className={`text-3xl font-heading text-glow ${result >= 50 ? 'text-destructive' : 'text-gold'}`}>
+          <div className="text-center animate-scale-in mt-4">
+            <p className={`text-3xl font-heading text-glow ${result >= 50 ? 'text-primary' : 'text-gold'}`}>
               🎉 +{result}G! {result >= 50 && '⚡ LENDÁRIO'}
             </p>
             <p className="text-xs text-muted-foreground font-display mt-1">Resultado validado pelo servidor</p>
