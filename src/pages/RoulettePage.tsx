@@ -577,34 +577,6 @@ export default function RoulettePage() {
           </div>
         )}
 
-        <h4 className="font-heading text-xs text-primary mb-3 flex items-center gap-2 border-t border-border pt-3">
-          <History size={14} /> GIROS RECENTES (AO VIVO)
-        </h4>
-        <div className="space-y-2 max-h-60 overflow-y-auto">
-          {history.length === 0 && (
-            <p className="text-center text-muted-foreground text-sm font-display">Nenhum giro registrado ainda</p>
-          )}
-          {history.map(h => (
-            <div key={h.id} className={`flex items-center justify-between p-2 rounded-md font-display text-xs ${
-              h.reward >= 100 ? 'bg-destructive/10 border border-destructive/30' :
-              h.reward >= 50 ? 'bg-gold/10 border border-gold/30' :
-              'bg-secondary/40'
-            }`}>
-              <div className="flex items-center gap-2 min-w-0">
-                {h.reward >= 100 && <Crown size={12} className="text-destructive shrink-0" />}
-                <span className="truncate text-foreground">{h.username}</span>
-              </div>
-              <span className={`font-heading ${
-                h.reward >= 100 ? 'text-destructive' :
-                h.reward >= 50 ? 'text-gold' :
-                'text-foreground'
-              }`}>+{h.reward}G</span>
-              <span className="text-muted-foreground text-[10px] shrink-0">
-                {new Date(h.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-          ))}
-        </div>
       </div>
 
       <div className="bg-card rounded-lg neon-border p-5">
