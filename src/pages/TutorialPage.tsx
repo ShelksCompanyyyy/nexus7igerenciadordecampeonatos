@@ -4,8 +4,8 @@ import { BookOpen, ChevronRight, ChevronLeft, Home, Trophy, Users, Swords, Targe
 const TUTORIAL_STEPS = [
   {
     icon: BookOpen,
-    title: 'Bem-vindo ao Nexus7i E-Sports!',
-    content: 'Esta é a plataforma oficial de campeonatos e-sports da Nexus7i. Aqui você gerencia seu clã, participa de partidas, acompanha rankings e muito mais!',
+    title: 'Bem-vindo ao Nexel!',
+    content: 'Esta é a plataforma oficial de campeonatos e-sports do Nexel. Aqui você gerencia seu clã, participa de partidas, acompanha rankings e muito mais!',
     details: [
       'Cada clã funciona de forma isolada — você só vê dados do seu clã.',
       'Todos os jogadores precisam selecionar um clã ao criar a conta.',
@@ -146,7 +146,7 @@ const TUTORIAL_STEPS = [
   {
     icon: KeyRound,
     title: 'Dicas Finais',
-    content: 'Aproveite ao máximo a plataforma Nexus7i!',
+    content: 'Aproveite ao máximo a plataforma Nexel!',
     details: [
       '💡 Mantenha seu perfil atualizado com foto e nick.',
       '🎮 Participe ativamente de partidas e treinos.',
