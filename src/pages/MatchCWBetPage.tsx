@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { DollarSign, Shield, Check, X, Calendar, Clock, RefreshCw, Plus, Wallet, Lock } from 'lucide-react';
+import { DollarSign, Shield, Check, X, Calendar, Clock, RefreshCw, Plus, Wallet, Lock, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
@@ -133,6 +133,14 @@ export default function MatchCWBetPage() {
     const { error } = await supabase.rpc('respond_matchcw', { _match_id: m.id, _accept: true });
     if (error) toast.error(error.message);
     else { toast.success('Aposta aceita! Valor bloqueado em escrow.'); loadAll(); }
+  };
+
+  const cancelBet = async (m: MatchCW) => {
+    if (!confirm(`Cancelar este CW apostado? A aposta de R$ ${Number(m.bet_amount).toFixed(2)} será reembolsada para todos os participantes.`)) return;
+    const { error } = await supabase.rpc('cancel_matchcw', { _match_id: m.id });
+    if (error) { toast.error(error.message); return; }
+    toast.success('🗑️ CW apostado cancelado e valores reembolsados');
+    loadAll();
   };
 
   const lookingForOpponent = matches.filter(m => m.status === 'pending' && !m.clan_b_id && m.clan_a_id !== myClanId);
@@ -304,6 +312,14 @@ export default function MatchCWBetPage() {
                 <span className="text-muted-foreground">{m.status.toUpperCase()}</span>
                 <span className="text-warning">Escrow: {m.bet_status}</span>
               </div>
+              {canManage && m.status !== 'finalized' && (
+                <button
+                  onClick={() => cancelBet(m)}
+                  className="w-full mt-2 py-2 bg-destructive/10 text-destructive border border-destructive/30 rounded font-heading text-xs flex items-center justify-center gap-2 hover:bg-destructive/15"
+                >
+                  <Trash2 size={14} /> Cancelar e reembolsar
+                </button>
+              )}
             </div>
           ))}
         </div>

@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { Shield, Send, Check, X, Calendar, Clock, MessageCircle, Crown, Trophy, RefreshCw } from 'lucide-react';
+import { Shield, Send, Check, X, Calendar, Clock, MessageCircle, Crown, Trophy, RefreshCw, Users as UsersIcon, CheckCircle2, Clock as ClockIcon, XCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
 interface Clan { id: string; name: string; logo: string | null; }
+interface Team { id: string; name: string; clan_id: string; }
 interface MatchCW {
   id: string;
   clan_a_id: string;
@@ -26,6 +27,10 @@ interface MatchCW {
   bet_amount: number;
   bet_status: string;
   winner_clan_id: string | null;
+  line_a_id: string | null;
+  line_b_id: string | null;
+  line_a_confirmed: boolean | null;
+  line_b_confirmed: boolean | null;
 }
 interface MatchMessage {
   id: string;
@@ -45,6 +50,7 @@ export default function MatchCWPage() {
   const { user, profile, role } = useAuth();
   const myClanId = profile?.clan_id || '';
   const [clans, setClans] = useState<Clan[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<MatchCW[]>([]);
   const [isClanLeader, setIsClanLeader] = useState(false);
   const [tab, setTab] = useState<Tab>('available');
@@ -60,6 +66,8 @@ export default function MatchCWPage() {
   const loadAll = useCallback(async () => {
     const { data: c } = await supabase.from('clans').select('id, name, logo').eq('is_banned', false);
     setClans(c || []);
+    const { data: t } = await supabase.from('teams').select('id, name, clan_id');
+    setTeams((t || []) as Team[]);
     const { data: m } = await supabase
       .from('matchcw')
       .select('*')
@@ -135,6 +143,21 @@ export default function MatchCWPage() {
     });
     if (error) { toast.error(error.message); return; }
     toast.success('🏆 Match finalizado!');
+    loadAll();
+  };
+
+  const cancelMatch = async (m: MatchCW) => {
+    if (!confirm(`Cancelar este MatchCW? ${m.is_bet_match ? 'A aposta será reembolsada.' : ''} Esta ação não pode ser desfeita.`)) return;
+    const { error } = await supabase.rpc('cancel_matchcw', { _match_id: m.id });
+    if (error) { toast.error(error.message); return; }
+    toast.success('🗑️ MatchCW cancelado');
+    loadAll();
+  };
+
+  const setLine = async (matchId: string, lineId: string) => {
+    const { error } = await supabase.rpc('set_matchcw_line', { _match_id: matchId, _line_id: lineId });
+    if (error) { toast.error(error.message); return; }
+    toast.success('✅ Line confirmada');
     loadAll();
   };
 
@@ -310,6 +333,19 @@ export default function MatchCWPage() {
                     <MessageCircle size={14} /> {openChatId === m.id ? 'Fechar Chat' : 'Coordenação (Chat)'}
                   </button>
                 )}
+
+                {/* Selector de Line + status de confirmação dupla */}
+                {(m.status === 'accepted' || m.status === 'confirmed') && (
+                  <LinePanel
+                    m={m}
+                    teams={teams}
+                    myClanId={myClanId}
+                    canManage={canManage}
+                    clanLabel={clanLabel}
+                    onSetLine={setLine}
+                  />
+                )}
+
                 {openChatId === m.id && canManage && user && (
                   <CoordChat match={m} myClanId={myClanId} username={profile?.game_nick || profile?.username || ''} userId={user.id} onConfirm={loadAll} />
                 )}
@@ -317,6 +353,16 @@ export default function MatchCWPage() {
                 {/* Finalizar para confirmados */}
                 {m.status === 'confirmed' && canManage && (
                   <FinalizePanel m={m} clanLabel={clanLabel} onFinalize={finalize} />
+                )}
+
+                {/* Cancelar (apenas líder envolvido, não finalizado) */}
+                {canManage && m.status !== 'finalized' && (
+                  <button
+                    onClick={() => cancelMatch(m)}
+                    className="w-full py-2 bg-destructive/10 text-destructive border border-destructive/30 rounded font-heading text-xs flex items-center justify-center gap-2 hover:bg-destructive/15"
+                  >
+                    <Trash2 size={14} /> Cancelar este CW
+                  </button>
                 )}
               </div>
             );
@@ -542,6 +588,111 @@ function FinalizePanel({ m, clanLabel, onFinalize }: {
             </button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function LinePanel({ m, teams, myClanId, canManage, clanLabel, onSetLine }: {
+  m: MatchCW; teams: Team[]; myClanId: string; canManage: boolean;
+  clanLabel: (id: string | null) => string;
+  onSetLine: (matchId: string, lineId: string) => void;
+}) {
+  const myClanTeams = teams.filter(t => t.clan_id === myClanId);
+  const isMyClanA = m.clan_a_id === myClanId;
+  const myLineId = isMyClanA ? m.line_a_id : m.line_b_id;
+  const myConfirmed = isMyClanA ? !!m.line_a_confirmed : !!m.line_b_confirmed;
+  const oppLineId = isMyClanA ? m.line_b_id : m.line_a_id;
+  const oppConfirmed = isMyClanA ? !!m.line_b_confirmed : !!m.line_a_confirmed;
+  const oppClanId = isMyClanA ? m.clan_b_id : m.clan_a_id;
+
+  const StatusBadge = ({ confirmed, pending }: { confirmed: boolean; pending: boolean }) => {
+    if (confirmed) return (
+      <span className="inline-flex items-center gap-1 text-success text-[10px] font-heading px-2 py-1 rounded border border-success/40 bg-success/10">
+        <CheckCircle2 size={12} /> CONFIRMADO
+      </span>
+    );
+    if (pending) return (
+      <span className="inline-flex items-center gap-1 text-warning text-[10px] font-heading px-2 py-1 rounded border border-warning/40 bg-warning/10">
+        <ClockIcon size={12} /> PENDENTE
+      </span>
+    );
+    return (
+      <span className="inline-flex items-center gap-1 text-muted-foreground text-[10px] font-heading px-2 py-1 rounded border border-border bg-secondary/40">
+        <XCircle size={12} /> SEM LINE
+      </span>
+    );
+  };
+
+  return (
+    <div className="bg-background border border-primary/30 rounded-lg p-3 space-y-3">
+      <p className="text-xs font-heading text-primary flex items-center gap-2">
+        <UsersIcon size={14} /> LINES PARA O CONFRONTO
+      </p>
+
+      {/* Status visual de ambos os lados */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-secondary/40 rounded p-2 space-y-1">
+          <p className="text-[10px] font-display text-muted-foreground truncate">{clanLabel(m.clan_a_id)}</p>
+          <p className="text-xs font-heading text-foreground truncate">
+            {m.line_a_id ? (teams.find(t => t.id === m.line_a_id)?.name || '—') : 'A definir'}
+          </p>
+          <StatusBadge confirmed={!!m.line_a_confirmed} pending={!!m.line_a_id && !m.line_a_confirmed} />
+        </div>
+        <div className="bg-secondary/40 rounded p-2 space-y-1">
+          <p className="text-[10px] font-display text-muted-foreground truncate">{clanLabel(m.clan_b_id)}</p>
+          <p className="text-xs font-heading text-foreground truncate">
+            {m.line_b_id ? (teams.find(t => t.id === m.line_b_id)?.name || '—') : 'A definir'}
+          </p>
+          <StatusBadge confirmed={!!m.line_b_confirmed} pending={!!m.line_b_id && !m.line_b_confirmed} />
+        </div>
+      </div>
+
+      {/* Selector da minha line (apenas líder pode escolher e o match precisa estar accepted/confirmed) */}
+      {canManage && (
+        <div>
+          <p className="text-[10px] font-display text-muted-foreground mb-1.5">
+            {myConfirmed ? 'Sua line confirmada (clique para trocar):' : 'Selecione a line do seu clã:'}
+          </p>
+          {myClanTeams.length === 0 ? (
+            <p className="text-[11px] text-warning font-display">Crie ao menos uma line no painel ADM antes.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {myClanTeams.map(t => {
+                const active = myLineId === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => onSetLine(m.id, t.id)}
+                    className={`p-2 rounded text-xs font-heading transition-all border ${
+                      active
+                        ? 'bg-primary/20 border-primary text-primary'
+                        : 'bg-secondary/60 border-border text-foreground hover:border-primary/40'
+                    }`}
+                  >
+                    {active && <CheckCircle2 size={12} className="inline mr-1" />}
+                    {t.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Mensagem de fluxo */}
+      {m.line_a_confirmed && m.line_b_confirmed ? (
+        <p className="text-[11px] font-display text-success flex items-center gap-1">
+          <CheckCircle2 size={12} /> Ambas as lines confirmadas — pronto para começar!
+        </p>
+      ) : (
+        <p className="text-[11px] font-display text-muted-foreground">
+          Aguardando confirmação de ambas as lines para iniciar o confronto.
+        </p>
+      )}
+
+      {oppClanId && oppLineId && !oppConfirmed && (
+        <p className="text-[10px] font-display text-warning">⏳ {clanLabel(oppClanId)} ainda precisa confirmar.</p>
       )}
     </div>
   );

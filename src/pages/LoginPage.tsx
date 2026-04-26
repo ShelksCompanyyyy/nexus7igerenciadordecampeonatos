@@ -244,9 +244,18 @@ export default function LoginPage() {
 
       <div className="relative z-10 w-full max-w-md p-6">
         <div className="flex flex-col items-center mb-6 animate-slide-up">
-          <img src={nexusLogo} alt="Nexus7i" className="w-28 h-28 animate-float drop-shadow-[0_0_30px_hsl(0,100%,50%,0.5)]" />
-          <h1 className="text-2xl font-heading text-primary text-glow mt-3 tracking-widest">NEXUS7i</h1>
-          <p className="text-muted-foreground font-display text-lg tracking-wider">E-SPORTS</p>
+          <img src={nexusLogo} alt="Nexel" className="w-28 h-28 animate-float drop-shadow-[0_0_30px_hsl(0,100%,50%,0.5)]" />
+          <h1 className="text-3xl font-heading text-primary text-glow mt-3 tracking-widest">NEXEL</h1>
+          <p className="text-muted-foreground font-display text-xs tracking-[0.25em] mt-1">FPS COMPETITIVE PLATFORM</p>
+          <p className="text-primary/80 font-display text-sm mt-2 italic">Gerencie seu clã do seu jeito</p>
+        </div>
+
+        {/* O que é o Nexel? */}
+        <div className="mb-4 bg-card/60 backdrop-blur border border-primary/20 rounded-lg p-3 animate-slide-up" style={{ animationDelay: '0.05s' }}>
+          <p className="text-[11px] font-heading text-primary mb-1">O que é o Nexel?</p>
+          <p className="text-[11px] font-display text-muted-foreground leading-relaxed">
+            Plataforma competitiva para jogadores de FPS gerenciar clãs, lines/times, treinos, campeonatos e muito mais em um só lugar.
+          </p>
         </div>
 
         {/* Login tabs */}
