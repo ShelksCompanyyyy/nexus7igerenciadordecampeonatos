@@ -22,8 +22,8 @@ function applyTheme(t: Theme) {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === 'undefined') return 'dark';
-    return (localStorage.getItem(STORAGE_KEY) as Theme) || 'dark';
+    if (typeof window === 'undefined') return 'neon';
+    return (localStorage.getItem(STORAGE_KEY) as Theme) || 'neon';
   });
 
   useEffect(() => {
