@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import nexusLogo from '@/assets/nexus7i-logo.png';
+import nexusLogo from '@/assets/nexel-logo.png';
 import heroBg from '@/assets/hero-bg.jpg';
 import { Trophy, Swords, Target, Zap, BookOpen, Coins, Activity, ChevronRight, Plus, Info } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -87,10 +87,9 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 1. BANNER PRINCIPAL */}
+      {/* 1. BANNER PRINCIPAL — banner do clã NÃO aparece no home (só Criador edita). Usa hero global. */}
       <div className="relative rounded-xl overflow-hidden neon-border-strong" style={{ minHeight: '260px' }}>
-        {clan?.banner ? <img src={clan.banner} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" /> :
-          <img src={heroBg} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />}
+        <img src={heroBg} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
         <div className="relative z-10 flex flex-col items-center justify-center py-12 px-4 text-center">
           {clan?.logo ? <img src={clan.logo} alt="" className="w-24 h-24 rounded-xl animate-float drop-shadow-[0_0_40px_hsl(0,100%,50%,0.6)] mb-3 object-cover" /> :
@@ -100,7 +99,7 @@ export default function HomePage() {
           <p className="mt-3 text-sm font-display text-muted-foreground">Bem-vindo, <span className="text-primary">{profile?.username}</span></p>
           <div className="mt-3 inline-flex items-center gap-2 bg-card/80 border border-gold/40 rounded-full px-4 py-1.5">
             <Coins size={14} className="text-gold" />
-            <span className="font-heading text-sm text-gold">{profile?.gold || 0}G</span>
+            <span className="font-heading text-sm text-gold">{profile?.gold || 0} NexelGolds</span>
           </div>
         </div>
       </div>
@@ -161,7 +160,7 @@ export default function HomePage() {
             <ChevronRight size={14} className="text-muted-foreground group-hover:text-gold transition-colors" />
           </div>
           <p className="text-[10px] font-heading text-muted-foreground tracking-wider">SALDO / GIROS</p>
-          <p className="font-heading text-base text-gold mt-1">{profile?.gold || 0}G</p>
+          <p className="font-heading text-base text-gold mt-1">{profile?.gold || 0} NexelGolds</p>
           <p className="text-xs font-display text-muted-foreground mt-0.5">{profile?.free_spins || 0} giros grátis</p>
         </Link>
       </div>

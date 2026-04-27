@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import nexusLogo from '@/assets/nexus7i-logo.png';
+import nexusLogo from '@/assets/nexel-logo.png';
 import { useState, useEffect } from 'react';
 import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell, UserPlus, ChevronRight, Settings, Info } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { path: '/profile', label: 'Perfil', icon: UserCircle, accent: 'primary' as const },
   { path: '/ranking', label: 'Ranking', icon: Trophy, accent: 'primary' as const },
   { path: '/roulette', label: 'Roleta / PIX', icon: Dices, accent: 'primary' as const },
-  { path: '/shop', label: 'Loja NXS', icon: ShoppingBag, accent: 'primary' as const },
+  { path: '/shop', label: 'Loja NexelGolds', icon: ShoppingBag, accent: 'primary' as const },
   { path: '/chat', label: 'Chat Geral', icon: MessageSquare, accent: 'primary' as const },
   { path: '/matchcw', label: 'Match CW', icon: Shield, accent: 'gold' as const },
   { path: '/matchcw-bet', label: 'CW Apostado', icon: DollarSign, accent: 'gold' as const },
@@ -36,7 +36,7 @@ const BOTTOM_NAV = [
 ];
 
 const ADMIN_ITEMS = [
-  { path: '/admin', label: 'Admin', icon: Shield },
+  { path: '/admin', label: 'Painel Central', icon: Shield },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -137,7 +137,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <span className="font-heading text-lg text-primary text-glow tracking-wider">NEXEL</span>
           </button>
           <div className="flex items-center gap-3">
-            <span className="text-gold text-sm font-heading">{profile?.gold || 0}G</span>
+          <span className="text-gold text-sm font-heading">{profile?.gold || 0} NexelGolds</span>
             <button onClick={() => navigate('/notifications')} className="relative text-foreground" aria-label="Notificações">
               <Bell size={20} />
               {unreadCount > 0 && (
@@ -180,7 +180,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </span>
               </div>
               <div className="text-right">
-                <p className="font-heading text-gold text-sm">{profile?.gold || 0} NXS</p>
+                <p className="font-heading text-gold text-sm">{profile?.gold || 0} NexelGolds</p>
                 <p className="font-heading text-primary text-sm mt-0.5">{profile?.free_spins || 0} Giros</p>
               </div>
             </div>
