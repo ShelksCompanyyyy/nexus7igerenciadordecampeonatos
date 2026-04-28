@@ -469,6 +469,20 @@ export default function MatchCWPage() {
           </button>
         </div>
       )}
+      {cancelTarget && (
+        <CancelCWDialog
+          open={!!cancelTarget}
+          onOpenChange={(o) => { if (!o) setCancelTarget(null); }}
+          matchId={cancelTarget.id}
+          isBetMatch={cancelTarget.is_bet_match}
+          betAmount={Number(cancelTarget.bet_amount || 0)}
+          clanALabel={clanLabel(cancelTarget.clan_a_id)}
+          clanBLabel={cancelTarget.clan_b_id ? clanLabel(cancelTarget.clan_b_id) : '—'}
+          clanAId={cancelTarget.clan_a_id}
+          clanBId={cancelTarget.clan_b_id}
+          onConfirm={() => performCancel(cancelTarget)}
+        />
+      )}
     </div>
   );
 }
