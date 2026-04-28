@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { Shield, Send, Check, X, Calendar, Clock, MessageCircle, Crown, Trophy, RefreshCw, Users as UsersIcon, CheckCircle2, Clock as ClockIcon, XCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import CancelCWDialog from '@/components/CancelCWDialog';
+import CWStatusTimeline from '@/components/CWStatusTimeline';
 
 interface Clan { id: string; name: string; logo: string | null; }
 interface Team { id: string; name: string; clan_id: string; }
@@ -55,6 +57,7 @@ export default function MatchCWPage() {
   const [isClanLeader, setIsClanLeader] = useState(false);
   const [tab, setTab] = useState<Tab>('available');
   const [openChatId, setOpenChatId] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<MatchCW | null>(null);
 
   // Form simples (sem aposta, sem clã — quem cria já é do clã do perfil)
   const [clanName, setClanName] = useState('');
@@ -147,7 +150,10 @@ export default function MatchCWPage() {
   };
 
   const cancelMatch = async (m: MatchCW) => {
-    if (!confirm(`Cancelar este MatchCW? ${m.is_bet_match ? 'A aposta será reembolsada.' : ''} Esta ação não pode ser desfeita.`)) return;
+    setCancelTarget(m);
+  };
+
+  const performCancel = async (m: MatchCW) => {
     const { error } = await supabase.rpc('cancel_matchcw', { _match_id: m.id });
     if (error) { toast.error(error.message); return; }
     toast.success('🗑️ MatchCW cancelado');
@@ -322,6 +328,9 @@ export default function MatchCWPage() {
                   <span className="flex items-center gap-1.5"><RefreshCw size={14}/> {m.rounds || m.proposed_rounds} rounds</span>
                 </div>
                 {m.notes && isPending && <p className="text-xs italic text-muted-foreground font-display">"{m.notes}"</p>}
+                <div className="pt-1">
+                  <CWStatusTimeline status={m.status} />
+                </div>
                 {m.status === 'finalized' && (
                   <p className="text-sm font-heading text-success">Resultado: {m.score_a} x {m.score_b}</p>
                 )}
@@ -459,6 +468,20 @@ export default function MatchCWPage() {
             CRIAR PEDIDO DE CW
           </button>
         </div>
+      )}
+      {cancelTarget && (
+        <CancelCWDialog
+          open={!!cancelTarget}
+          onOpenChange={(o) => { if (!o) setCancelTarget(null); }}
+          matchId={cancelTarget.id}
+          isBetMatch={cancelTarget.is_bet_match}
+          betAmount={Number(cancelTarget.bet_amount || 0)}
+          clanALabel={clanLabel(cancelTarget.clan_a_id)}
+          clanBLabel={cancelTarget.clan_b_id ? clanLabel(cancelTarget.clan_b_id) : '—'}
+          clanAId={cancelTarget.clan_a_id}
+          clanBId={cancelTarget.clan_b_id}
+          onConfirm={() => performCancel(cancelTarget)}
+        />
       )}
     </div>
   );

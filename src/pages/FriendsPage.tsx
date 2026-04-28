@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
-import { UserPlus, Check, X, Trash, Ban, Search, Users as UsersIcon } from 'lucide-react';
+import { UserPlus, Check, X, Trash, Ban, Search, Users as UsersIcon, MessageCircle } from 'lucide-react';
+import FriendChat from '@/components/FriendChat';
 
 interface FriendRow {
   id: string;
@@ -30,6 +31,7 @@ export default function FriendsPage() {
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<ProfileLite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chatWith, setChatWith] = useState<{ id: string; name: string } | null>(null);
 
   const refetch = useCallback(async () => {
     if (!user) return;
@@ -159,6 +161,7 @@ export default function FriendsPage() {
   ];
 
   return (
+    <>
     <div className="space-y-6 animate-slide-up max-w-2xl mx-auto">
       <div className="flex items-center gap-3">
         <UsersIcon size={28} className="text-primary" />
@@ -200,6 +203,15 @@ export default function FriendsPage() {
             <div key={r.id} className="bg-card p-3 rounded-lg border border-border flex items-center justify-between gap-3">
               {renderProfile(otherIdOf(r))}
               <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={() => {
+                    const id = otherIdOf(r);
+                    const p = profiles[id];
+                    setChatWith({ id, name: p?.game_nick || p?.username || 'Amigo' });
+                  }}
+                  className="p-2 rounded bg-primary/10 text-primary hover:bg-primary/20" title="Chat">
+                  <MessageCircle size={14} />
+                </button>
                 <button onClick={() => block(otherIdOf(r))} className="p-2 rounded bg-warning/10 text-warning hover:bg-warning/20" title="Bloquear">
                   <Ban size={14} />
                 </button>
@@ -307,5 +319,15 @@ export default function FriendsPage() {
         </div>
       )}
     </div>
+    {chatWith && (
+      <FriendChat
+        open={!!chatWith}
+        onOpenChange={(o) => { if (!o) setChatWith(null); }}
+        myId={user.id}
+        friendId={chatWith.id}
+        friendName={chatWith.name}
+      />
+    )}
+    </>
   );
 }

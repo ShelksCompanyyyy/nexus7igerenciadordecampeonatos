@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { DollarSign, Shield, Check, X, Calendar, Clock, RefreshCw, Plus, Wallet, Lock, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import CancelCWDialog from '@/components/CancelCWDialog';
+import CWStatusTimeline from '@/components/CWStatusTimeline';
 
 interface Clan { id: string; name: string; }
 interface MatchCW {
@@ -38,6 +40,7 @@ export default function MatchCWBetPage() {
   const [balance, setBalance] = useState(0);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [bets, setBets] = useState<BetRow[]>([]);
+  const [cancelTarget, setCancelTarget] = useState<MatchCW | null>(null);
 
   // Create form
   const [betAmount, setBetAmount] = useState(10);
@@ -135,8 +138,9 @@ export default function MatchCWBetPage() {
     else { toast.success('Aposta aceita! Valor bloqueado em escrow.'); loadAll(); }
   };
 
-  const cancelBet = async (m: MatchCW) => {
-    if (!confirm(`Cancelar este CW apostado? A aposta de R$ ${Number(m.bet_amount).toFixed(2)} será reembolsada para todos os participantes.`)) return;
+  const cancelBet = (m: MatchCW) => setCancelTarget(m);
+
+  const performCancel = async (m: MatchCW) => {
     const { error } = await supabase.rpc('cancel_matchcw', { _match_id: m.id });
     if (error) { toast.error(error.message); return; }
     toast.success('🗑️ CW apostado cancelado e valores reembolsados');
@@ -312,6 +316,7 @@ export default function MatchCWBetPage() {
                 <span className="text-muted-foreground">{m.status.toUpperCase()}</span>
                 <span className="text-warning">Escrow: {m.bet_status}</span>
               </div>
+              <CWStatusTimeline status={m.status} />
               {canManage && m.status !== 'finalized' && (
                 <button
                   onClick={() => cancelBet(m)}
@@ -323,6 +328,20 @@ export default function MatchCWBetPage() {
             </div>
           ))}
         </div>
+      )}
+      {cancelTarget && (
+        <CancelCWDialog
+          open={!!cancelTarget}
+          onOpenChange={(o) => { if (!o) setCancelTarget(null); }}
+          matchId={cancelTarget.id}
+          isBetMatch={cancelTarget.is_bet_match}
+          betAmount={Number(cancelTarget.bet_amount || 0)}
+          clanALabel={clanLabel(cancelTarget.clan_a_id)}
+          clanBLabel={cancelTarget.clan_b_id ? clanLabel(cancelTarget.clan_b_id) : '—'}
+          clanAId={cancelTarget.clan_a_id}
+          clanBId={cancelTarget.clan_b_id}
+          onConfirm={() => performCancel(cancelTarget)}
+        />
       )}
     </div>
   );
