@@ -161,6 +161,7 @@ export default function FriendsPage() {
   ];
 
   return (
+    <>
     <div className="space-y-6 animate-slide-up max-w-2xl mx-auto">
       <div className="flex items-center gap-3">
         <UsersIcon size={28} className="text-primary" />
