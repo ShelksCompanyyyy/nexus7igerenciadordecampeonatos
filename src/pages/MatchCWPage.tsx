@@ -328,6 +328,9 @@ export default function MatchCWPage() {
                   <span className="flex items-center gap-1.5"><RefreshCw size={14}/> {m.rounds || m.proposed_rounds} rounds</span>
                 </div>
                 {m.notes && isPending && <p className="text-xs italic text-muted-foreground font-display">"{m.notes}"</p>}
+                <div className="pt-1">
+                  <CWStatusTimeline status={m.status} />
+                </div>
                 {m.status === 'finalized' && (
                   <p className="text-sm font-heading text-success">Resultado: {m.score_a} x {m.score_b}</p>
                 )}
