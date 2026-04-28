@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { Shield, Send, Check, X, Calendar, Clock, MessageCircle, Crown, Trophy, RefreshCw, Users as UsersIcon, CheckCircle2, Clock as ClockIcon, XCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import CancelCWDialog from '@/components/CancelCWDialog';
+import CWStatusTimeline from '@/components/CWStatusTimeline';
 
 interface Clan { id: string; name: string; logo: string | null; }
 interface Team { id: string; name: string; clan_id: string; }
@@ -55,6 +57,7 @@ export default function MatchCWPage() {
   const [isClanLeader, setIsClanLeader] = useState(false);
   const [tab, setTab] = useState<Tab>('available');
   const [openChatId, setOpenChatId] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<MatchCW | null>(null);
 
   // Form simples (sem aposta, sem clã — quem cria já é do clã do perfil)
   const [clanName, setClanName] = useState('');
@@ -147,7 +150,10 @@ export default function MatchCWPage() {
   };
 
   const cancelMatch = async (m: MatchCW) => {
-    if (!confirm(`Cancelar este MatchCW? ${m.is_bet_match ? 'A aposta será reembolsada.' : ''} Esta ação não pode ser desfeita.`)) return;
+    setCancelTarget(m);
+  };
+
+  const performCancel = async (m: MatchCW) => {
     const { error } = await supabase.rpc('cancel_matchcw', { _match_id: m.id });
     if (error) { toast.error(error.message); return; }
     toast.success('🗑️ MatchCW cancelado');
