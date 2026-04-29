@@ -31,6 +31,7 @@ interface DBClan {
 interface DBTeam {
   id: string; name: string; logo: string | null; clan_id: string;
   players: string[] | null; wins: number | null; losses: number | null;
+  team_leader_id?: string | null; team_co_leader_id?: string | null;
   created_at: string; updated_at: string;
 }
 interface DBMatch {
