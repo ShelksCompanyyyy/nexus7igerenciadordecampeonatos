@@ -13,8 +13,8 @@ export const ROULETTE_PRIZES = [
 ];
 
 export const SPIN_PACKAGES = [
-  { price: 3.5, spins: 1, bonus: 0, label: 'R$3,50 - 1 Giro', extras: '' },
-  { price: 6.5, spins: 2, bonus: 0, label: 'R$6,50 - 2 Giros', extras: '' },
+  { price: 3.9, spins: 1, bonus: 0, label: 'R$3,90 - 1 Giro', extras: '' },
+  { price: 6.9, spins: 2, bonus: 0, label: 'R$6,90 - 2 Giros', extras: '' },
   { price: 10.5, spins: 3, bonus: 2, label: 'R$10,50 - 3 Giros + 2 Bônus', extras: '+ 3 MachCW' },
   { price: 19.9, spins: 4, bonus: 3, label: 'R$19,90 - 4 Giros + 3 Bônus', extras: '+ 5 MachCW' },
   { price: 25, spins: 5, bonus: 4, label: 'R$25,00 - 5 Giros + 4 Bônus', extras: '+ Letra Colorida' },
