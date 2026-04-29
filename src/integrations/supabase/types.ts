@@ -73,6 +73,7 @@ export type Database = {
       clans: {
         Row: {
           admin_code: string | null
+          allow_line_leaders_create_cw: boolean
           banner: string | null
           created_at: string
           description: string | null
@@ -87,6 +88,7 @@ export type Database = {
         }
         Insert: {
           admin_code?: string | null
+          allow_line_leaders_create_cw?: boolean
           banner?: string | null
           created_at?: string
           description?: string | null
@@ -101,6 +103,7 @@ export type Database = {
         }
         Update: {
           admin_code?: string | null
+          allow_line_leaders_create_cw?: boolean
           banner?: string | null
           created_at?: string
           description?: string | null
@@ -761,6 +764,39 @@ export type Database = {
         }
         Relationships: []
       }
+      security_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          ip_hash: string | null
+          metadata: Json | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          ip_hash?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          ip_hash?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       spin_purchases: {
         Row: {
           amount: number
@@ -933,6 +969,166 @@ export type Database = {
           },
         ]
       }
+      tournament_matches: {
+        Row: {
+          created_at: string
+          id: string
+          round: number
+          scheduled_at: string | null
+          score_a: number | null
+          score_b: number | null
+          slot: number
+          status: string
+          team_a_id: string | null
+          team_b_id: string | null
+          tournament_id: string
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          round?: number
+          scheduled_at?: string | null
+          score_a?: number | null
+          score_b?: number | null
+          slot?: number
+          status?: string
+          team_a_id?: string | null
+          team_b_id?: string | null
+          tournament_id: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          round?: number
+          scheduled_at?: string | null
+          score_a?: number | null
+          score_b?: number | null
+          slot?: number
+          status?: string
+          team_a_id?: string | null
+          team_b_id?: string | null
+          tournament_id?: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_matches_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_teams: {
+        Row: {
+          created_at: string
+          draws: number
+          eliminated: boolean
+          goals_against: number
+          goals_for: number
+          id: string
+          losses: number
+          points: number
+          seed: number | null
+          team_id: string
+          tournament_id: string
+          wins: number
+        }
+        Insert: {
+          created_at?: string
+          draws?: number
+          eliminated?: boolean
+          goals_against?: number
+          goals_for?: number
+          id?: string
+          losses?: number
+          points?: number
+          seed?: number | null
+          team_id: string
+          tournament_id: string
+          wins?: number
+        }
+        Update: {
+          created_at?: string
+          draws?: number
+          eliminated?: boolean
+          goals_against?: number
+          goals_for?: number
+          id?: string
+          losses?: number
+          points?: number
+          seed?: number | null
+          team_id?: string
+          tournament_id?: string
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_teams_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournaments: {
+        Row: {
+          clan_id: string
+          created_at: string
+          created_by: string
+          current_round: number
+          description: string | null
+          format: string
+          id: string
+          name: string
+          prize_description: string | null
+          prize_gold: number
+          size: number
+          status: string
+          updated_at: string
+          winner_team_id: string | null
+        }
+        Insert: {
+          clan_id: string
+          created_at?: string
+          created_by: string
+          current_round?: number
+          description?: string | null
+          format?: string
+          id?: string
+          name: string
+          prize_description?: string | null
+          prize_gold?: number
+          size?: number
+          status?: string
+          updated_at?: string
+          winner_team_id?: string | null
+        }
+        Update: {
+          clan_id?: string
+          created_at?: string
+          created_by?: string
+          current_round?: number
+          description?: string | null
+          format?: string
+          id?: string
+          name?: string
+          prize_description?: string | null
+          prize_gold?: number
+          size?: number
+          status?: string
+          updated_at?: string
+          winner_team_id?: string | null
+        }
+        Relationships: []
+      }
       trainings: {
         Row: {
           clan_id: string
@@ -1061,6 +1257,33 @@ export type Database = {
           },
         ]
       }
+      user_inventory: {
+        Row: {
+          acquired_at: string
+          id: string
+          item_category: string
+          item_id: string
+          item_name: string | null
+          user_id: string
+        }
+        Insert: {
+          acquired_at?: string
+          id?: string
+          item_category: string
+          item_id: string
+          item_name?: string | null
+          user_id: string
+        }
+        Update: {
+          acquired_at?: string
+          id?: string
+          item_category?: string
+          item_id?: string
+          item_name?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -1145,6 +1368,18 @@ export type Database = {
         }
         Returns: Json
       }
+      create_tournament: {
+        Args: {
+          _clan_id: string
+          _description: string
+          _format: string
+          _name: string
+          _prize_description: string
+          _prize_gold: number
+          _size: number
+        }
+        Returns: Json
+      }
       finalize_matchcw: {
         Args: {
           _match_id: string
@@ -1186,6 +1421,10 @@ export type Database = {
         Returns: Json
       }
       redeem_promo_code: { Args: { _code: string }; Returns: Json }
+      report_tournament_match: {
+        Args: { _match_id: string; _score_a: number; _score_b: number }
+        Returns: Json
+      }
       request_matchcw:
         | {
             Args: {
@@ -1231,6 +1470,10 @@ export type Database = {
         Args: { _accept: boolean; _match_id: string }
         Returns: Json
       }
+      set_clan_cw_permission: {
+        Args: { _allow: boolean; _clan_id: string }
+        Returns: Json
+      }
       set_matchcw_line: {
         Args: { _line_id: string; _match_id: string }
         Returns: Json
@@ -1240,6 +1483,7 @@ export type Database = {
         Returns: Json
       }
       spin_roulette: { Args: never; Returns: Json }
+      start_tournament: { Args: { _tournament_id: string }; Returns: Json }
       update_player_stats: {
         Args: {
           _assists: number
