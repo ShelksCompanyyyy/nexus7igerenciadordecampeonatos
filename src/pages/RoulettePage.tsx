@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { SPIN_PACKAGES, PIX_KEY, MIN_WITHDRAWAL } from '@/lib/store';
 import { toast } from 'sonner';
 import { Dices, Gift, Copy, Wallet, Sparkles, Trophy, Medal, Award, ShieldCheck, Zap, RefreshCw } from 'lucide-react';
+import nexelLogo from '@/assets/nexel-logo.png';
 
 // Prêmios — ÍNDICES devem bater 1:1 com winner_index retornado pelo RPC spin_roulette
 const PRIZES = [
@@ -308,7 +309,25 @@ export default function RoulettePage() {
           }
 
           await refreshProfile();
-          toast.success(`🎉 Você ganhou ${reward}G!`, { duration: 4000 });
+          {
+            const tier = reward >= 150 ? 'legendary' : reward >= 50 ? 'epic' : reward >= 20 ? 'rare' : 'common';
+            const messages = {
+              legendary: ['JACKPOT LENDÁRIO!', 'SORTE CÓSMICA ATIVADA!', 'O OURO DOS DEUSES É SEU!'],
+              epic:      ['PRÊMIO ÉPICO!', 'A ROLETA AMA VOCÊ!', 'BIG WIN!'],
+              rare:      ['PRÊMIO RARO!', 'BOA SORTE!', 'RECOMPENSA QUENTE!'],
+              common:    ['GIRO PREMIADO!', 'MAIS UM PRA CONTA!', 'BORA GIRAR DE NOVO!'],
+            } as const;
+            const subtitle = messages[tier][Math.floor(Math.random() * messages[tier].length)];
+            toast.custom(() => (
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-gold/50 bg-gradient-to-r from-card via-background to-card shadow-[0_0_24px_rgba(255,215,0,0.35)] min-w-[260px]">
+                <img src={nexelLogo} alt="Nexel" className="w-12 h-12 rounded-lg object-cover ring-2 ring-gold/60" />
+                <div className="flex-1">
+                  <p className="font-heading text-gold text-sm tracking-wider">+{reward} NexelGolds 🎉</p>
+                  <p className="font-display text-[11px] text-foreground/80">{subtitle}</p>
+                </div>
+              </div>
+            ), { duration: 4500 });
+          }
           window.setTimeout(() => setGlow(false), 2500);
         }, duration * 1000 + 80);
       });
