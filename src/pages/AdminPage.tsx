@@ -25,6 +25,7 @@ interface DBClan {
   id: string; name: string; logo: string | null; banner: string | null;
   description: string | null; owner_id: string | null; admin_code: string | null;
   wins: number | null; losses: number | null; is_banned: boolean | null;
+  allow_line_leaders_create_cw?: boolean | null;
   created_at: string; updated_at: string;
 }
 interface DBTeam {
@@ -83,22 +84,155 @@ export default function AdminPage() {
   return <LineLeaderGate clanId={profile.clan_id || ''} currentUserId={currentUser.id} />;
 }
 
-// Liberador para líder/vice de line: dá acesso à mesma view de ClanAdminPanel
+// Painel restrito: líder/vice de LINE só acessa as lines em que é líder/vice.
 function LineLeaderGate({ clanId, currentUserId }: { clanId: string; currentUserId: string }) {
-  const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [myTeams, setMyTeams] = useState<DBTeam[] | null>(null);
+
   useEffect(() => {
-    if (!clanId || !currentUserId) { setAllowed(false); return; }
-    // Validação de UUID antes de consultar para evitar "invalid input syntax for type uuid"
+    if (!clanId || !currentUserId) { setMyTeams([]); return; }
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRe.test(clanId) || !uuidRe.test(currentUserId)) { setAllowed(false); return; }
-    supabase.from('teams').select('id').eq('clan_id', clanId)
+    if (!uuidRe.test(clanId) || !uuidRe.test(currentUserId)) { setMyTeams([]); return; }
+    supabase.from('teams').select('*').eq('clan_id', clanId)
       .or(`team_leader_id.eq.${currentUserId},team_co_leader_id.eq.${currentUserId}`)
-      .limit(1)
-      .then(({ data }) => setAllowed(!!data && data.length > 0));
+      .then(({ data }) => setMyTeams((data || []) as DBTeam[]));
   }, [clanId, currentUserId]);
-  if (allowed === null) return <div className="text-center text-muted-foreground p-12 font-display">Carregando…</div>;
-  if (!allowed) return <div className="text-center text-muted-foreground p-12 font-display">Sem permissão</div>;
-  return <ClanAdminPanel clanId={clanId} currentUserId={currentUserId} />;
+
+  if (myTeams === null) return <div className="text-center text-muted-foreground p-12 font-display">Carregando…</div>;
+
+  if (myTeams.length === 0) {
+    return (
+      <div className="max-w-xl mx-auto bg-card border border-border rounded-xl p-8 text-center space-y-3 mt-8">
+        <Lock size={32} className="text-muted-foreground mx-auto" />
+        <h2 className="font-heading text-lg text-foreground">Acesso Negado</h2>
+        <p className="text-sm font-display text-muted-foreground">
+          Você precisa ser líder ou vice-líder de uma line para acessar o Painel Central.
+        </p>
+      </div>
+    );
+  }
+
+  return <LineLeaderPanel clanId={clanId} myTeams={myTeams} />;
+}
+
+// Painel reduzido para líder de line: vê só os times em que é líder/vice
+function LineLeaderPanel({ clanId, myTeams }: { clanId: string; myTeams: DBTeam[] }) {
+  const teamIds = myTeams.map(t => t.id);
+  const playerIds = Array.from(new Set(myTeams.flatMap(t => (t.players || []) as string[])));
+  const [profiles, setProfiles] = useState<DBProfile[]>([]);
+  const [clanName, setClanName] = useState('');
+
+  useEffect(() => {
+    supabase.from('clans').select('name').eq('id', clanId).maybeSingle()
+      .then(({ data }) => setClanName((data as any)?.name || 'Meu Clã'));
+    if (playerIds.length) {
+      supabase.from('profiles').select('*').in('user_id', playerIds)
+        .then(({ data }) => setProfiles((data || []) as DBProfile[]));
+    } else {
+      setProfiles([]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clanId, playerIds.join(',')]);
+
+  const refresh = () => {
+    if (playerIds.length) {
+      supabase.from('profiles').select('*').in('user_id', playerIds)
+        .then(({ data }) => setProfiles((data || []) as DBProfile[]));
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      <div className="flex items-center gap-3">
+        <Shield size={28} className="text-primary" />
+        <div>
+          <h1 className="text-xl font-heading text-primary text-glow">PAINEL DE LINE — {clanName}</h1>
+          <p className="text-xs text-muted-foreground font-display">
+            Acesso restrito às lines onde você é líder ou vice-líder. Demais áreas do clã estão bloqueadas.
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-card border border-primary/30 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-heading text-sm text-primary flex items-center gap-2"><Shield size={14} /> MINHAS LINES ({myTeams.length})</h2>
+        </div>
+        {myTeams.map(t => (
+          <div key={t.id} className="bg-secondary/40 rounded-lg p-3 border border-border">
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-heading text-sm text-foreground">{t.name}</p>
+              <span className="text-[10px] font-heading text-primary bg-primary/10 border border-primary/30 px-2 py-0.5 rounded">
+                {t.team_leader_id ? 'LÍDER/VICE' : 'MEMBRO'}
+              </span>
+            </div>
+            <p className="text-[11px] font-display text-muted-foreground">
+              {(t.players?.length || 0)}/5 jogadores · {t.wins || 0}V / {t.losses || 0}D
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {(t.players || []).map(pid => {
+                const p = profiles.find(pp => pp.user_id === pid);
+                if (!p) return null;
+                return (
+                  <span key={pid} className="text-[10px] font-display px-2 py-0.5 rounded bg-background border border-border text-foreground">
+                    {p.game_nick || p.username}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {profiles.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <h2 className="font-heading text-sm text-primary flex items-center gap-2"><Users size={14} /> ESTATÍSTICAS DOS JOGADORES</h2>
+          <div className="space-y-2">
+            {profiles.map(p => (
+              <PlayerStatRow key={p.user_id} player={p} onSaved={refresh} />
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground font-display">
+            Como líder/vice de line, você pode editar K/D/A/MVP dos seus jogadores.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlayerStatRow({ player, onSaved }: { player: DBProfile; onSaved: () => void }) {
+  const [k, setK] = useState(player.kills || 0);
+  const [d, setD] = useState(player.deaths || 0);
+  const [a, setA] = useState(player.assists || 0);
+  const [m, setM] = useState(player.mvps || 0);
+
+  const save = async () => {
+    const { error } = await supabase.rpc('update_player_stats', {
+      _target_user: player.user_id, _kills: k, _deaths: d, _assists: a, _mvps: m,
+    });
+    if (error) toast.error(error.message);
+    else { toast.success('Stats atualizados'); onSaved(); }
+  };
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap p-2 bg-secondary/30 rounded border border-border/40">
+      <span className="font-heading text-xs text-foreground min-w-[100px] truncate">{player.game_nick || player.username}</span>
+      {[
+        { label: 'K', val: k, set: setK },
+        { label: 'D', val: d, set: setD },
+        { label: 'A', val: a, set: setA },
+        { label: 'MVP', val: m, set: setM },
+      ].map(f => (
+        <label key={f.label} className="flex items-center gap-1 text-[10px] text-muted-foreground font-display">
+          {f.label}
+          <input type="number" value={f.val} onChange={e => f.set(parseInt(e.target.value) || 0)}
+            className="w-14 p-1 bg-background border border-border rounded text-foreground text-xs" />
+        </label>
+      ))}
+      <button onClick={save} className="ml-auto px-3 py-1 gradient-primary text-primary-foreground rounded text-[10px] font-heading">
+        SALVAR
+      </button>
+    </div>
+  );
 }
 
 // ==================== SUPER ADMIN PANEL ====================
