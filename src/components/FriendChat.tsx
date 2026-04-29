@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Send, Smile } from 'lucide-react';
 import { toast } from 'sonner';
+import { EmblemBadges } from '@/components/Emblems';
 
 interface Msg {
   id: string;
@@ -27,6 +28,7 @@ export default function FriendChat({
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [showEmojis, setShowEmojis] = useState(false);
+  const [friendBadges, setFriendBadges] = useState<string[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
 
   const load = async () => {
@@ -45,6 +47,9 @@ export default function FriendChat({
   useEffect(() => {
     if (!open) return;
     load();
+    // carregar emblemas do amigo
+    supabase.from('profiles').select('badges').eq('user_id', friendId).maybeSingle()
+      .then(({ data }) => setFriendBadges((data?.badges as string[]) || []));
     const ch = supabase.channel(`friend-chat-${myId}-${friendId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'friend_messages' }, (payload) => {
         const m = payload.new as Msg;
@@ -78,8 +83,9 @@ export default function FriendChat({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0 overflow-hidden border-primary/30">
         <DialogHeader className="p-4 border-b border-border bg-card">
-          <DialogTitle className="font-heading text-primary text-glow-sm flex items-center gap-2">
+          <DialogTitle className="font-heading text-primary text-glow-sm flex items-center gap-2 flex-wrap">
             💬 {friendName}
+            <EmblemBadges ids={friendBadges} size="xs" max={4} />
           </DialogTitle>
         </DialogHeader>
 
@@ -91,6 +97,19 @@ export default function FriendChat({
           )}
           {msgs.map(m => {
             const mine = m.sender_id === myId;
+            const isSystem = m.message.startsWith('🛍️') || m.message.startsWith('🎁');
+            if (isSystem) {
+              return (
+                <div key={m.id} className="flex justify-center">
+                  <div className="max-w-[90%] px-3 py-2 rounded-lg text-xs font-display text-gold bg-gold/10 border border-gold/30 text-center">
+                    {m.message}
+                    <div className="text-[9px] mt-1 opacity-70">
+                      {new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
             return (
               <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[80%] px-3 py-2 rounded-lg text-sm font-display whitespace-pre-wrap break-words ${
