@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { getFrameStyle, getNickColor } from '@/lib/shopData';
+import { EmblemBadges } from '@/components/Emblems';
 import { UserCircle, Copy, Trophy, Target, Zap, Shield, Award, Camera, Edit, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import PromoCodeRedeem from '@/components/PromoCodeRedeem';
@@ -127,21 +128,11 @@ export default function ProfilePage() {
           <button onClick={copyId} className="text-primary hover:text-neon-glow"><Copy size={12} /></button>
         </div>
         {profile.badges && profile.badges.length > 0 && (
-          <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
-            {profile.badges.map(b => (
-              <span key={b} className="px-2 py-1 rounded text-xs font-heading"
-                style={{
-                  background: b === 'badge_legend' ? 'linear-gradient(135deg, #FFD700, #FF8C00)' :
-                    b === 'badge_vip' ? 'linear-gradient(135deg, #BF00FF, #8B00FF)' :
-                    b === 'superadmin' ? 'linear-gradient(135deg, #FF0040, #FF6600)' :
-                    b === 'founder' ? 'linear-gradient(135deg, #FFD700, #FFA500)' :
-                    'hsl(var(--primary) / 0.3)',
-                  color: '#fff',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                }}>
-                {b.replace('badge_', '').toUpperCase()}
-              </span>
-            ))}
+          <div className="mt-3">
+            <p className="text-[10px] font-heading text-muted-foreground tracking-widest mb-1.5">🏅 EMBLEMAS</p>
+            <div className="flex items-center justify-center">
+              <EmblemBadges ids={profile.badges} size="md" />
+            </div>
           </div>
         )}
         <div className="flex items-center justify-center gap-4 mt-4 text-sm font-display">

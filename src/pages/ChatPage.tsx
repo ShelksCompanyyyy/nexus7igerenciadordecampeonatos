@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { getFrameStyle, getNickColor } from '@/lib/shopData';
+import { EmblemBadges } from '@/components/Emblems';
 import { MessageSquare, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -74,12 +75,7 @@ export default function ChatPage() {
     const author = authorMap[msg.user_id];
     const badges: string[] = author?.badges || [];
     if (!badges.length) return null;
-    return (
-      <span className="inline-flex gap-1 ml-1">
-        {badges.includes('badge_vip') && <span title="VIP" className="text-[10px] px-1 rounded bg-primary/20 text-primary border border-primary/40">VIP</span>}
-        {badges.includes('badge_legend') && <span title="Lendário" className="text-[10px] px-1 rounded bg-gold/20 text-gold border border-gold/40">★</span>}
-      </span>
-    );
+    return <EmblemBadges ids={badges} size="xs" max={3} className="ml-1" />;
   };
 
   return (

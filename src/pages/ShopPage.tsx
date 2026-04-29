@@ -91,6 +91,32 @@ export default function ShopPage() {
     if (['nick_color', 'frame', 'badge'].includes(item.category)) {
       await supabase.rpc('announce_purchase', { _item_name: item.name, _category: item.category });
     }
+
+    // Anunciar para amigos no chat privado
+    try {
+      const { data: friendsRows } = await supabase
+        .from('friends')
+        .select('user_id, friend_id')
+        .eq('status', 'accepted')
+        .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+      const friendIds = (friendsRows || [])
+        .map(r => (r.user_id === user.id ? r.friend_id : r.user_id))
+        .filter(Boolean);
+      if (friendIds.length) {
+        const nick = profile.game_nick || profile.username || 'Seu amigo';
+        const text = `🛍️ ${nick} acabou de adquirir: ${item.name}!`;
+        const rows = friendIds.map(fid => ({
+          sender_id: user.id,
+          recipient_id: fid,
+          message: text,
+        }));
+        await supabase.from('friend_messages').insert(rows);
+      }
+    } catch (e) {
+      // não bloqueia a compra
+      console.warn('friend announce skipped', e);
+    }
+
     await refreshProfile();
     toast.success(`✨ ${item.name} adquirido!`);
   };
