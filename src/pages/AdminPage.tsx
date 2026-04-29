@@ -1309,6 +1309,7 @@ function ClanSettingsTab({ clan, onRefresh }: { clan?: DBClan | null; onRefresh:
   const [adminCode, setAdminCode] = useState(clan?.admin_code || '');
   const [logo, setLogo] = useState(clan?.logo || '');
   const [banner, setBanner] = useState(clan?.banner || '');
+  const [allowLineCW, setAllowLineCW] = useState<boolean>(clan?.allow_line_leaders_create_cw ?? true);
 
   useEffect(() => {
     if (clan) {
@@ -1317,6 +1318,7 @@ function ClanSettingsTab({ clan, onRefresh }: { clan?: DBClan | null; onRefresh:
       setAdminCode(clan.admin_code || '');
       setLogo(clan.logo || '');
       setBanner(clan.banner || '');
+      setAllowLineCW(clan.allow_line_leaders_create_cw ?? true);
     }
   }, [clan]);
 
@@ -1371,6 +1373,34 @@ function ClanSettingsTab({ clan, onRefresh }: { clan?: DBClan | null; onRefresh:
           <p className="text-[10px] text-muted-foreground font-display mt-1">Compartilhe este código apenas com admins autorizados</p>
         </div>
         <button onClick={handleSave} className="w-full py-3 gradient-primary text-primary-foreground rounded font-heading text-xs">SALVAR CONFIGURAÇÕES</button>
+      </div>
+
+      <div className="bg-card rounded-lg border border-primary/30 p-4 space-y-3">
+        <h3 className="font-heading text-xs text-primary flex items-center gap-2">⚔️ PERMISSÕES DE COMBATE</h3>
+        <div className="flex items-start justify-between gap-3 p-3 rounded-lg bg-secondary/40 border border-border">
+          <div className="flex-1 min-w-0">
+            <p className="font-heading text-sm text-foreground">Líderes de line podem criar CW</p>
+            <p className="text-[11px] font-display text-muted-foreground mt-1">
+              Quando desativado, apenas líderes/vice do clã podem abrir desafios MatchCW.
+            </p>
+          </div>
+          <button
+            onClick={async () => {
+              const next = !allowLineCW;
+              const { error } = await supabase.rpc('set_clan_cw_permission', { _clan_id: clan.id, _allow: next });
+              if (error) toast.error(error.message);
+              else { setAllowLineCW(next); onRefresh(); toast.success(next ? '✅ Líderes de line podem criar CW' : '🔒 Criação restrita ao clã'); }
+            }}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              allowLineCW ? 'bg-primary' : 'bg-muted'
+            }`}
+            aria-pressed={allowLineCW}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+              allowLineCW ? 'translate-x-6' : 'translate-x-1'
+            }`} />
+          </button>
+        </div>
       </div>
     </div>
   );
