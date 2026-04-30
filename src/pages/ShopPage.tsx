@@ -63,10 +63,11 @@ export default function ShopPage() {
 
   const alreadyOwned = (item: ShopItem) => {
     if (!profile) return false;
-    if (item.category === 'nick_color') return profile.nick_color_id === item.id;
-    if (item.category === 'frame') return profile.frame_id === item.id;
-    if (item.category === 'badge') return profile.badges?.includes(item.id);
-    return false; // spins are repeatable
+    // Cosméticos: dono = está no inventário (independente de equipado)
+    if (['nick_color', 'frame', 'badge'].includes(item.category)) {
+      return ownedIds.has(item.id);
+    }
+    return false; // spins são reutilizáveis
   };
 
   const handleBuy = async (item: ShopItem) => {
