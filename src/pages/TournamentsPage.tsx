@@ -11,7 +11,7 @@ interface Tournament {
 }
 interface TTeam { id: string; team_id: string; tournament_id: string; seed: number | null; wins: number; losses: number; draws: number; points: number; goals_for: number; goals_against: number; eliminated: boolean }
 interface TMatch { id: string; tournament_id: string; round: number; slot: number; team_a_id: string | null; team_b_id: string | null; winner_id: string | null; score_a: number | null; score_b: number | null; status: string }
-interface Team { id: string; name: string; logo: string | null }
+interface Team { id: string; name: string; logo: string | null; wins?: number }
 
 export default function TournamentsPage() {
   const { user, profile } = useAuth();
@@ -83,11 +83,15 @@ export default function TournamentsPage() {
               className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/60 transition-all">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-heading text-foreground">{t.name}</h3>
-                <span className={`text-[10px] px-2 py-0.5 rounded font-display ${
-                  t.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                  t.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                <span className={`text-[10px] px-2 py-0.5 rounded font-display uppercase ${
+                  t.status === 'finished' ? 'bg-green-500/20 text-green-400' :
+                  t.status === 'running' ? 'bg-blue-500/20 text-blue-400' :
                   'bg-yellow-500/20 text-yellow-400'
-                }`}>{t.status}</span>
+                }`}>{
+                  t.status === 'open' ? 'Inscrições' :
+                  t.status === 'running' ? 'Em andamento' :
+                  t.status === 'finished' ? 'Finalizado' : t.status
+                }</span>
               </div>
               <div className="flex items-center gap-3 text-xs font-display text-muted-foreground">
                 <span className="flex items-center gap-1"><Swords size={12} />{t.format === 'bracket' ? 'Mata-mata' : 'Pontos corridos'}</span>
@@ -115,7 +119,7 @@ export default function TournamentsPage() {
               </select>
               <select value={form.size} onChange={e => setForm({ ...form, size: Number(e.target.value) })}
                 className="bg-secondary border border-border rounded px-2 py-2 text-sm font-display">
-                {[4, 6, 8, 16].map(n => <option key={n} value={n}>{n} times</option>)}
+                {[4, 8, 16].map(n => <option key={n} value={n}>{n} times</option>)}
               </select>
             </div>
             <input type="number" value={form.prize_gold} onChange={e => setForm({ ...form, prize_gold: Number(e.target.value) })}
@@ -143,7 +147,7 @@ function TournamentDetail({ tournament, onBack, isClanLeader }: { tournament: To
     const [tt, mm, tList] = await Promise.all([
       supabase.from('tournament_teams').select('*').eq('tournament_id', tournament.id),
       supabase.from('tournament_matches').select('*').eq('tournament_id', tournament.id).order('round').order('slot'),
-      supabase.from('teams').select('id,name,logo').eq('clan_id', tournament.clan_id),
+      supabase.from('teams').select('id,name,logo,wins').eq('clan_id', tournament.clan_id),
     ]);
     setTteams((tt.data as any) || []);
     setMatches((mm.data as any) || []);
@@ -170,6 +174,23 @@ function TournamentDetail({ tournament, onBack, isClanLeader }: { tournament: To
     const { error } = await supabase.rpc('start_tournament' as any, { _tournament_id: tournament.id });
     if (error) return toast.error(error.message);
     toast.success('Campeonato iniciado!');
+    loadAll();
+  };
+
+  const autoSeed = async () => {
+    // Ranquear times pelo número de vitórias (campo wins na tabela teams)
+    const enrolledIds = tteams.map(t => t.team_id);
+    const ranked = teams
+      .filter(t => enrolledIds.includes(t.id))
+      .map(t => ({ id: t.id, wins: (t as any).wins || 0 }))
+      .sort((a, b) => b.wins - a.wins);
+    for (let i = 0; i < ranked.length; i++) {
+      await supabase.from('tournament_teams')
+        .update({ seed: i + 1 })
+        .eq('tournament_id', tournament.id)
+        .eq('team_id', ranked[i].id);
+    }
+    toast.success('Chaveamento por ranking aplicado!');
     loadAll();
   };
 
@@ -200,7 +221,7 @@ function TournamentDetail({ tournament, onBack, isClanLeader }: { tournament: To
       </div>
 
       {/* Inscrição */}
-      {tournament.status === 'draft' && isClanLeader && (
+      {(tournament.status === 'open' || tournament.status === 'draft') && isClanLeader && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <h3 className="font-heading text-primary text-sm">Inscrever Times ({tteams.length}/{tournament.size})</h3>
           <div className="flex flex-wrap gap-2">
@@ -214,10 +235,16 @@ function TournamentDetail({ tournament, onBack, isClanLeader }: { tournament: To
           <div className="text-xs font-display text-muted-foreground">
             Inscritos: {tteams.map(tt => teamName(tt.team_id)).join(', ') || 'nenhum'}
           </div>
-          <button onClick={startTournament}
-            className="w-full bg-primary text-primary-foreground py-2 rounded font-heading text-sm flex items-center justify-center gap-1">
-            <Play size={14} /> Iniciar Campeonato
-          </button>
+          <div className="flex gap-2">
+            <button onClick={autoSeed} disabled={tteams.length < 2}
+              className="flex-1 border border-primary/40 text-primary py-2 rounded font-heading text-xs hover:bg-primary/10 disabled:opacity-40">
+              🏅 Chavear por Ranking
+            </button>
+            <button onClick={startTournament} disabled={tteams.length < 2}
+              className="flex-1 bg-primary text-primary-foreground py-2 rounded font-heading text-sm flex items-center justify-center gap-1 disabled:opacity-40">
+              <Play size={14} /> Iniciar
+            </button>
+          </div>
         </div>
       )}
 
@@ -225,15 +252,19 @@ function TournamentDetail({ tournament, onBack, isClanLeader }: { tournament: To
       {tournament.format === 'bracket' && rounds.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-4 overflow-x-auto">
           <h3 className="font-heading text-primary text-sm mb-3">Chaveamento</h3>
-          <div className="flex gap-6 min-w-max">
-            {rounds.map(round => (
-              <div key={round} className="flex flex-col gap-3 justify-around">
-                <p className="text-[10px] text-muted-foreground font-heading text-center">RODADA {round}</p>
-                {matches.filter(m => m.round === round).map(m => (
-                  <MatchCard key={m.id} match={m} teamName={teamName} canReport={isClanLeader} onReport={reportMatch} />
-                ))}
-              </div>
-            ))}
+          <div className="flex gap-6 min-w-max items-stretch">
+            {rounds.map(round => {
+              const inRound = matches.filter(m => m.round === round).length;
+              const label = inRound === 1 ? 'FINAL' : inRound === 2 ? 'SEMIFINAL' : inRound === 4 ? 'QUARTAS' : `RODADA ${round}`;
+              return (
+                <div key={round} className="flex flex-col gap-4 justify-around">
+                  <p className="text-[10px] text-primary font-heading text-center tracking-widest">{label}</p>
+                  {matches.filter(m => m.round === round).map(m => (
+                    <MatchCard key={m.id} match={m} teamName={teamName} canReport={isClanLeader} onReport={reportMatch} />
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -291,6 +322,7 @@ function MatchCard({ match, teamName, canReport, onReport, compact }: {
   const [a, setA] = useState(match.score_a ?? 0);
   const [b, setB] = useState(match.score_b ?? 0);
   const done = match.status === 'completed';
+  // also treat 'played' as done (RPC marks it as played)
 
   return (
     <div className={`border border-border rounded-lg p-2 ${compact ? '' : 'min-w-[180px]'} ${done ? 'opacity-90' : ''}`}>

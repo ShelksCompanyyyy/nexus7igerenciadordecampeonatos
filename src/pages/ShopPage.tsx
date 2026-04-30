@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { SHOP_ITEMS, NICK_COLORS, FRAMES } from '@/lib/shopData';
@@ -51,6 +51,18 @@ export default function ShopPage() {
   const { user, profile, refreshProfile } = useAuth();
   const [category, setCategory] = useState<Category>('all');
   const [search, setSearch] = useState('');
+  const [ownedIds, setOwnedIds] = useState<Set<string>>(new Set());
+
+  const loadInventory = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('user_inventory')
+      .select('item_id')
+      .eq('user_id', user.id);
+    setOwnedIds(new Set(((data as any) || []).map((r: any) => r.item_id)));
+  };
+
+  useEffect(() => { loadInventory(); }, [user?.id]);
 
   const filtered = useMemo(() => {
     let list = category === 'all' ? SHOP_ITEMS : SHOP_ITEMS.filter(i => i.category === category);
@@ -63,10 +75,11 @@ export default function ShopPage() {
 
   const alreadyOwned = (item: ShopItem) => {
     if (!profile) return false;
-    if (item.category === 'nick_color') return profile.nick_color_id === item.id;
-    if (item.category === 'frame') return profile.frame_id === item.id;
-    if (item.category === 'badge') return profile.badges?.includes(item.id);
-    return false; // spins are repeatable
+    // Cosméticos: dono = está no inventário (independente de equipado)
+    if (['nick_color', 'frame', 'badge'].includes(item.category)) {
+      return ownedIds.has(item.id);
+    }
+    return false; // spins são reutilizáveis
   };
 
   const handleBuy = async (item: ShopItem) => {
@@ -88,6 +101,15 @@ export default function ShopPage() {
     }
 
     await supabase.from('profiles').update(updates).eq('user_id', user.id);
+    // Salvar no inventário (cosméticos persistem mesmo se desequipados)
+    if (['nick_color', 'frame', 'badge'].includes(item.category)) {
+      await supabase.from('user_inventory').insert({
+        user_id: user.id,
+        item_id: item.id,
+        item_category: item.category,
+        item_name: item.name,
+      });
+    }
     if (['nick_color', 'frame', 'badge'].includes(item.category)) {
       await supabase.rpc('announce_purchase', { _item_name: item.name, _category: item.category });
     }
@@ -118,6 +140,7 @@ export default function ShopPage() {
     }
 
     await refreshProfile();
+    await loadInventory();
     toast.success(`✨ ${item.name} adquirido!`);
   };
 
@@ -220,6 +243,9 @@ export default function ShopPage() {
           const owned = alreadyOwned(item);
           const meta = CATEGORY_META[item.category];
           const canAfford = (profile?.gold || 0) >= item.price;
+          const equipped =
+            (item.category === 'nick_color' && profile?.nick_color_id === item.id) ||
+            (item.category === 'frame' && profile?.frame_id === item.id);
 
           // Visual blocks per category
           let preview: JSX.Element | null = null;
@@ -288,7 +314,7 @@ export default function ShopPage() {
               )}
               {owned && (
                 <span className="absolute top-2 right-2 text-[9px] font-heading text-success bg-success/15 px-2 py-0.5 rounded-full border border-success/40 flex items-center gap-1">
-                  <Check size={10} /> EQUIPADO
+                  <Check size={10} /> {equipped ? 'EQUIPADO' : 'NO INVENTÁRIO'}
                 </span>
               )}
 
@@ -305,7 +331,7 @@ export default function ShopPage() {
                 </span>
                 {owned ? (
                   <span className="px-3 py-1.5 bg-success/15 text-success rounded font-heading text-[10px] flex items-center gap-1">
-                    <Check size={12} /> EQUIPADO
+                    <Check size={12} /> {equipped ? 'EQUIPADO' : 'COMPRADO'}
                   </span>
                 ) : !canAfford ? (
                   <button disabled
