@@ -30,9 +30,9 @@ export default function SettingsPage() {
 
   const items: { icon: typeof UserCircle; label: string; onClick: () => void }[] = [
     { icon: UserCircle, label: '👤 ' + t('settings.profile'), onClick: () => navigate('/profile') },
-    { icon: Wallet, label: '💰 ' + t('settings.wallet'), onClick: () => navigate('/roulette') },
+    { icon: Wallet, label: '💰 ' + t('settings.wallet'), onClick: () => navigate('/wallet') },
     { icon: Bell, label: '🔔 ' + t('settings.notifications'), onClick: () => navigate('/notifications') },
-    { icon: Lock, label: '🔒 ' + t('settings.security'), onClick: () => navigate('/profile?tab=security') },
+    { icon: Lock, label: '🔒 ' + t('settings.security'), onClick: () => navigate('/security') },
     { icon: MessageCircle, label: '📞 ' + t('settings.support'), onClick: () => navigate('/support') },
   ];
 
