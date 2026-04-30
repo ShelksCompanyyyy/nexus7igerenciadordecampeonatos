@@ -229,15 +229,19 @@ function TournamentDetail({ tournament, onBack, isClanLeader }: { tournament: To
       {tournament.format === 'bracket' && rounds.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-4 overflow-x-auto">
           <h3 className="font-heading text-primary text-sm mb-3">Chaveamento</h3>
-          <div className="flex gap-6 min-w-max">
-            {rounds.map(round => (
-              <div key={round} className="flex flex-col gap-3 justify-around">
-                <p className="text-[10px] text-muted-foreground font-heading text-center">RODADA {round}</p>
-                {matches.filter(m => m.round === round).map(m => (
-                  <MatchCard key={m.id} match={m} teamName={teamName} canReport={isClanLeader} onReport={reportMatch} />
-                ))}
-              </div>
-            ))}
+          <div className="flex gap-6 min-w-max items-stretch">
+            {rounds.map(round => {
+              const inRound = matches.filter(m => m.round === round).length;
+              const label = inRound === 1 ? 'FINAL' : inRound === 2 ? 'SEMIFINAL' : inRound === 4 ? 'QUARTAS' : `RODADA ${round}`;
+              return (
+                <div key={round} className="flex flex-col gap-4 justify-around">
+                  <p className="text-[10px] text-primary font-heading text-center tracking-widest">{label}</p>
+                  {matches.filter(m => m.round === round).map(m => (
+                    <MatchCard key={m.id} match={m} teamName={teamName} canReport={isClanLeader} onReport={reportMatch} />
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
