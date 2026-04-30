@@ -177,6 +177,23 @@ function TournamentDetail({ tournament, onBack, isClanLeader }: { tournament: To
     loadAll();
   };
 
+  const autoSeed = async () => {
+    // Ranquear times pelo número de vitórias (campo wins na tabela teams)
+    const enrolledIds = tteams.map(t => t.team_id);
+    const ranked = teams
+      .filter(t => enrolledIds.includes(t.id))
+      .map(t => ({ id: t.id, wins: (t as any).wins || 0 }))
+      .sort((a, b) => b.wins - a.wins);
+    for (let i = 0; i < ranked.length; i++) {
+      await supabase.from('tournament_teams')
+        .update({ seed: i + 1 })
+        .eq('tournament_id', tournament.id)
+        .eq('team_id', ranked[i].id);
+    }
+    toast.success('Chaveamento por ranking aplicado!');
+    loadAll();
+  };
+
   const reportMatch = async (matchId: string, scoreA: number, scoreB: number) => {
     const { error } = await supabase.rpc('report_tournament_match' as any, {
       _match_id: matchId, _score_a: scoreA, _score_b: scoreB,
@@ -218,10 +235,16 @@ function TournamentDetail({ tournament, onBack, isClanLeader }: { tournament: To
           <div className="text-xs font-display text-muted-foreground">
             Inscritos: {tteams.map(tt => teamName(tt.team_id)).join(', ') || 'nenhum'}
           </div>
-          <button onClick={startTournament}
-            className="w-full bg-primary text-primary-foreground py-2 rounded font-heading text-sm flex items-center justify-center gap-1">
-            <Play size={14} /> Iniciar Campeonato
-          </button>
+          <div className="flex gap-2">
+            <button onClick={autoSeed} disabled={tteams.length < 2}
+              className="flex-1 border border-primary/40 text-primary py-2 rounded font-heading text-xs hover:bg-primary/10 disabled:opacity-40">
+              🏅 Chavear por Ranking
+            </button>
+            <button onClick={startTournament} disabled={tteams.length < 2}
+              className="flex-1 bg-primary text-primary-foreground py-2 rounded font-heading text-sm flex items-center justify-center gap-1 disabled:opacity-40">
+              <Play size={14} /> Iniciar
+            </button>
+          </div>
         </div>
       )}
 
