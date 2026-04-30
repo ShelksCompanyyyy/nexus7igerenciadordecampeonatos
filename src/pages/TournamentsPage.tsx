@@ -11,7 +11,7 @@ interface Tournament {
 }
 interface TTeam { id: string; team_id: string; tournament_id: string; seed: number | null; wins: number; losses: number; draws: number; points: number; goals_for: number; goals_against: number; eliminated: boolean }
 interface TMatch { id: string; tournament_id: string; round: number; slot: number; team_a_id: string | null; team_b_id: string | null; winner_id: string | null; score_a: number | null; score_b: number | null; status: string }
-interface Team { id: string; name: string; logo: string | null }
+interface Team { id: string; name: string; logo: string | null; wins?: number }
 
 export default function TournamentsPage() {
   const { user, profile } = useAuth();
@@ -147,7 +147,7 @@ function TournamentDetail({ tournament, onBack, isClanLeader }: { tournament: To
     const [tt, mm, tList] = await Promise.all([
       supabase.from('tournament_teams').select('*').eq('tournament_id', tournament.id),
       supabase.from('tournament_matches').select('*').eq('tournament_id', tournament.id).order('round').order('slot'),
-      supabase.from('teams').select('id,name,logo').eq('clan_id', tournament.clan_id),
+      supabase.from('teams').select('id,name,logo,wins').eq('clan_id', tournament.clan_id),
     ]);
     setTteams((tt.data as any) || []);
     setMatches((mm.data as any) || []);
