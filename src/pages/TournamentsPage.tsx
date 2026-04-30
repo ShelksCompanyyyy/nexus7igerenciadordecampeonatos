@@ -295,6 +295,7 @@ function MatchCard({ match, teamName, canReport, onReport, compact }: {
   const [a, setA] = useState(match.score_a ?? 0);
   const [b, setB] = useState(match.score_b ?? 0);
   const done = match.status === 'completed';
+  // also treat 'played' as done (RPC marks it as played)
 
   return (
     <div className={`border border-border rounded-lg p-2 ${compact ? '' : 'min-w-[180px]'} ${done ? 'opacity-90' : ''}`}>
