@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexel-logo.png';
 import { useState, useEffect } from 'react';
-import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell, UserPlus, ChevronRight, Settings, Info } from 'lucide-react';
+import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell, UserPlus, ChevronRight, Settings, Info, Wallet, Package, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
 // Itens completos do menu lateral (drawer mobile + sidebar desktop)
@@ -10,12 +10,16 @@ const NAV_ITEMS = [
   { path: '/', label: 'Home', icon: Home, accent: 'primary' as const },
   { path: '/profile', label: 'Perfil', icon: UserCircle, accent: 'primary' as const },
   { path: '/ranking', label: 'Ranking', icon: Trophy, accent: 'primary' as const },
-  { path: '/roulette', label: 'Roleta / PIX', icon: Dices, accent: 'primary' as const },
+  { path: '/roulette', label: 'Roleta', icon: Dices, accent: 'primary' as const },
+  { path: '/wallet', label: 'Carteira', icon: Wallet, accent: 'gold' as const },
+  { path: '/inventory', label: 'Inventário', icon: Package, accent: 'info' as const },
+  { path: '/security', label: 'Segurança', icon: Lock, accent: 'info' as const },
   { path: '/shop', label: 'Loja NexelGolds', icon: ShoppingBag, accent: 'primary' as const },
   { path: '/chat', label: 'Chat Geral', icon: MessageSquare, accent: 'primary' as const },
   { path: '/matchcw', label: 'Match CW', icon: Shield, accent: 'gold' as const },
   { path: '/matchcw-bet', label: 'CW Apostado', icon: DollarSign, accent: 'gold' as const },
   { path: '/friends', label: 'Amigos & Chat Privado', icon: UserPlus, accent: 'info' as const },
+  { path: '/tournaments', label: 'Campeonatos Internos', icon: Trophy, accent: 'gold' as const },
   { path: '/matches', label: 'Partidas', icon: Swords, accent: 'primary' as const },
   { path: '/teams', label: 'Times (Lines)', icon: Users, accent: 'primary' as const },
   { path: '/training', label: 'X-Treinos', icon: Target, accent: 'primary' as const },
