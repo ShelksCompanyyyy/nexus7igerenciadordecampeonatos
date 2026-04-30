@@ -166,11 +166,16 @@ export default function HomePage() {
       </div>
 
       {/* 3. CTA PRINCIPAL */}
-      <Link to="/matchcw"
-        className="flex items-center justify-center gap-2 w-full py-4 rounded-lg gradient-primary text-primary-foreground font-heading text-sm tracking-widest hover:opacity-90 transition-all neon-border-strong">
-        <Plus size={18} />
-        CRIAR MATCHCW
-      </Link>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Link to="/matchcw"
+          className="flex items-center justify-center gap-2 w-full py-4 rounded-lg gradient-primary text-primary-foreground font-heading text-sm tracking-widest hover:opacity-90 transition-all neon-border-strong">
+          <Plus size={18} /> CRIAR MATCHCW
+        </Link>
+        <Link to="/tournaments"
+          className="flex items-center justify-center gap-2 w-full py-4 rounded-lg border border-gold/50 bg-gold/5 text-gold font-heading text-sm tracking-widest hover:bg-gold/10 transition-all">
+          <Trophy size={18} /> CAMPEONATOS INTERNOS
+        </Link>
+      </div>
 
       {/* 4. ATIVIDADE RECENTE */}
       <div className="bg-card rounded-lg neon-border p-5">

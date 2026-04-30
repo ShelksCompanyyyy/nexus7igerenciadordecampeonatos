@@ -25,6 +25,10 @@ import NotificationsPage from "@/pages/NotificationsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import SupportPage from "@/pages/SupportPage";
 import AboutPage from "@/pages/AboutPage";
+import WalletPage from "@/pages/WalletPage";
+import InventoryPage from "@/pages/InventoryPage";
+import SecurityPage from "@/pages/SecurityPage";
+import TournamentsPage from "@/pages/TournamentsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +57,10 @@ function AppRoutes() {
         <Route path="/matches" element={<MatchCWPage />} />
         <Route path="/training" element={<TrainingPage />} />
         <Route path="/roulette" element={<RoulettePage />} />
+        <Route path="/wallet" element={<WalletPage />} />
+        <Route path="/inventory" element={<InventoryPage />} />
+        <Route path="/security" element={<SecurityPage />} />
+        <Route path="/tournaments" element={<TournamentsPage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/news" element={<NewsPage />} />
         <Route path="/shop" element={<ShopPage />} />
