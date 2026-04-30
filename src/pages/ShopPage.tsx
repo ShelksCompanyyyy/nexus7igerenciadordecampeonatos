@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { SHOP_ITEMS, NICK_COLORS, FRAMES } from '@/lib/shopData';
@@ -51,6 +51,18 @@ export default function ShopPage() {
   const { user, profile, refreshProfile } = useAuth();
   const [category, setCategory] = useState<Category>('all');
   const [search, setSearch] = useState('');
+  const [ownedIds, setOwnedIds] = useState<Set<string>>(new Set());
+
+  const loadInventory = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('user_inventory')
+      .select('item_id')
+      .eq('user_id', user.id);
+    setOwnedIds(new Set(((data as any) || []).map((r: any) => r.item_id)));
+  };
+
+  useEffect(() => { loadInventory(); }, [user?.id]);
 
   const filtered = useMemo(() => {
     let list = category === 'all' ? SHOP_ITEMS : SHOP_ITEMS.filter(i => i.category === category);
@@ -89,6 +101,15 @@ export default function ShopPage() {
     }
 
     await supabase.from('profiles').update(updates).eq('user_id', user.id);
+    // Salvar no inventário (cosméticos persistem mesmo se desequipados)
+    if (['nick_color', 'frame', 'badge'].includes(item.category)) {
+      await supabase.from('user_inventory').insert({
+        user_id: user.id,
+        item_id: item.id,
+        item_category: item.category,
+        item_name: item.name,
+      });
+    }
     if (['nick_color', 'frame', 'badge'].includes(item.category)) {
       await supabase.rpc('announce_purchase', { _item_name: item.name, _category: item.category });
     }
@@ -119,6 +140,7 @@ export default function ShopPage() {
     }
 
     await refreshProfile();
+    await loadInventory();
     toast.success(`✨ ${item.name} adquirido!`);
   };
 
