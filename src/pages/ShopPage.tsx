@@ -243,6 +243,9 @@ export default function ShopPage() {
           const owned = alreadyOwned(item);
           const meta = CATEGORY_META[item.category];
           const canAfford = (profile?.gold || 0) >= item.price;
+          const equipped =
+            (item.category === 'nick_color' && profile?.nick_color_id === item.id) ||
+            (item.category === 'frame' && profile?.frame_id === item.id);
 
           // Visual blocks per category
           let preview: JSX.Element | null = null;
@@ -311,7 +314,7 @@ export default function ShopPage() {
               )}
               {owned && (
                 <span className="absolute top-2 right-2 text-[9px] font-heading text-success bg-success/15 px-2 py-0.5 rounded-full border border-success/40 flex items-center gap-1">
-                  <Check size={10} /> EQUIPADO
+                  <Check size={10} /> {equipped ? 'EQUIPADO' : 'NO INVENTÁRIO'}
                 </span>
               )}
 
@@ -328,7 +331,7 @@ export default function ShopPage() {
                 </span>
                 {owned ? (
                   <span className="px-3 py-1.5 bg-success/15 text-success rounded font-heading text-[10px] flex items-center gap-1">
-                    <Check size={12} /> EQUIPADO
+                    <Check size={12} /> {equipped ? 'EQUIPADO' : 'COMPRADO'}
                   </span>
                 ) : !canAfford ? (
                   <button disabled
