@@ -83,11 +83,15 @@ export default function TournamentsPage() {
               className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/60 transition-all">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-heading text-foreground">{t.name}</h3>
-                <span className={`text-[10px] px-2 py-0.5 rounded font-display ${
-                  t.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                  t.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                <span className={`text-[10px] px-2 py-0.5 rounded font-display uppercase ${
+                  t.status === 'finished' ? 'bg-green-500/20 text-green-400' :
+                  t.status === 'running' ? 'bg-blue-500/20 text-blue-400' :
                   'bg-yellow-500/20 text-yellow-400'
-                }`}>{t.status}</span>
+                }`}>{
+                  t.status === 'open' ? 'Inscrições' :
+                  t.status === 'running' ? 'Em andamento' :
+                  t.status === 'finished' ? 'Finalizado' : t.status
+                }</span>
               </div>
               <div className="flex items-center gap-3 text-xs font-display text-muted-foreground">
                 <span className="flex items-center gap-1"><Swords size={12} />{t.format === 'bracket' ? 'Mata-mata' : 'Pontos corridos'}</span>
@@ -115,7 +119,7 @@ export default function TournamentsPage() {
               </select>
               <select value={form.size} onChange={e => setForm({ ...form, size: Number(e.target.value) })}
                 className="bg-secondary border border-border rounded px-2 py-2 text-sm font-display">
-                {[4, 6, 8, 16].map(n => <option key={n} value={n}>{n} times</option>)}
+                {[4, 8, 16].map(n => <option key={n} value={n}>{n} times</option>)}
               </select>
             </div>
             <input type="number" value={form.prize_gold} onChange={e => setForm({ ...form, prize_gold: Number(e.target.value) })}
@@ -200,7 +204,7 @@ function TournamentDetail({ tournament, onBack, isClanLeader }: { tournament: To
       </div>
 
       {/* Inscrição */}
-      {tournament.status === 'draft' && isClanLeader && (
+      {(tournament.status === 'open' || tournament.status === 'draft') && isClanLeader && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <h3 className="font-heading text-primary text-sm">Inscrever Times ({tteams.length}/{tournament.size})</h3>
           <div className="flex flex-wrap gap-2">
