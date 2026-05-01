@@ -241,6 +241,237 @@ export type Database = {
         }
         Relationships: []
       }
+      lucky_audit: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json
+          id: string
+          ip_hash: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json
+          id?: string
+          ip_hash?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          ip_hash?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      lucky_boosts: {
+        Row: {
+          boost_type: string
+          created_at: string
+          expires_at: string
+          id: string
+          multiplier: number
+          user_id: string
+        }
+        Insert: {
+          boost_type: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          multiplier?: number
+          user_id: string
+        }
+        Update: {
+          boost_type?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          multiplier?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lucky_inventory: {
+        Row: {
+          acquired_at: string
+          id: string
+          item_label: string
+          item_type: string
+          metadata: Json
+          opened: boolean
+          opened_at: string | null
+          rarity: string
+          user_id: string
+        }
+        Insert: {
+          acquired_at?: string
+          id?: string
+          item_label: string
+          item_type: string
+          metadata?: Json
+          opened?: boolean
+          opened_at?: string | null
+          rarity?: string
+          user_id: string
+        }
+        Update: {
+          acquired_at?: string
+          id?: string
+          item_label?: string
+          item_type?: string
+          metadata?: Json
+          opened?: boolean
+          opened_at?: string | null
+          rarity?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lucky_rate_limit: {
+        Row: {
+          count: number
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          count?: number
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      lucky_rewards: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          label: string
+          metadata: Json
+          probability: number
+          rarity: string
+          type: string
+          value_max: number
+          value_min: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          label: string
+          metadata?: Json
+          probability?: number
+          rarity?: string
+          type: string
+          value_max?: number
+          value_min?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          label?: string
+          metadata?: Json
+          probability?: number
+          rarity?: string
+          type?: string
+          value_max?: number
+          value_min?: number
+        }
+        Relationships: []
+      }
+      lucky_spins: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json
+          rarity: string
+          reward_code: string
+          reward_label: string
+          reward_type: string
+          reward_value: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          rarity?: string
+          reward_code: string
+          reward_label: string
+          reward_type: string
+          reward_value?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          rarity?: string
+          reward_code?: string
+          reward_label?: string
+          reward_type?: string
+          reward_value?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lucky_tickets: {
+        Row: {
+          acquired_at: string
+          id: string
+          used: boolean
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          acquired_at?: string
+          id?: string
+          used?: boolean
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          acquired_at?: string
+          id?: string
+          used?: boolean
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lucky_vips: {
+        Row: {
+          created_at: string
+          days: number
+          expires_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          days: number
+          expires_at: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          days?: number
+          expires_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       matchcw: {
         Row: {
           bet_amount: number | null
@@ -464,6 +695,102 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mp_payments: {
+        Row: {
+          amount_brl: number
+          approved_at: string | null
+          bonus_spins: number
+          created_at: string
+          expires_at: string | null
+          id: string
+          mp_payment_id: string | null
+          qr_code: string | null
+          qr_code_base64: string | null
+          spins: number
+          status: string
+          ticket_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_brl: number
+          approved_at?: string | null
+          bonus_spins?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          mp_payment_id?: string | null
+          qr_code?: string | null
+          qr_code_base64?: string | null
+          spins: number
+          status?: string
+          ticket_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_brl?: number
+          approved_at?: string | null
+          bonus_spins?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          mp_payment_id?: string | null
+          qr_code?: string | null
+          qr_code_base64?: string | null
+          spins?: number
+          status?: string
+          ticket_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mp_payouts: {
+        Row: {
+          amount_brl: number
+          beneficiary_name: string
+          created_at: string
+          failure_reason: string | null
+          id: string
+          mp_transfer_id: string | null
+          pix_key: string
+          pix_key_type: string
+          processed_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_brl: number
+          beneficiary_name: string
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          mp_transfer_id?: string | null
+          pix_key: string
+          pix_key_type?: string
+          processed_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_brl?: number
+          beneficiary_name?: string
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          mp_transfer_id?: string | null
+          pix_key?: string
+          pix_key_type?: string
+          processed_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       news: {
         Row: {
@@ -1302,6 +1629,33 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet: {
+        Row: {
+          balance_brl: number
+          created_at: string
+          id: string
+          total_earned: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance_brl?: number
+          created_at?: string
+          id?: string
+          total_earned?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance_brl?: number
+          created_at?: string
+          id?: string
+          total_earned?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       withdrawals: {
         Row: {
           amount: number
@@ -1368,6 +1722,10 @@ export type Database = {
         }
         Returns: Json
       }
+      confirm_paid_payout: {
+        Args: { _mp_transfer_id: string; _payout_id: string }
+        Returns: Json
+      }
       create_tournament: {
         Args: {
           _clan_id: string
@@ -1378,6 +1736,10 @@ export type Database = {
           _prize_gold: number
           _size: number
         }
+        Returns: Json
+      }
+      credit_spins_after_payment: {
+        Args: { _payment_id: string }
         Returns: Json
       }
       finalize_matchcw: {
@@ -1408,6 +1770,8 @@ export type Database = {
         Args: { _team_id: string; _user_id: string }
         Returns: boolean
       }
+      lucky_nexel_spin: { Args: never; Returns: Json }
+      lucky_open_box: { Args: { _inv_id: string }; Returns: Json }
       manage_team_player: {
         Args: { _action: string; _target_user: string; _team_id: string }
         Returns: Json
@@ -1421,6 +1785,10 @@ export type Database = {
         Returns: Json
       }
       redeem_promo_code: { Args: { _code: string }; Returns: Json }
+      refund_failed_payout: {
+        Args: { _payout_id: string; _reason: string }
+        Returns: Json
+      }
       report_tournament_match: {
         Args: { _match_id: string; _score_a: number; _score_b: number }
         Returns: Json
@@ -1453,6 +1821,15 @@ export type Database = {
             }
             Returns: Json
           }
+      request_pix_withdrawal: {
+        Args: {
+          _amount: number
+          _beneficiary_name: string
+          _pix_key: string
+          _pix_key_type: string
+        }
+        Returns: Json
+      }
       reset_user_golds:
         | {
             Args: { _clan_id?: string; _exclude_admins?: boolean }
