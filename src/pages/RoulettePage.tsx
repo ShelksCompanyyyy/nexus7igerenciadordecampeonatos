@@ -1,79 +1,87 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { SPIN_PACKAGES, PIX_KEY, MIN_WITHDRAWAL } from '@/lib/store';
 import { toast } from 'sonner';
-import { Dices, Gift, Copy, Wallet, Sparkles, Trophy, Medal, Award, ShieldCheck, Zap, RefreshCw } from 'lucide-react';
-import nexelLogo from '@/assets/nexel-logo.png';
+import { Sparkles, Zap, Trophy, Crown, Gift, Loader2, Wallet, Dices, Flame, ShieldCheck, History } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { LUCKY_PACKAGES, LUCKY_TILES, RARITY_STYLES, TILE_W, buildStrip, tileFromCode, type LuckyTile } from './lucky/LuckyNexelData';
+import PixModal from './lucky/PixModal';
 
-// Prêmios — ÍNDICES devem bater 1:1 com winner_index retornado pelo RPC spin_roulette
-const PRIZES = [
-  { gold: 5,   label: '5G',   color: 'hsl(0 0% 22%)',     text: 'hsl(0 0% 92%)',  rarity: 'common' },     // 0
-  { gold: 10,  label: '10G',  color: 'hsl(0 60% 35%)',    text: 'hsl(0 0% 100%)', rarity: 'common' },     // 1
-  { gold: 15,  label: '15G',  color: 'hsl(0 0% 22%)',     text: 'hsl(0 0% 92%)',  rarity: 'common' },     // 2
-  { gold: 20,  label: '20G',  color: 'hsl(0 70% 40%)',    text: 'hsl(0 0% 100%)', rarity: 'uncommon' },   // 3
-  { gold: 25,  label: '25G',  color: 'hsl(200 70% 40%)',  text: 'hsl(0 0% 100%)', rarity: 'uncommon' },   // 4
-  { gold: 50,  label: '50G',  color: 'hsl(140 60% 35%)',  text: 'hsl(0 0% 100%)', rarity: 'rare' },       // 5
-  { gold: 100, label: '100G', color: 'hsl(45 100% 50%)',  text: 'hsl(0 0% 10%)',  rarity: 'epic' },       // 6
-  { gold: 150, label: '150G', color: 'hsl(280 90% 55%)',  text: 'hsl(0 0% 100%)', rarity: 'epic' },       // 7
-  { gold: 200, label: '200G', color: 'hsl(0 90% 45%)',    text: 'hsl(0 0% 100%)', rarity: 'legendary' },  // 8
-];
-
-const ITEM_WIDTH = 110; // px - matches w-[110px]
-
-// Build strip with the WINNER placed at exact index using server-provided winner_index.
-// IMPORTANT: nunca colocar outro item igual ao prêmio próximo do vencedor para evitar
-// o usuário "ler" o slot errado quando o jitter aproxima a borda.
-function buildStrip(winnerIndex: number, length = 60): { items: typeof PRIZES; winIndex: number } {
-  const items: typeof PRIZES = [];
-  for (let i = 0; i < length; i++) {
-    items.push(PRIZES[Math.floor(Math.random() * PRIZES.length)]);
-  }
-  const winIdx = length - 8;
-  items[winIdx] = PRIZES[winnerIndex] ?? PRIZES[0];
-  return { items, winIndex: winIdx };
-}
-
-interface SpinHistoryRow {
+interface SpinRow {
   id: string;
   user_id: string;
-  reward: number;
+  reward_code: string;
+  reward_label: string;
+  reward_value: number;
+  rarity: string;
   created_at: string;
-  username?: string;
 }
 
-interface RankRow {
-  user_id: string;
-  username: string;
-  total: number;
-  spins: number;
-}
+interface RankRow { user_id: string; total: number; spins: number; username?: string }
 
-export default function RoulettePage() {
+export default function LuckyNexelPage() {
   const { user, profile, refreshProfile } = useAuth();
   const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState<number | null>(null);
-  const [strip, setStrip] = useState<{ items: typeof PRIZES; winIndex: number }>({ items: [], winIndex: 0 });
+  const [strip, setStrip] = useState<{ items: LuckyTile[]; winIndex: number }>(() => buildStrip('gold_5'));
   const [offset, setOffset] = useState(0);
-  const [transition, setTransition] = useState<string>('none');
-  const [containerWidth, setContainerWidth] = useState(0);
-  const [glow, setGlow] = useState(false);
-  const [legendaryBurst, setLegendaryBurst] = useState(false);
-  const [history, setHistory] = useState<SpinHistoryRow[]>([]);
+  const [transition, setTransition] = useState('none');
+  const [lastWin, setLastWin] = useState<LuckyTile | null>(null);
+  const [showWinFlash, setShowWinFlash] = useState(false);
+  const [history, setHistory] = useState<SpinRow[]>([]);
   const [ranking, setRanking] = useState<RankRow[]>([]);
+  const [pix, setPix] = useState<{ id: string; qr: string; qrB64?: string | null; amount: number; spins: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const tickRafRef = useRef<number | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-
-  const [showWithdraw, setShowWithdraw] = useState(false);
-  const [withdrawData, setWithdrawData] = useState({ gameNick: '', username: '', email: '', whatsapp: '', pixKey: '' });
-  const [withdrawAmount, setWithdrawAmount] = useState(500);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   const freeSpins = profile?.free_spins || 0;
-  const gold = profile?.gold || 0;
-  const canSpin = freeSpins > 0;
+  const wallet = (profile as any)?.wallet_balance ?? 0;
 
-  // ===== Container measurement =====
+  // Carrega histórico recente + ranking semanal (todos os giros).
+  useEffect(() => {
+    const load = async () => {
+      const { data: spins } = await supabase
+        .from('lucky_spins')
+        .select('id,user_id,reward_code,reward_label,reward_value,rarity,created_at')
+        .order('created_at', { ascending: false })
+        .limit(40);
+      setHistory((spins as any) || []);
+
+      // Ranking semanal — agrupar por user_id no client (volume baixo).
+      const weekStart = new Date();
+      weekStart.setUTCDate(weekStart.getUTCDate() - 7);
+      const { data: weekSpins } = await supabase
+        .from('lucky_spins')
+        .select('user_id,reward_value')
+        .gte('created_at', weekStart.toISOString());
+      const map = new Map<string, RankRow>();
+      (weekSpins || []).forEach((s: any) => {
+        const r = map.get(s.user_id) || { user_id: s.user_id, total: 0, spins: 0 };
+        r.total += Number(s.reward_value || 0);
+        r.spins += 1;
+        map.set(s.user_id, r);
+      });
+      const rows = [...map.values()].sort((a, b) => b.total - a.total).slice(0, 10);
+      if (rows.length) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('user_id,username,game_nick')
+          .in('user_id', rows.map(r => r.user_id));
+        rows.forEach(r => {
+          const p: any = (profs || []).find((x: any) => x.user_id === r.user_id);
+          r.username = p?.game_nick || p?.username || 'Jogador';
+        });
+      }
+      setRanking(rows);
+    };
+    load();
+
+    const channel = supabase
+      .channel('lucky_spins_live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'lucky_spins' }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   useEffect(() => {
     const update = () => setContainerWidth(containerRef.current?.clientWidth || 0);
     update();
@@ -81,667 +89,257 @@ export default function RoulettePage() {
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  const initialFiller = useMemo(
-    () => Array.from({ length: 30 }, () => PRIZES[Math.floor(Math.random() * PRIZES.length)]),
-    [],
-  );
-
-  // ===== Spin history (realtime) =====
-  const loadHistory = async () => {
-    const { data: spins } = await supabase
-      .from('spins')
-      .select('id, user_id, reward, created_at')
-      .order('created_at', { ascending: false })
-      .limit(15);
-    if (!spins) return;
-    const userIds = Array.from(new Set(spins.map(s => s.user_id)));
-    const { data: profs } = await supabase
-      .from('profiles')
-      .select('user_id, game_nick, username')
-      .in('user_id', userIds);
-    const map = new Map(profs?.map(p => [p.user_id, p.game_nick || p.username]) || []);
-    setHistory(spins.map(s => ({ ...s, username: map.get(s.user_id) || 'Jogador' })));
-
-    // Ranking dos últimos 7 dias — agrega ganho total por usuário
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: weekSpins } = await supabase
-      .from('spins')
-      .select('user_id, reward')
-      .gte('created_at', sevenDaysAgo);
-    if (weekSpins) {
-      const agg = new Map<string, { total: number; spins: number }>();
-      for (const s of weekSpins) {
-        const cur = agg.get(s.user_id) || { total: 0, spins: 0 };
-        agg.set(s.user_id, { total: cur.total + (s.reward || 0), spins: cur.spins + 1 });
-      }
-      const ids = Array.from(agg.keys());
-      const { data: rprofs } = await supabase
-        .from('profiles')
-        .select('user_id, game_nick, username')
-        .in('user_id', ids);
-      const nameMap = new Map(rprofs?.map(p => [p.user_id, p.game_nick || p.username]) || []);
-      const rows: RankRow[] = Array.from(agg.entries())
-        .map(([uid, v]) => ({ user_id: uid, username: nameMap.get(uid) || 'Jogador', total: v.total, spins: v.spins }))
-        .sort((a, b) => b.total - a.total)
-        .slice(0, 10);
-      setRanking(rows);
-    }
-  };
-
-  useEffect(() => {
-    loadHistory();
-    const channel = supabase
-      .channel('spins-feed')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'spins' }, () => loadHistory())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
-
-  // ===== Audio =====
-  const ensureCtx = () => {
-    if (!audioCtxRef.current) {
-      try { audioCtxRef.current = new AudioContext(); } catch { /* noop */ }
-    }
-    return audioCtxRef.current;
-  };
-
-  const playTick = (highPitch = false) => {
-    const ctx = ensureCtx();
-    if (!ctx) return;
-    try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(highPitch ? 880 : 620, ctx.currentTime);
-      gain.gain.setValueAtTime(0.06, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.06);
-    } catch { /* noop */ }
-  };
-
-  const playWinSound = () => {
-    const ctx = ensureCtx();
-    if (!ctx) return;
-    try {
-      const notes = [523, 659, 784, 1046];
-      notes.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.12);
-        gain.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.12);
-        gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + i * 0.12 + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.4);
-        osc.start(ctx.currentTime + i * 0.12);
-        osc.stop(ctx.currentTime + i * 0.12 + 0.4);
-      });
-    } catch { /* noop */ }
-  };
-
-  // Som ÉPICO/LENDÁRIO para 50G+ — fanfarra grave + brilho agudo
-  const playEpicWinSound = () => {
-    const ctx = ensureCtx();
-    if (!ctx) return;
-    try {
-      // Bass impact
-      const bass = ctx.createOscillator();
-      const bassGain = ctx.createGain();
-      bass.connect(bassGain); bassGain.connect(ctx.destination);
-      bass.type = 'sawtooth';
-      bass.frequency.setValueAtTime(80, ctx.currentTime);
-      bass.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.6);
-      bassGain.gain.setValueAtTime(0.001, ctx.currentTime);
-      bassGain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.05);
-      bassGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-      bass.start(); bass.stop(ctx.currentTime + 1.3);
-
-      // Heroic chord arpeggio (C major triad up)
-      const heroic = [392, 523, 659, 784, 1046, 1318];
-      heroic.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, ctx.currentTime + 0.1 + i * 0.08);
-        gain.gain.setValueAtTime(0.0001, ctx.currentTime + 0.1 + i * 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + 0.12 + i * 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7 + i * 0.08);
-        osc.start(ctx.currentTime + 0.1 + i * 0.08);
-        osc.stop(ctx.currentTime + 0.8 + i * 0.08);
-      });
-
-      // Final shimmer
-      const shimmer = ctx.createOscillator();
-      const shimmerGain = ctx.createGain();
-      shimmer.connect(shimmerGain); shimmerGain.connect(ctx.destination);
-      shimmer.type = 'sine';
-      shimmer.frequency.setValueAtTime(1568, ctx.currentTime + 0.7);
-      shimmer.frequency.exponentialRampToValueAtTime(2637, ctx.currentTime + 1.4);
-      shimmerGain.gain.setValueAtTime(0.0001, ctx.currentTime + 0.7);
-      shimmerGain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.75);
-      shimmerGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
-      shimmer.start(ctx.currentTime + 0.7);
-      shimmer.stop(ctx.currentTime + 1.5);
-    } catch { /* noop */ }
-  };
-
-  const scheduleTicks = (totalDuration: number) => {
-    if (tickRafRef.current !== null) cancelAnimationFrame(tickRafRef.current);
-    const start = performance.now();
-    let lastTickAt = start;
-    const tick = () => {
-      const elapsed = performance.now() - start;
-      const t = Math.min(1, elapsed / totalDuration);
-      const interval = 60 + Math.pow(t, 3) * 280;
-      if (performance.now() - lastTickAt >= interval) {
-        playTick(t > 0.85);
-        lastTickAt = performance.now();
-      }
-      if (t < 1) {
-        tickRafRef.current = requestAnimationFrame(tick);
-      }
-    };
-    tickRafRef.current = requestAnimationFrame(tick);
-  };
-
-  const stopTicks = () => {
-    if (tickRafRef.current !== null) {
-      cancelAnimationFrame(tickRafRef.current);
-      tickRafRef.current = null;
-    }
-  };
-  useEffect(() => () => stopTicks(), []);
-
-  const handleSpin = async () => {
-    if (!user || !profile || spinning) return;
-    if (!canSpin) { toast.error('Você precisa de uma roleta grátis para girar!'); return; }
+  const spinNow = async () => {
+    if (spinning) return;
+    if (!user) return toast.error('Faça login');
+    if (freeSpins < 1) return toast.error('Sem giros! Compre um pacote.');
 
     setSpinning(true);
-    setResult(null);
-    setGlow(false);
-    setLegendaryBurst(false);
+    setShowWinFlash(false);
+    setLastWin(null);
 
-    const { data, error } = await supabase.rpc('spin_roulette');
-    if (error || !data) {
-      setSpinning(false);
-      toast.error(error?.message || 'Erro ao girar');
-      return;
-    }
-    const reward = (data as { reward: number; winner_index: number }).reward;
-    const winnerIndex = (data as { reward: number; winner_index: number }).winner_index;
+    try {
+      const { data, error } = await supabase.rpc('lucky_nexel_spin' as any);
+      if (error) throw error;
+      const result = data as any;
+      if (!result?.ok) throw new Error(result?.error || 'Falha no giro');
 
-    // Build strip with EXACT winner from server
-    const built = buildStrip(winnerIndex);
-    setStrip(built);
+      const winnerCode: string = result.code;
+      const winnerTile = tileFromCode(winnerCode);
+      const newStrip = buildStrip(winnerCode);
 
-    setTransition('none');
-    setOffset(0);
+      // Reset rápido para a esquerda sem transição.
+      setTransition('none');
+      setOffset(0);
+      setStrip(newStrip);
 
-    requestAnimationFrame(() => {
+      // Próximo frame: anima até centralizar o item vencedor.
       requestAnimationFrame(() => {
         const center = containerWidth / 2;
-        // Sem jitter — alinha PERFEITAMENTE no centro do slot vencedor (corrige
-        // bug de mostrar 10G mas creditar 100G porque o jitter empurrava para o slot vizinho).
-        const itemMargin = 8; // mx-1 = 4px de cada lado = 8px total
-        const fullItemWidth = ITEM_WIDTH + itemMargin;
-        const targetOffset = built.winIndex * fullItemWidth + fullItemWidth / 2 - center;
-
-        const duration = 6.2;
-        setTransition(`transform ${duration}s cubic-bezier(0.08, 0.82, 0.16, 1)`);
-        setOffset(-targetOffset);
-        scheduleTicks(duration * 1000);
-
-        window.setTimeout(async () => {
-          stopTicks();
-          setSpinning(false);
-          setResult(reward);
-          setGlow(true);
-
-          if (reward >= 50) {
-            playEpicWinSound();
-            setLegendaryBurst(true);
-            window.setTimeout(() => setLegendaryBurst(false), 2800);
-          } else {
-            playWinSound();
-          }
-
-          await refreshProfile();
-          {
-            const tier = reward >= 150 ? 'legendary' : reward >= 50 ? 'epic' : reward >= 20 ? 'rare' : 'common';
-            const messages = {
-              legendary: ['JACKPOT LENDÁRIO!', 'SORTE CÓSMICA ATIVADA!', 'O OURO DOS DEUSES É SEU!'],
-              epic:      ['PRÊMIO ÉPICO!', 'A ROLETA AMA VOCÊ!', 'BIG WIN!'],
-              rare:      ['PRÊMIO RARO!', 'BOA SORTE!', 'RECOMPENSA QUENTE!'],
-              common:    ['GIRO PREMIADO!', 'MAIS UM PRA CONTA!', 'BORA GIRAR DE NOVO!'],
-            } as const;
-            const subtitle = messages[tier][Math.floor(Math.random() * messages[tier].length)];
-            toast.custom(() => (
-              <div className="flex items-center gap-3 p-3 rounded-xl border border-gold/50 bg-gradient-to-r from-card via-background to-card shadow-[0_0_24px_rgba(255,215,0,0.35)] min-w-[260px]">
-                <img src={nexelLogo} alt="Nexel" className="w-12 h-12 rounded-lg object-cover ring-2 ring-gold/60" />
-                <div className="flex-1">
-                  <p className="font-heading text-gold text-sm tracking-wider">+{reward} NexelGolds 🎉</p>
-                  <p className="font-display text-[11px] text-foreground/80">{subtitle}</p>
-                </div>
-              </div>
-            ), { duration: 4500 });
-          }
-          window.setTimeout(() => setGlow(false), 2500);
-        }, duration * 1000 + 80);
+        const jitter = (Math.random() - 0.5) * (TILE_W * 0.5);
+        const target = newStrip.winIndex * TILE_W + TILE_W / 2 - center + jitter;
+        setTransition('transform 5.2s cubic-bezier(0.12, 0.7, 0.18, 1)');
+        setOffset(-target);
       });
-    });
-  };
 
-  const handleBuySpins = async (pkg: typeof SPIN_PACKAGES[0]) => {
-    if (!user) return;
-    await supabase.from('spin_purchases').insert({
-      user_id: user.id,
-      amount: Math.round(pkg.price * 100) / 100,
-      spins: pkg.spins + pkg.bonus,
-      bonus_spins: pkg.bonus,
-      method: 'pix',
-      status: 'pending',
-    });
-    navigator.clipboard.writeText(PIX_KEY);
-    toast.success(`Chave Pix copiada! Valor: R$${pkg.price.toFixed(2)}. Aguarde confirmação do ADM.`);
-  };
-
-  const handleWithdraw = async () => {
-    if (!user || !profile) return;
-    if (gold < MIN_WITHDRAWAL) { toast.error(`Mínimo para saque: ${MIN_WITHDRAWAL}G`); return; }
-    if (withdrawAmount > gold) { toast.error('Saldo insuficiente'); return; }
-    if (!withdrawData.gameNick || !withdrawData.username || !withdrawData.email || !withdrawData.whatsapp || !withdrawData.pixKey) {
-      toast.error('Preencha todos os campos'); return;
+      window.setTimeout(() => {
+        setLastWin(winnerTile);
+        setShowWinFlash(true);
+        toast.success(`🎉 ${winnerTile.label}!`);
+        refreshProfile();
+        setSpinning(false);
+      }, 5400);
+    } catch (e: any) {
+      toast.error(e.message || 'Erro no giro');
+      setSpinning(false);
     }
-
-    await supabase.from('withdrawals').insert({
-      user_id: user.id,
-      amount: withdrawAmount,
-      game_nick: withdrawData.gameNick,
-      username: withdrawData.username,
-      email: withdrawData.email,
-      whatsapp: withdrawData.whatsapp,
-      pix_key: withdrawData.pixKey,
-      status: 'pending',
-      user_unique_id: profile.unique_id || user.id,
-    });
-
-    await supabase.from('profiles').update({ gold: gold - withdrawAmount }).eq('user_id', user.id);
-    await refreshProfile();
-    setShowWithdraw(false);
-    toast.success('Saque solicitado! Aguarde o ADM liberar o pagamento.');
   };
 
-  const displayItems = strip.items.length > 0 ? strip.items : initialFiller;
+  const buyPackage = async (pkgId: string) => {
+    if (!user) return toast.error('Faça login');
+    try {
+      const { data, error } = await supabase.functions.invoke('mp-create-pix', { body: { package_id: pkgId } });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setPix({
+        id: (data as any).payment_id,
+        qr: (data as any).qr_code,
+        qrB64: (data as any).qr_code_base64,
+        amount: (data as any).amount,
+        spins: (data as any).spins,
+      });
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao gerar PIX');
+    }
+  };
 
-  // Generate 24 particles for legendary burst
-  const particles = useMemo(() => Array.from({ length: 24 }, (_, i) => ({
-    id: i,
-    angle: (i / 24) * Math.PI * 2,
-    distance: 100 + Math.random() * 140,
-    delay: Math.random() * 0.2,
-    duration: 1.4 + Math.random() * 0.8,
-  })), []);
+  const rankIcon = (i: number) =>
+    i === 0 ? <Trophy className="text-amber-300" size={14} /> :
+    i === 1 ? <Trophy className="text-zinc-300" size={14} /> :
+    i === 2 ? <Trophy className="text-amber-700" size={14} /> :
+    <span className="text-muted-foreground text-xs w-3.5 text-center">{i + 1}</span>;
 
   return (
-    <div className="space-y-6 animate-slide-up">
-      {/* === HERO ROLETA — Premium Esports === */}
-      <div className="relative">
-        {/* Decorative ornaments above title */}
-        <div className="flex items-center justify-center gap-3 mb-2">
-          <span className="h-px w-12 bg-gradient-to-r from-transparent via-gold to-transparent" />
-          <p className="text-[10px] font-heading text-gold/80 tracking-[0.4em]">/// NEXEL · ROLETA ///</p>
-          <span className="h-px w-12 bg-gradient-to-r from-transparent via-gold to-transparent" />
-        </div>
-        <h1 className="text-center text-2xl md:text-3xl font-heading leading-tight">
-          <span className="text-foreground">GIRE E GANHE </span>
-          <span className="text-gold text-glow-gold">PRÊMIOS</span>
-        </h1>
-        <div className="flex items-center justify-center gap-2 mt-2">
-          <span className="w-1 h-1 rounded-full bg-gold/70" />
-          <span className="h-px w-16 bg-gold/40" />
-          <span className="w-2 h-2 rotate-45 border border-gold/70" />
-          <span className="h-px w-16 bg-gold/40" />
-          <span className="w-1 h-1 rounded-full bg-gold/70" />
-        </div>
-
-        {/* Saldo / Giros chips */}
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <div className="bg-background/60 backdrop-blur border border-gold/40 rounded-lg px-3 py-1.5 flex items-center gap-2">
-            <Wallet size={12} className="text-gold" />
-            <p className="font-heading text-gold text-xs">{gold}G</p>
+    <div className="max-w-4xl mx-auto space-y-5 animate-slide-up pb-10">
+      {/* HERO */}
+      <div className="relative overflow-hidden rounded-2xl border border-primary/40 bg-gradient-to-br from-fuchsia-950/80 via-purple-950/70 to-rose-950/80 p-5">
+        <div className="absolute inset-0 opacity-30 pointer-events-none"
+             style={{ backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(168,85,247,0.5), transparent 40%), radial-gradient(circle at 80% 80%, rgba(244,63,94,0.4), transparent 40%)' }} />
+        <div className="relative flex items-center justify-between gap-3">
+          <div>
+            <h1 className="font-heading text-2xl text-fuchsia-200 drop-shadow-[0_0_12px_rgba(217,70,239,0.7)] flex items-center gap-2">
+              <Sparkles className="text-fuchsia-300" /> LUCKY NEXEL
+            </h1>
+            <p className="text-[11px] text-fuchsia-200/70 font-display">Roleta premium com prêmios em PIX, VIP e cosméticos</p>
           </div>
-          <div className="bg-background/60 backdrop-blur border border-primary/40 rounded-lg px-3 py-1.5 flex items-center gap-2">
-            <Sparkles size={12} className="text-primary" />
-            <p className="font-heading text-primary text-xs">{freeSpins} {freeSpins === 1 ? 'GIRO' : 'GIROS'}</p>
+          <div className="text-right">
+            <p className="text-[10px] uppercase text-fuchsia-200/60 font-display">Seus giros</p>
+            <p className="font-heading text-3xl text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]">{freeSpins}</p>
           </div>
         </div>
       </div>
 
-      {/* === ROLETA STAGE (gold-framed strip + circular spin) === */}
-      <div className="relative">
-        {/* Outer gold halo */}
-        <div className="absolute -inset-2 rounded-[36px] bg-[radial-gradient(ellipse_at_center,hsl(var(--gold)/0.18),transparent_70%)] blur-2xl pointer-events-none" />
+      {/* ROULETTE */}
+      <div className="relative bg-zinc-950 border border-fuchsia-500/40 rounded-2xl p-4 shadow-[0_0_28px_rgba(168,85,247,0.25)]">
+        {/* Pointer */}
+        <div className="absolute left-1/2 -translate-x-1/2 top-1 z-20 pointer-events-none">
+          <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[14px] border-t-amber-300 drop-shadow-[0_0_6px_rgba(251,191,36,0.9)]" />
+        </div>
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-1 z-20 pointer-events-none">
+          <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[14px] border-b-amber-300 drop-shadow-[0_0_6px_rgba(251,191,36,0.9)]" />
+        </div>
+        {/* Edge fades */}
+        <div className="absolute inset-y-0 left-0 w-16 z-10 pointer-events-none bg-gradient-to-r from-zinc-950 to-transparent rounded-l-2xl" />
+        <div className="absolute inset-y-0 right-0 w-16 z-10 pointer-events-none bg-gradient-to-l from-zinc-950 to-transparent rounded-r-2xl" />
 
-        {/* Pill-shaped frame */}
-        <div
-          className="relative rounded-[28px] p-2 sm:p-3"
-          style={{
-            background: 'linear-gradient(180deg, hsl(var(--gold)/0.55) 0%, hsl(var(--gold)/0.15) 50%, hsl(var(--gold)/0.55) 100%)',
-            boxShadow: '0 12px 40px hsl(0 0% 0% / 0.6), inset 0 0 0 1px hsl(var(--gold)/0.5)',
-          }}
-        >
+        <div ref={containerRef} className="relative h-[140px] overflow-hidden">
           <div
-            className="relative rounded-[22px] overflow-hidden flex items-stretch"
-            style={{
-              background: 'linear-gradient(180deg, hsl(0 0% 10%) 0%, hsl(0 0% 4%) 100%)',
-              boxShadow: 'inset 0 0 30px rgba(0,0,0,0.85), inset 0 0 0 1px hsl(var(--gold)/0.35)',
-            }}
+            className="flex items-center h-full will-change-transform"
+            style={{ transform: `translateX(${offset}px)`, transition }}
           >
-            {/* === Carousel viewport === */}
-            <div
-              ref={containerRef}
-              className="relative flex-1 h-44 sm:h-52 overflow-hidden"
-              style={{
-                boxShadow: glow
-                  ? (result !== null && result >= 50
-                    ? '0 0 80px hsl(var(--primary) / 0.85), inset 0 0 50px hsl(var(--primary) / 0.3)'
-                    : '0 0 70px hsl(var(--gold) / 0.7), inset 0 0 40px hsl(var(--gold) / 0.22)')
-                  : 'inset 0 0 30px rgba(0,0,0,0.6)',
-                transition: 'box-shadow 0.4s ease',
-              }}
-            >
-              {/* corner brackets */}
-              <span className="pointer-events-none absolute top-1.5 left-1.5 w-3 h-3 border-t-2 border-l-2 border-gold/70 z-30" />
-              <span className="pointer-events-none absolute top-1.5 right-1.5 w-3 h-3 border-t-2 border-r-2 border-gold/70 z-30" />
-              <span className="pointer-events-none absolute bottom-1.5 left-1.5 w-3 h-3 border-b-2 border-l-2 border-gold/70 z-30" />
-              <span className="pointer-events-none absolute bottom-1.5 right-1.5 w-3 h-3 border-b-2 border-r-2 border-gold/70 z-30" />
-
-              {/* edge fades */}
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-16 z-20 bg-gradient-to-r from-background to-transparent" />
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-16 z-20 bg-gradient-to-l from-background to-transparent" />
-
-              {/* Center indicator — gold pillar + arrow */}
-              <div className="pointer-events-none absolute inset-y-2 left-1/2 -translate-x-1/2 w-[2px] bg-gradient-to-b from-transparent via-gold to-transparent z-30 shadow-[0_0_12px_hsl(var(--gold))]" />
-              <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 z-30">
-                <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[16px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_10px_hsl(var(--gold))]" />
-              </div>
-              <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 z-30 rotate-180">
-                <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[16px] border-l-transparent border-r-transparent border-t-gold drop-shadow-[0_0_10px_hsl(var(--gold))]" />
-              </div>
-
-              {/* Strip */}
-              <div
-                className="absolute top-1/2 -translate-y-1/2 flex items-center will-change-transform"
-                style={{
-                  transform: `translate3d(${offset}px, 0, 0)`,
-                  transition,
-                  left: 0,
-                }}
-              >
-                {displayItems.map((p, i) => {
-                  const isWinner = strip.items.length > 0 && i === strip.winIndex && !spinning && result !== null;
-                  return (
-                    <div
-                      key={i}
-                      className="w-[110px] shrink-0 mx-1 h-32 sm:h-36 rounded-xl flex flex-col items-center justify-center font-heading transition-transform"
-                      style={{
-                        background: `linear-gradient(180deg, ${p.color} 0%, hsl(0 0% 6%) 100%)`,
-                        color: p.text,
-                        boxShadow: isWinner
-                          ? `0 0 28px ${p.color}, inset 0 0 18px hsl(var(--gold) / 0.55), inset 0 0 0 2px hsl(var(--gold))`
-                          : 'inset 0 0 14px rgba(0,0,0,0.55), inset 0 1px 0 hsl(0 0% 100% / 0.07)',
-                        border: isWinner ? '2px solid hsl(var(--gold))' : '1px solid hsl(0 0% 0% / 0.4)',
-                        transform: isWinner ? 'scale(1.06)' : 'scale(1)',
-                      }}
-                    >
-                      {/* coin/diamond glyph */}
-                      <div
-                        className="w-9 h-9 rounded-full flex items-center justify-center mb-1.5"
-                        style={{
-                          background: `radial-gradient(circle, ${p.color} 0%, hsl(0 0% 6%) 90%)`,
-                          boxShadow: 'inset 0 0 8px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.4)',
-                        }}
-                      >
-                        <span className="text-base" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
-                          {p.gold >= 200 ? '👑' : p.gold >= 100 ? '💎' : p.gold >= 50 ? '🎁' : '🪙'}
-                        </span>
-                      </div>
-                      <span className="text-base sm:text-lg tracking-wide" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{p.label}</span>
-                      <span className="text-[9px] uppercase opacity-80 mt-0.5 font-display tracking-widest">{p.rarity}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Legendary fireworks overlay */}
-              {legendaryBurst && (
-                <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
-                  <div className="absolute inset-0 bg-primary/15 mix-blend-screen animate-pulse" />
-                  {particles.map(p => (
-                    <span
-                      key={p.id}
-                      className="absolute left-1/2 top-1/2 w-2 h-2 rounded-full bg-primary"
-                      style={{
-                        boxShadow: '0 0 12px hsl(var(--primary)), 0 0 24px hsl(var(--primary) / 0.6)',
-                        animation: `firework-${p.id} ${p.duration}s ease-out ${p.delay}s forwards`,
-                      }}
-                    />
-                  ))}
-                  <style>{particles.map(p => {
-                    const x = Math.cos(p.angle) * p.distance;
-                    const y = Math.sin(p.angle) * p.distance;
-                    return `@keyframes firework-${p.id}{0%{transform:translate(-50%,-50%) scale(1);opacity:1}100%{transform:translate(calc(${x}px - 50%), calc(${y}px - 50%)) scale(0.2);opacity:0}}`;
-                  }).join('')}</style>
+            {strip.items.map((tile, i) => {
+              const r = RARITY_STYLES[tile.rarity];
+              return (
+                <div key={i} className="shrink-0 px-1" style={{ width: TILE_W }}>
+                  <div className={`flex flex-col items-center justify-center h-[120px] rounded-xl border-2 ${r.bg} ${r.border} ${r.glow}`}>
+                    <span className="text-3xl">{tile.emoji}</span>
+                    <span className={`mt-1 text-[11px] font-heading text-center px-1 leading-tight ${r.text}`}>{tile.short}</span>
+                  </div>
                 </div>
-              )}
-            </div>
-
-            {/* === Circular GIRAR button — embedded right === */}
-            <div className="relative shrink-0 px-2 sm:px-3 flex items-center">
-              <button
-                onClick={handleSpin}
-                disabled={spinning || !canSpin}
-                className="group relative w-24 h-24 sm:w-32 sm:h-32 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-transform hover:scale-105 active:scale-95"
-                style={{
-                  background: 'radial-gradient(circle at 30% 30%, hsl(var(--gold)) 0%, hsl(var(--gold)/0.7) 45%, hsl(0 0% 8%) 100%)',
-                  boxShadow: '0 0 40px hsl(var(--gold) / 0.65), inset 0 2px 4px hsl(var(--gold)/0.6), inset 0 -4px 8px hsl(0 0% 0% / 0.7)',
-                }}
-                aria-label="Girar a roleta"
-              >
-                {/* inner ring */}
-                <span
-                  className="absolute inset-2 rounded-full flex flex-col items-center justify-center"
-                  style={{
-                    background: 'radial-gradient(circle, hsl(0 0% 4%) 0%, hsl(0 0% 8%) 100%)',
-                    boxShadow: 'inset 0 0 0 2px hsl(var(--gold)/0.7), inset 0 0 12px hsl(var(--gold)/0.25)',
-                  }}
-                >
-                  <RefreshCw size={20} className={`text-gold ${spinning ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
-                  <span className="font-heading text-gold text-[10px] sm:text-xs tracking-widest mt-1">
-                    {spinning ? 'GIRANDO' : 'GIRAR'}
-                  </span>
-                  <span className="font-display text-gold/70 text-[8px] tracking-wider">A ROLETA</span>
-                </span>
-              </button>
-            </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Trust badges row */}
-        <div className="mt-4 bg-card/60 backdrop-blur border border-border rounded-2xl p-3">
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-1.5">
-              <ShieldCheck size={14} className="text-gold mx-auto sm:mx-0" />
-              <div className="leading-tight">
-                <p className="text-[10px] font-heading text-foreground tracking-wide">100% SEGURO</p>
-                <p className="text-[9px] text-muted-foreground font-display">Validado pelo servidor</p>
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-1.5 border-x border-border/40">
-              <Trophy size={14} className="text-gold mx-auto sm:mx-0" />
-              <div className="leading-tight">
-                <p className="text-[10px] font-heading text-foreground tracking-wide">PRÊMIOS REAIS</p>
-                <p className="text-[9px] text-muted-foreground font-display">Saque via Pix</p>
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-1.5">
-              <Zap size={14} className="text-gold mx-auto sm:mx-0" />
-              <div className="leading-tight">
-                <p className="text-[10px] font-heading text-foreground tracking-wide">INSTANTÂNEO</p>
-                <p className="text-[9px] text-muted-foreground font-display">Crédito na hora</p>
-              </div>
-            </div>
-          </div>
+        {/* Spin button */}
+        <div className="mt-4 flex flex-col sm:flex-row items-stretch gap-3">
+          <button
+            onClick={spinNow}
+            disabled={spinning || freeSpins < 1}
+            className="flex-1 py-3 rounded-xl font-heading text-base text-white bg-gradient-to-r from-fuchsia-600 via-purple-600 to-rose-600 disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(217,70,239,0.55)] flex items-center justify-center gap-2"
+          >
+            {spinning
+              ? <><Loader2 className="animate-spin" size={18} /> Girando...</>
+              : <><Sparkles size={18} /> GIRAR ({freeSpins})</>}
+          </button>
+          <Link to="/wallet" className="px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-400/40 font-heading text-sm text-amber-300 flex items-center justify-center gap-2 hover:bg-amber-500/20 transition">
+            <Wallet size={16} /> Carteira R$ {Number(wallet).toFixed(2).replace('.', ',')}
+          </Link>
         </div>
 
-        {!canSpin && !spinning && (
-          <p className="text-xs text-muted-foreground font-display text-center mt-3">
-            Compre giros via Pix abaixo, resgate um código promocional ou aguarde uma premiação.
-          </p>
-        )}
-
-        {result !== null && !spinning && (
-          <div className="text-center animate-scale-in mt-4">
-            <p className={`text-3xl font-heading text-glow ${result >= 50 ? 'text-primary' : 'text-gold'}`}>
-              🎉 +{result}G! {result >= 50 && '⚡ LENDÁRIO'}
-            </p>
-            <p className="text-xs text-muted-foreground font-display mt-1">Resultado validado pelo servidor</p>
+        {lastWin && showWinFlash && (
+          <div className="mt-3 text-center animate-scale-in">
+            <div className={`inline-block px-4 py-2 rounded-lg border-2 ${RARITY_STYLES[lastWin.rarity].border} ${RARITY_STYLES[lastWin.rarity].bg} ${RARITY_STYLES[lastWin.rarity].glow}`}>
+              <p className={`font-heading text-sm ${RARITY_STYLES[lastWin.rarity].text}`}>
+                {lastWin.emoji} {lastWin.label}
+              </p>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Histórico realtime da comunidade */}
-      <div className="bg-card rounded-lg neon-border p-5">
-        <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2">
-          <Trophy size={16} className="text-gold" /> RANKING DA SEMANA · TOP 3
+      {/* PACOTES */}
+      <div className="bg-card border border-border rounded-2xl p-4">
+        <h3 className="font-heading text-sm text-primary text-glow flex items-center gap-2 mb-3">
+          <Gift size={16} /> COMPRAR GIROS (PIX)
         </h3>
-        <p className="text-[10px] text-muted-foreground font-display mb-3">Soma total de ouro ganho na roleta nos últimos 7 dias</p>
-        <div className="grid grid-cols-3 gap-2 mb-5">
-          {[1, 0, 2].map((rankIdx) => {
-            const r = ranking[rankIdx];
-            if (!r) return <div key={rankIdx} className="bg-secondary/40 rounded p-3 text-center opacity-50">
-              <p className="text-[10px] text-muted-foreground font-display">—</p>
-            </div>;
-            const isFirst = rankIdx === 0;
-            const isSecond = rankIdx === 1;
-            const Icon = isFirst ? Trophy : isSecond ? Medal : Award;
-            const colorClass = isFirst ? 'border-gold/60 from-gold/20 to-gold/5 text-gold' :
-                               isSecond ? 'border-muted-foreground/60 from-muted-foreground/20 to-muted-foreground/5 text-muted-foreground' :
-                               'border-destructive/60 from-destructive/20 to-destructive/5 text-destructive';
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+          {LUCKY_PACKAGES.map(p => (
+            <button key={p.id} onClick={() => buyPackage(p.id)}
+              className="relative bg-gradient-to-br from-fuchsia-900/40 to-purple-900/40 border border-fuchsia-500/40 rounded-xl p-3 text-left hover:border-fuchsia-300 hover:shadow-[0_0_16px_rgba(217,70,239,0.45)] transition-all">
+              {p.tag && (
+                <span className="absolute -top-2 -right-2 text-[9px] font-heading bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded-full">
+                  {p.tag}
+                </span>
+              )}
+              <p className="font-heading text-amber-300 text-base">R$ {p.amount.toFixed(2).replace('.', ',')}</p>
+              <p className="text-[11px] text-fuchsia-200/80 font-display">{p.label}</p>
+              <p className="text-[10px] text-muted-foreground mt-1 font-display">{p.spins + p.bonus} giros totais</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* PRÊMIOS POSSÍVEIS */}
+      <div className="bg-card border border-border rounded-2xl p-4">
+        <h3 className="font-heading text-sm text-primary text-glow flex items-center gap-2 mb-3">
+          <Flame size={16} /> PRÊMIOS POSSÍVEIS
+        </h3>
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          {LUCKY_TILES.map(t => {
+            const r = RARITY_STYLES[t.rarity];
             return (
-              <div key={rankIdx} className={`bg-gradient-to-b ${colorClass} border rounded-lg p-3 text-center ${isFirst ? 'scale-110 z-10' : ''}`}>
-                <Icon size={isFirst ? 28 : 22} className="mx-auto mb-1" />
-                <p className="text-[10px] font-heading uppercase">#{rankIdx + 1}</p>
-                <p className="text-xs font-heading text-foreground truncate mt-1">{r.username}</p>
-                <p className={`text-sm font-heading mt-1`}>{r.total}G</p>
-                <p className="text-[9px] text-muted-foreground font-display">{r.spins} {r.spins === 1 ? 'giro' : 'giros'}</p>
+              <div key={t.code} className={`rounded-lg border-2 ${r.border} ${r.bg} p-2 text-center`}>
+                <div className="text-2xl">{t.emoji}</div>
+                <p className={`text-[10px] font-display ${r.text}`}>{t.short}</p>
+                <p className="text-[8px] uppercase text-muted-foreground font-display">{t.rarity}</p>
               </div>
             );
           })}
         </div>
-
-        {ranking.length > 3 && (
-          <div className="space-y-1 mb-5 border-t border-border pt-3">
-            <p className="text-[10px] font-heading text-muted-foreground mb-2">DEMAIS COLOCAÇÕES</p>
-            {ranking.slice(3).map((r, i) => (
-              <div key={r.user_id} className="flex items-center justify-between text-xs font-display p-2 bg-secondary/40 rounded">
-                <span className="text-muted-foreground">#{i + 4}</span>
-                <span className="text-foreground flex-1 ml-3 truncate">{r.username}</span>
-                <span className="font-heading text-gold">{r.total}G</span>
-                <span className="text-muted-foreground text-[10px] ml-2">{r.spins}x</span>
-              </div>
-            ))}
-          </div>
-        )}
-
       </div>
 
-      <div className="bg-card rounded-lg neon-border p-5">
-        <h3 className="font-heading text-sm text-primary mb-4 flex items-center gap-2">
-          <Gift size={16} /> COMPRAR GIROS
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {SPIN_PACKAGES.map((pkg, i) => (
-            <div key={i} className="flex items-start justify-between p-4 bg-secondary/50 rounded-lg gap-3">
-              <div className="min-w-0">
-                <p className="font-display text-foreground text-sm">{pkg.spins} {pkg.spins === 1 ? 'Giro' : 'Giros'}{pkg.bonus > 0 && ` + ${pkg.bonus} bônus`}</p>
-                {pkg.extras && <p className="text-[10px] text-gold mt-1 font-display">{pkg.extras}</p>}
-              </div>
-              <button
-                onClick={() => handleBuySpins(pkg)}
-                className="flex items-center gap-2 px-3 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs shrink-0"
-              >
-                <Copy size={12} /> R${pkg.price.toFixed(2).replace('.', ',')}
-              </button>
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground mt-3 font-display">
-          Ao clicar, a chave Pix é copiada e a compra registrada. Aguarde confirmação do ADM.
-        </p>
-      </div>
-
-      <div className="bg-card rounded-lg neon-border p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-heading text-sm text-primary flex items-center gap-2">
-            <Wallet size={16} /> SAQUE
+      {/* RANKING + HISTÓRICO */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-card border border-border rounded-2xl p-4">
+          <h3 className="font-heading text-sm text-primary text-glow flex items-center gap-2 mb-3">
+            <Crown size={16} /> RANKING SEMANAL
           </h3>
-          <span className="text-xs text-muted-foreground font-display">Mínimo: {MIN_WITHDRAWAL}G</span>
+          {ranking.length === 0
+            ? <p className="text-xs text-muted-foreground font-display">Sem dados ainda — seja o primeiro!</p>
+            : (
+              <div className="space-y-1.5">
+                {ranking.map((r, i) => (
+                  <div key={r.user_id} className="flex items-center justify-between text-xs font-display border-b border-border/30 pb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {rankIcon(i)}
+                      <span className="truncate text-foreground">{r.username}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-muted-foreground">{r.spins} giros</span>
+                      <span className="text-amber-300 font-heading">+{r.total.toFixed(0)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
         </div>
-        {!showWithdraw ? (
-          <button
-            onClick={() => setShowWithdraw(true)}
-            disabled={gold < MIN_WITHDRAWAL}
-            className="px-6 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs disabled:opacity-50"
-          >
-            SOLICITAR SAQUE
-          </button>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm text-primary font-heading">📋 DADOS PARA SAQUE</p>
-            <div>
-              <label className="text-xs text-muted-foreground font-display block mb-1">💰 Quantidade de Gold</label>
-              <input type="number" value={withdrawAmount} onChange={e => setWithdrawAmount(Number(e.target.value))}
-                className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground font-display block mb-1">🔑 Chave Pix</label>
-              <input type="text" value={withdrawData.pixKey} onChange={e => setWithdrawData(prev => ({ ...prev, pixKey: e.target.value }))}
-                className="w-full p-3 bg-secondary rounded border border-primary/50 focus:border-primary outline-none text-foreground font-display" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground font-display block mb-1">🎮 Nick no Jogo</label>
-              <input type="text" value={withdrawData.gameNick} onChange={e => setWithdrawData(prev => ({ ...prev, gameNick: e.target.value }))}
-                className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground font-display block mb-1">👤 Nome de Usuário</label>
-              <input type="text" value={withdrawData.username} onChange={e => setWithdrawData(prev => ({ ...prev, username: e.target.value }))}
-                className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground font-display block mb-1">📧 Gmail</label>
-              <input type="email" value={withdrawData.email} onChange={e => setWithdrawData(prev => ({ ...prev, email: e.target.value }))}
-                className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground font-display block mb-1">📱 WhatsApp</label>
-              <input type="text" value={withdrawData.whatsapp} onChange={e => setWithdrawData(prev => ({ ...prev, whatsapp: e.target.value }))}
-                className="w-full p-3 bg-secondary rounded border border-border focus:border-primary outline-none text-foreground font-display" />
-            </div>
-            <div className="bg-warning/10 border border-warning/30 rounded-lg p-3">
-              <p className="text-xs text-warning font-display">⏳ Após solicitar, aguarde o ADM liberar o pagamento (24h-48h úteis).</p>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={handleWithdraw} className="px-6 py-2 gradient-primary text-primary-foreground rounded font-heading text-xs">CONFIRMAR</button>
-              <button onClick={() => setShowWithdraw(false)} className="px-6 py-2 bg-secondary text-muted-foreground rounded font-heading text-xs">CANCELAR</button>
-            </div>
+
+        <div className="bg-card border border-border rounded-2xl p-4">
+          <h3 className="font-heading text-sm text-primary text-glow flex items-center gap-2 mb-3">
+            <History size={16} /> ÚLTIMOS GIROS
+          </h3>
+          <div className="space-y-1.5 max-h-64 overflow-y-auto">
+            {history.length === 0 && <p className="text-xs text-muted-foreground font-display">Nada por aqui ainda.</p>}
+            {history.map(h => {
+              const t = tileFromCode(h.reward_code);
+              const r = RARITY_STYLES[t.rarity];
+              return (
+                <div key={h.id} className="flex items-center justify-between text-xs font-display border-b border-border/30 pb-1">
+                  <span className={`px-1.5 py-0.5 rounded ${r.bg} ${r.text} text-[10px]`}>{t.emoji} {h.reward_label}</span>
+                  <span className="text-muted-foreground">{new Date(h.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+              );
+            })}
           </div>
-        )}
+        </div>
       </div>
+
+      <div className="text-[10px] text-muted-foreground font-display flex items-center gap-1.5 justify-center">
+        <ShieldCheck size={12} /> Pagamentos protegidos via Mercado Pago. Resultado dos giros gerado no servidor.
+      </div>
+
+      {pix && (
+        <PixModal
+          paymentId={pix.id}
+          qrCode={pix.qr}
+          qrCodeBase64={pix.qrB64}
+          amount={pix.amount}
+          spins={pix.spins}
+          onClose={() => setPix(null)}
+          onPaid={() => refreshProfile()}
+        />
+      )}
     </div>
   );
 }
