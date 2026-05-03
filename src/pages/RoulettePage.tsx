@@ -102,9 +102,10 @@ export default function LuckyNexelPage() {
       const { data, error } = await supabase.rpc('lucky_nexel_spin' as any);
       if (error) throw error;
       const result = data as any;
-      if (!result?.ok) throw new Error(result?.error || 'Falha no giro');
+      // RPC retorna { success: true, code, type, rarity, label, value }
+      if (!result || result.success === false) throw new Error(result?.error || 'Falha no giro');
 
-      const winnerCode: string = result.code;
+      const winnerCode: string = result.code || 'gold_main';
       const winnerTile = tileFromCode(winnerCode);
       const newStrip = buildStrip(winnerCode);
 
