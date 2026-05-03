@@ -242,40 +242,39 @@ export default function LuckyNexelPage() {
       </div>
 
       {/* PACOTES */}
-      <div className="bg-card border border-border rounded-2xl p-4">
-        <h3 className="font-heading text-sm text-primary text-glow flex items-center gap-2 mb-3">
-          <Gift size={16} /> COMPRAR GIROS (PIX)
+      <div className="bg-card border border-border rounded-xl p-3">
+        <h3 className="font-heading text-xs text-primary text-glow flex items-center gap-2 mb-2">
+          <Gift size={14} /> COMPRAR GIROS (PIX)
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {LUCKY_PACKAGES.map(p => (
             <button key={p.id} onClick={() => buyPackage(p.id)}
-              className="relative bg-gradient-to-br from-fuchsia-900/40 to-purple-900/40 border border-fuchsia-500/40 rounded-xl p-3 text-left hover:border-fuchsia-300 hover:shadow-[0_0_16px_rgba(217,70,239,0.45)] transition-all">
+              className="relative bg-gradient-to-br from-fuchsia-900/40 to-purple-900/40 border border-fuchsia-500/40 rounded-lg p-2.5 text-left hover:border-fuchsia-300 hover:shadow-[0_0_16px_rgba(217,70,239,0.45)] transition-all">
               {p.tag && (
-                <span className="absolute -top-2 -right-2 text-[9px] font-heading bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded-full">
+                <span className="absolute -top-2 -right-2 text-[8px] font-heading bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded-full">
                   {p.tag}
                 </span>
               )}
-              <p className="font-heading text-amber-300 text-base">R$ {p.amount.toFixed(2).replace('.', ',')}</p>
-              <p className="text-[11px] text-fuchsia-200/80 font-display">{p.label}</p>
-              <p className="text-[10px] text-muted-foreground mt-1 font-display">{p.spins + p.bonus} giros totais</p>
+              <p className="font-heading text-amber-300 text-sm">R$ {p.amount.toFixed(2).replace('.', ',')}</p>
+              <p className="text-[10px] text-fuchsia-200/80 font-display">{p.label}</p>
+              <p className="text-[9px] text-muted-foreground font-display">{p.spins + p.bonus} giros</p>
             </button>
           ))}
         </div>
       </div>
 
       {/* PRÊMIOS POSSÍVEIS */}
-      <div className="bg-card border border-border rounded-2xl p-4">
-        <h3 className="font-heading text-sm text-primary text-glow flex items-center gap-2 mb-3">
-          <Flame size={16} /> PRÊMIOS POSSÍVEIS
+      <div className="bg-card border border-border rounded-xl p-3">
+        <h3 className="font-heading text-xs text-primary text-glow flex items-center gap-2 mb-2">
+          <Flame size={14} /> PRÊMIOS POSSÍVEIS
         </h3>
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+        <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
           {LUCKY_TILES.map(t => {
             const r = RARITY_STYLES[t.rarity];
             return (
-              <div key={t.code} className={`rounded-lg border-2 ${r.border} ${r.bg} p-2 text-center`}>
-                <div className="text-2xl">{t.emoji}</div>
-                <p className={`text-[10px] font-display ${r.text}`}>{t.short}</p>
-                <p className="text-[8px] uppercase text-muted-foreground font-display">{t.rarity}</p>
+              <div key={t.code} className={`rounded-md border ${r.border} ${r.bg} p-1.5 text-center`}>
+                <div className="text-lg">{t.emoji}</div>
+                <p className={`text-[9px] font-display ${r.text} leading-tight`}>{t.short}</p>
               </div>
             );
           })}
