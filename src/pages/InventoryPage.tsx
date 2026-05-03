@@ -28,6 +28,8 @@ export default function InventoryPage() {
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [opening, setOpening] = useState<string | null>(null);
   const [boxResult, setBoxResult] = useState<{ label: string; rarity: LuckyRarity; emoji: string } | null>(null);
+  const [animPhase, setAnimPhase] = useState<'idle' | 'shaking' | 'flash' | 'reveal'>('idle');
+  const [animBox, setAnimBox] = useState<{ rarity: LuckyRarity; label: string } | null>(null);
 
   const reload = async () => {
     if (!user) return;
@@ -70,24 +72,44 @@ export default function InventoryPage() {
   };
 
   const openBox = async (invId: string) => {
+    const target = boxes.find(b => b.id === invId);
     setOpening(invId);
+    setAnimBox({ rarity: target?.rarity || 'rare', label: target?.item_label || 'Caixa' });
+    setAnimPhase('shaking');
     try {
-      const { data, error } = await supabase.rpc('lucky_open_box' as any, { _inv_id: invId });
+      // Anima por 1.6s, depois flash, depois chama RPC e revela
+      const rpcPromise = supabase.rpc('lucky_open_box' as any, { _inv_id: invId });
+      await new Promise(r => setTimeout(r, 1600));
+      setAnimPhase('flash');
+      await new Promise(r => setTimeout(r, 500));
+      const { data, error } = await rpcPromise;
       if (error) throw error;
       const res = data as any;
-      if (!res?.ok) throw new Error(res?.error || 'Falha ao abrir');
-      setBoxResult({
-        label: res.reward_label || 'Recompensa',
-        rarity: (res.rarity || 'rare') as LuckyRarity,
-        emoji: res.emoji || '🎁',
-      });
+      if (!res || res.success === false) throw new Error(res?.error || 'Falha ao abrir');
+      const rarity = (res.rarity || 'rare') as LuckyRarity;
+      const emoji =
+        res.type === 'gold' ? '🪙' :
+        res.type === 'visual' ? '🎨' :
+        res.type === 'vip' ? '👑' :
+        res.type === 'ticket' ? '🎟️' :
+        res.type === 'boost' ? '⚡' : '🎁';
+      setAnimPhase('reveal');
+      setBoxResult({ label: res.label || 'Recompensa', rarity, emoji });
       reload();
       refreshProfile();
     } catch (e: any) {
       toast.error(e.message || 'Erro ao abrir caixa');
+      setAnimPhase('idle');
+      setAnimBox(null);
     } finally {
       setOpening(null);
     }
+  };
+
+  const closeBoxModal = () => {
+    setBoxResult(null);
+    setAnimPhase('idle');
+    setAnimBox(null);
   };
 
   const groupedShop = shopItems.reduce<Record<string, ShopInv[]>>((acc, it) => {
@@ -218,21 +240,57 @@ export default function InventoryPage() {
         );
       })}
 
-      {/* Modal resultado caixa */}
-      {boxResult && (
-        <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur flex items-center justify-center p-4">
-          <div className={`relative bg-card border-2 ${RARITY_STYLES[boxResult.rarity].border} ${RARITY_STYLES[boxResult.rarity].glow} rounded-2xl p-6 w-full max-w-sm text-center space-y-3 animate-scale-in`}>
-            <button onClick={() => setBoxResult(null)} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">
-              <X size={18} />
-            </button>
-            <p className="text-[11px] uppercase font-display text-muted-foreground">Você ganhou</p>
-            <div className="text-6xl">{boxResult.emoji}</div>
-            <p className={`font-heading text-lg ${RARITY_STYLES[boxResult.rarity].text}`}>{boxResult.label}</p>
-            <p className="text-[10px] uppercase text-muted-foreground font-display">{boxResult.rarity}</p>
-            <button onClick={() => setBoxResult(null)} className="w-full py-2 rounded bg-primary text-primary-foreground font-heading text-sm">
-              Continuar
-            </button>
+      {/* Modal animação + resultado caixa */}
+      {animBox && (
+        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md flex items-center justify-center p-4 overflow-hidden">
+          {/* Flash overlay */}
+          {animPhase === 'flash' && (
+            <div className="absolute inset-0 bg-white animate-[fadeOut_0.5s_ease-out_forwards] pointer-events-none"
+              style={{ animation: 'fadeOut 0.5s ease-out forwards' }} />
+          )}
+          {/* Light rays on reveal */}
+          {animPhase === 'reveal' && (
+            <div className="absolute inset-0 pointer-events-none"
+              style={{ background: 'radial-gradient(circle at center, rgba(217,70,239,0.35) 0%, transparent 60%)' }} />
+          )}
+          <div className="relative w-full max-w-sm flex flex-col items-center">
+            {(animPhase === 'shaking' || animPhase === 'flash') && (
+              <div className={`relative ${animPhase === 'shaking' ? 'animate-[boxShake_0.4s_ease-in-out_infinite]' : 'scale-150 transition-transform duration-500'}`}>
+                <div className={`text-[120px] drop-shadow-[0_0_30px_rgba(217,70,239,0.9)] ${RARITY_STYLES[animBox.rarity].text}`}>
+                  📦
+                </div>
+                <p className={`text-center font-heading text-sm uppercase tracking-widest mt-2 ${RARITY_STYLES[animBox.rarity].text}`}>
+                  {animBox.label}
+                </p>
+              </div>
+            )}
+            {animPhase === 'reveal' && boxResult && (
+              <div className={`relative bg-card border-2 ${RARITY_STYLES[boxResult.rarity].border} ${RARITY_STYLES[boxResult.rarity].glow} rounded-2xl p-6 w-full text-center space-y-3 animate-scale-in`}>
+                <button onClick={closeBoxModal} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground">
+                  <X size={18} />
+                </button>
+                <p className="text-[11px] uppercase font-display text-muted-foreground tracking-widest">Você ganhou</p>
+                <div className="text-7xl drop-shadow-[0_0_20px_rgba(251,191,36,0.6)] animate-[bounce_1s_ease-in-out_infinite]">{boxResult.emoji}</div>
+                <p className={`font-heading text-xl ${RARITY_STYLES[boxResult.rarity].text}`}>{boxResult.label}</p>
+                <p className="text-[10px] uppercase text-muted-foreground font-display tracking-widest">{boxResult.rarity}</p>
+                <button onClick={closeBoxModal} className="w-full py-2 rounded-lg bg-gradient-to-r from-fuchsia-600 to-rose-600 text-white font-heading text-sm shadow-[0_0_18px_rgba(217,70,239,0.5)]">
+                  Continuar
+                </button>
+              </div>
+            )}
           </div>
+          <style>{`
+            @keyframes boxShake {
+              0%,100% { transform: rotate(-8deg) scale(1); }
+              25%     { transform: rotate(8deg) scale(1.05); }
+              50%     { transform: rotate(-6deg) scale(0.98); }
+              75%     { transform: rotate(6deg) scale(1.05); }
+            }
+            @keyframes fadeOut {
+              0% { opacity: 1; }
+              100% { opacity: 0; }
+            }
+          `}</style>
         </div>
       )}
     </div>

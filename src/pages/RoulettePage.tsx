@@ -102,9 +102,10 @@ export default function LuckyNexelPage() {
       const { data, error } = await supabase.rpc('lucky_nexel_spin' as any);
       if (error) throw error;
       const result = data as any;
-      if (!result?.ok) throw new Error(result?.error || 'Falha no giro');
+      // RPC retorna { success: true, code, type, rarity, label, value }
+      if (!result || result.success === false) throw new Error(result?.error || 'Falha no giro');
 
-      const winnerCode: string = result.code;
+      const winnerCode: string = result.code || 'gold_main';
       const winnerTile = tileFromCode(winnerCode);
       const newStrip = buildStrip(winnerCode);
 
@@ -160,39 +161,41 @@ export default function LuckyNexelPage() {
     <span className="text-muted-foreground text-xs w-3.5 text-center">{i + 1}</span>;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5 animate-slide-up pb-10">
+    <div className="max-w-2xl mx-auto space-y-4 animate-slide-up pb-10">
       {/* HERO */}
-      <div className="relative overflow-hidden rounded-2xl border border-primary/40 bg-gradient-to-br from-fuchsia-950/80 via-purple-950/70 to-rose-950/80 p-5">
+      <div className="relative overflow-hidden rounded-2xl border border-fuchsia-500/40 bg-gradient-to-br from-fuchsia-950/80 via-purple-950/70 to-rose-950/80 p-4">
         <div className="absolute inset-0 opacity-30 pointer-events-none"
              style={{ backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(168,85,247,0.5), transparent 40%), radial-gradient(circle at 80% 80%, rgba(244,63,94,0.4), transparent 40%)' }} />
         <div className="relative flex items-center justify-between gap-3">
           <div>
-            <h1 className="font-heading text-2xl text-fuchsia-200 drop-shadow-[0_0_12px_rgba(217,70,239,0.7)] flex items-center gap-2">
-              <Sparkles className="text-fuchsia-300" /> LUCKY NEXEL
+            <h1 className="font-heading text-xl text-fuchsia-200 drop-shadow-[0_0_12px_rgba(217,70,239,0.7)] flex items-center gap-2">
+              <Sparkles className="text-fuchsia-300" size={20} /> LUCKY NEXEL
             </h1>
-            <p className="text-[11px] text-fuchsia-200/70 font-display">Roleta premium com prêmios em PIX, VIP e cosméticos</p>
+            <p className="text-[10px] text-fuchsia-200/70 font-display">Prêmios em PIX, VIP e cosméticos</p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] uppercase text-fuchsia-200/60 font-display">Seus giros</p>
-            <p className="font-heading text-3xl text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]">{freeSpins}</p>
+            <p className="text-[9px] uppercase text-fuchsia-200/60 font-display">Giros</p>
+            <p className="font-heading text-2xl text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]">{freeSpins}</p>
           </div>
         </div>
       </div>
 
       {/* ROULETTE */}
-      <div className="relative bg-zinc-950 border border-fuchsia-500/40 rounded-2xl p-4 shadow-[0_0_28px_rgba(168,85,247,0.25)]">
+      <div className="relative bg-gradient-to-b from-zinc-950 to-zinc-900 border border-fuchsia-500/40 rounded-2xl p-3 shadow-[0_0_28px_rgba(168,85,247,0.25)]">
         {/* Pointer */}
-        <div className="absolute left-1/2 -translate-x-1/2 top-1 z-20 pointer-events-none">
-          <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[14px] border-t-amber-300 drop-shadow-[0_0_6px_rgba(251,191,36,0.9)]" />
+        <div className="absolute left-1/2 -translate-x-1/2 top-2 z-20 pointer-events-none">
+          <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[12px] border-t-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,1)]" />
         </div>
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-1 z-20 pointer-events-none">
-          <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[14px] border-b-amber-300 drop-shadow-[0_0_6px_rgba(251,191,36,0.9)]" />
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-2 z-20 pointer-events-none">
+          <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[12px] border-b-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,1)]" />
         </div>
+        {/* Center selection line */}
+        <div className="absolute left-1/2 top-3 bottom-3 w-0.5 -translate-x-1/2 bg-gradient-to-b from-amber-300 via-amber-200 to-amber-300 z-10 pointer-events-none opacity-70 shadow-[0_0_10px_rgba(251,191,36,0.9)]" />
         {/* Edge fades */}
-        <div className="absolute inset-y-0 left-0 w-16 z-10 pointer-events-none bg-gradient-to-r from-zinc-950 to-transparent rounded-l-2xl" />
-        <div className="absolute inset-y-0 right-0 w-16 z-10 pointer-events-none bg-gradient-to-l from-zinc-950 to-transparent rounded-r-2xl" />
+        <div className="absolute inset-y-0 left-0 w-12 z-10 pointer-events-none bg-gradient-to-r from-zinc-950 to-transparent rounded-l-2xl" />
+        <div className="absolute inset-y-0 right-0 w-12 z-10 pointer-events-none bg-gradient-to-l from-zinc-950 to-transparent rounded-r-2xl" />
 
-        <div ref={containerRef} className="relative h-[140px] overflow-hidden">
+        <div ref={containerRef} className="relative h-[110px] overflow-hidden">
           <div
             className="flex items-center h-full will-change-transform"
             style={{ transform: `translateX(${offset}px)`, transition }}
@@ -201,9 +204,9 @@ export default function LuckyNexelPage() {
               const r = RARITY_STYLES[tile.rarity];
               return (
                 <div key={i} className="shrink-0 px-1" style={{ width: TILE_W }}>
-                  <div className={`flex flex-col items-center justify-center h-[120px] rounded-xl border-2 ${r.bg} ${r.border} ${r.glow}`}>
-                    <span className="text-3xl">{tile.emoji}</span>
-                    <span className={`mt-1 text-[11px] font-heading text-center px-1 leading-tight ${r.text}`}>{tile.short}</span>
+                  <div className={`flex flex-col items-center justify-center h-[94px] rounded-lg border-2 ${r.bg} ${r.border} ${r.glow}`}>
+                    <span className="text-2xl">{tile.emoji}</span>
+                    <span className={`mt-0.5 text-[10px] font-heading text-center px-1 leading-tight ${r.text}`}>{tile.short}</span>
                   </div>
                 </div>
               );
@@ -212,18 +215,18 @@ export default function LuckyNexelPage() {
         </div>
 
         {/* Spin button */}
-        <div className="mt-4 flex flex-col sm:flex-row items-stretch gap-3">
+        <div className="mt-3 flex flex-col sm:flex-row items-stretch gap-2">
           <button
             onClick={spinNow}
             disabled={spinning || freeSpins < 1}
-            className="flex-1 py-3 rounded-xl font-heading text-base text-white bg-gradient-to-r from-fuchsia-600 via-purple-600 to-rose-600 disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(217,70,239,0.55)] flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 rounded-lg font-heading text-sm text-white bg-gradient-to-r from-fuchsia-600 via-purple-600 to-rose-600 disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(217,70,239,0.55)] flex items-center justify-center gap-2"
           >
             {spinning
-              ? <><Loader2 className="animate-spin" size={18} /> Girando...</>
-              : <><Sparkles size={18} /> GIRAR ({freeSpins})</>}
+              ? <><Loader2 className="animate-spin" size={16} /> Girando...</>
+              : <><Sparkles size={16} /> GIRAR ({freeSpins})</>}
           </button>
-          <Link to="/wallet" className="px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-400/40 font-heading text-sm text-amber-300 flex items-center justify-center gap-2 hover:bg-amber-500/20 transition">
-            <Wallet size={16} /> Carteira R$ {Number(wallet).toFixed(2).replace('.', ',')}
+          <Link to="/wallet" className="px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-400/40 font-heading text-xs text-amber-300 flex items-center justify-center gap-1.5 hover:bg-amber-500/20 transition">
+            <Wallet size={14} /> R$ {Number(wallet).toFixed(2).replace('.', ',')}
           </Link>
         </div>
 
@@ -239,40 +242,39 @@ export default function LuckyNexelPage() {
       </div>
 
       {/* PACOTES */}
-      <div className="bg-card border border-border rounded-2xl p-4">
-        <h3 className="font-heading text-sm text-primary text-glow flex items-center gap-2 mb-3">
-          <Gift size={16} /> COMPRAR GIROS (PIX)
+      <div className="bg-card border border-border rounded-xl p-3">
+        <h3 className="font-heading text-xs text-primary text-glow flex items-center gap-2 mb-2">
+          <Gift size={14} /> COMPRAR GIROS (PIX)
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {LUCKY_PACKAGES.map(p => (
             <button key={p.id} onClick={() => buyPackage(p.id)}
-              className="relative bg-gradient-to-br from-fuchsia-900/40 to-purple-900/40 border border-fuchsia-500/40 rounded-xl p-3 text-left hover:border-fuchsia-300 hover:shadow-[0_0_16px_rgba(217,70,239,0.45)] transition-all">
+              className="relative bg-gradient-to-br from-fuchsia-900/40 to-purple-900/40 border border-fuchsia-500/40 rounded-lg p-2.5 text-left hover:border-fuchsia-300 hover:shadow-[0_0_16px_rgba(217,70,239,0.45)] transition-all">
               {p.tag && (
-                <span className="absolute -top-2 -right-2 text-[9px] font-heading bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded-full">
+                <span className="absolute -top-2 -right-2 text-[8px] font-heading bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded-full">
                   {p.tag}
                 </span>
               )}
-              <p className="font-heading text-amber-300 text-base">R$ {p.amount.toFixed(2).replace('.', ',')}</p>
-              <p className="text-[11px] text-fuchsia-200/80 font-display">{p.label}</p>
-              <p className="text-[10px] text-muted-foreground mt-1 font-display">{p.spins + p.bonus} giros totais</p>
+              <p className="font-heading text-amber-300 text-sm">R$ {p.amount.toFixed(2).replace('.', ',')}</p>
+              <p className="text-[10px] text-fuchsia-200/80 font-display">{p.label}</p>
+              <p className="text-[9px] text-muted-foreground font-display">{p.spins + p.bonus} giros</p>
             </button>
           ))}
         </div>
       </div>
 
       {/* PRÊMIOS POSSÍVEIS */}
-      <div className="bg-card border border-border rounded-2xl p-4">
-        <h3 className="font-heading text-sm text-primary text-glow flex items-center gap-2 mb-3">
-          <Flame size={16} /> PRÊMIOS POSSÍVEIS
+      <div className="bg-card border border-border rounded-xl p-3">
+        <h3 className="font-heading text-xs text-primary text-glow flex items-center gap-2 mb-2">
+          <Flame size={14} /> PRÊMIOS POSSÍVEIS
         </h3>
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+        <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
           {LUCKY_TILES.map(t => {
             const r = RARITY_STYLES[t.rarity];
             return (
-              <div key={t.code} className={`rounded-lg border-2 ${r.border} ${r.bg} p-2 text-center`}>
-                <div className="text-2xl">{t.emoji}</div>
-                <p className={`text-[10px] font-display ${r.text}`}>{t.short}</p>
-                <p className="text-[8px] uppercase text-muted-foreground font-display">{t.rarity}</p>
+              <div key={t.code} className={`rounded-md border ${r.border} ${r.bg} p-1.5 text-center`}>
+                <div className="text-lg">{t.emoji}</div>
+                <p className={`text-[9px] font-display ${r.text} leading-tight`}>{t.short}</p>
               </div>
             );
           })}
