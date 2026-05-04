@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import nexusLogo from '@/assets/nexel-logo.png';
 import { useState, useEffect } from 'react';
-import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell, UserPlus, ChevronRight, Settings, Info, Wallet, Package, Lock } from 'lucide-react';
+import { Home, Trophy, Users, Swords, Dices, MessageSquare, Newspaper, ShoppingBag, LogOut, Menu, X, Target, DollarSign, UserCircle, Shield, BookOpen, Bell, UserPlus, ChevronRight, Settings, Info, Wallet, Package, Lock, Crown } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
 // Itens completos do menu lateral (drawer mobile + sidebar desktop)
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { path: '/matchcw-bet', label: 'CW Apostado', icon: DollarSign, accent: 'gold' as const },
   { path: '/friends', label: 'Amigos & Chat Privado', icon: UserPlus, accent: 'info' as const },
   { path: '/tournaments', label: 'Campeonatos Internos', icon: Trophy, accent: 'gold' as const },
+  { path: '/central', label: 'Painel Central', icon: Crown, accent: 'gold' as const },
   { path: '/matches', label: 'Partidas', icon: Swords, accent: 'primary' as const },
   { path: '/teams', label: 'Times (Lines)', icon: Users, accent: 'primary' as const },
   { path: '/training', label: 'X-Treinos', icon: Target, accent: 'primary' as const },
