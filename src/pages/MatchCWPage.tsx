@@ -425,6 +425,44 @@ export default function MatchCWPage() {
         </div>
       )}
 
+      {/* === TAB: HISTÓRICO === */}
+      {tab === 'history' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-display text-muted-foreground">{myHistory.length} CWs concluídos/recusados</p>
+            {myHistory.length > 0 && (
+              <button onClick={clearAll} className="text-xs font-heading text-destructive border border-destructive/40 rounded px-2 py-1 flex items-center gap-1 hover:bg-destructive/10">
+                <Eraser size={12} /> Limpar tudo
+              </button>
+            )}
+          </div>
+          {myHistory.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground font-display text-sm flex flex-col items-center gap-2">
+              <History size={28} /> Sem histórico por enquanto
+            </div>
+          )}
+          {myHistory.map(m => (
+            <div key={m.id} className="bg-card border border-border/60 rounded-lg p-3 space-y-2 opacity-90">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Trophy size={14} className={m.status === 'finalized' ? 'text-success' : 'text-destructive'} />
+                  <span className="font-heading text-sm truncate">{clanLabel(m.clan_a_id)} <span className="text-primary mx-1">vs</span> {clanLabel(m.clan_b_id)}</span>
+                </div>
+                <span className={`text-[10px] px-2 py-0.5 rounded font-heading ${m.status === 'finalized' ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'}`}>
+                  {m.status === 'finalized' ? `${m.score_a} x ${m.score_b}` : 'RECUSADO'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-display text-muted-foreground">
+                <span>{fmtDate(m.scheduled_date)} • {fmtTime(m.scheduled_time)}</span>
+                <button onClick={() => clearOne(m.id)} className="text-destructive hover:underline flex items-center gap-1">
+                  <Trash2 size={10} /> Remover
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* === TAB: CRIAR CW === */}
       {tab === 'create' && (
         <div className="bg-card border border-primary/50 rounded-lg p-5 space-y-4" style={{ boxShadow: '0 0 14px hsl(0 100% 50% / 0.12)' }}>
