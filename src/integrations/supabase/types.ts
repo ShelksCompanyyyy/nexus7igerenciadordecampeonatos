@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           created_at: string
@@ -115,6 +136,42 @@ export type Database = {
           owner_id?: string | null
           updated_at?: string
           wins?: number | null
+        }
+        Relationships: []
+      }
+      cw_daily_tickets: {
+        Row: {
+          count: number
+          granted_date: string
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          granted_date: string
+          user_id: string
+        }
+        Update: {
+          count?: number
+          granted_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      cw_history_hidden: {
+        Row: {
+          hidden_at: string
+          matchcw_id: string
+          user_id: string
+        }
+        Insert: {
+          hidden_at?: string
+          matchcw_id: string
+          user_id: string
+        }
+        Update: {
+          hidden_at?: string
+          matchcw_id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -939,6 +996,7 @@ export type Database = {
           clan_id: string | null
           colored_nick: boolean | null
           created_at: string
+          cw_tickets: number
           deaths: number | null
           email: string
           frame_id: string | null
@@ -964,6 +1022,7 @@ export type Database = {
           clan_id?: string | null
           colored_nick?: boolean | null
           created_at?: string
+          cw_tickets?: number
           deaths?: number | null
           email: string
           frame_id?: string | null
@@ -989,6 +1048,7 @@ export type Database = {
           clan_id?: string | null
           colored_nick?: boolean | null
           created_at?: string
+          cw_tickets?: number
           deaths?: number | null
           email?: string
           frame_id?: string | null
@@ -1698,6 +1758,80 @@ export type Database = {
         }
         Relationships: []
       }
+      xtreino_trophies: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          icon: string
+          id: string
+          kind: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          icon?: string
+          id?: string
+          kind?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          icon?: string
+          id?: string
+          kind?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      xtreino_winners: {
+        Row: {
+          awarded_at: string
+          awarded_by: string | null
+          clan_id: string | null
+          id: string
+          notes: string | null
+          team_id: string | null
+          trophy_id: string
+          user_id: string | null
+        }
+        Insert: {
+          awarded_at?: string
+          awarded_by?: string | null
+          clan_id?: string | null
+          id?: string
+          notes?: string | null
+          team_id?: string | null
+          trophy_id: string
+          user_id?: string | null
+        }
+        Update: {
+          awarded_at?: string
+          awarded_by?: string | null
+          clan_id?: string | null
+          id?: string
+          notes?: string | null
+          team_id?: string | null
+          trophy_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xtreino_winners_trophy_id_fkey"
+            columns: ["trophy_id"]
+            isOneToOne: false
+            referencedRelation: "xtreino_trophies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1713,6 +1847,9 @@ export type Database = {
         Returns: Json
       }
       cancel_matchcw: { Args: { _match_id: string }; Returns: Json }
+      claim_daily_cw_tickets: { Args: never; Returns: Json }
+      clear_all_finished_cw: { Args: never; Returns: number }
+      clear_finished_cw: { Args: { _match_id: string }; Returns: undefined }
       confirm_matchcw: {
         Args: {
           _date: string
@@ -1846,6 +1983,10 @@ export type Database = {
       respond_matchcw: {
         Args: { _accept: boolean; _match_id: string }
         Returns: Json
+      }
+      set_admin_setting: {
+        Args: { _key: string; _value: Json }
+        Returns: undefined
       }
       set_clan_cw_permission: {
         Args: { _allow: boolean; _clan_id: string }

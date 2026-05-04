@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { getFrameStyle, getNickColor } from '@/lib/shopData';
@@ -14,6 +14,19 @@ export default function ProfilePage() {
   const [editUsername, setEditUsername] = useState('');
   const [editGameNick, setEditGameNick] = useState('');
   const [editWhatsapp, setEditWhatsapp] = useState('');
+  const [trophies, setTrophies] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from('xtreino_winners')
+        .select('id, notes, awarded_at, trophy:xtreino_trophies(name, icon, color, kind, description)')
+        .eq('user_id', user.id)
+        .order('awarded_at', { ascending: false });
+      setTrophies((data as any) || []);
+    })();
+  }, [user]);
 
   if (!user || !profile) return null;
 
@@ -162,6 +175,24 @@ export default function ProfilePage() {
       </div>
 
       <PromoCodeRedeem />
+
+      {trophies.length > 0 && (
+        <div className="bg-card rounded-lg border border-gold/40 p-5" style={{ boxShadow: '0 0 16px hsl(45 100% 50% / 0.15)' }}>
+          <h3 className="font-heading text-sm text-gold flex items-center gap-2 mb-3">
+            <Trophy size={16} /> TROFÉUS XTREINO ({trophies.length})
+          </h3>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {trophies.map((w) => (
+              <div key={w.id} className="border-2 rounded-lg p-2 text-center"
+                style={{ borderColor: (w.trophy?.color || '#FFD700') + '80', boxShadow: `0 0 10px ${w.trophy?.color || '#FFD700'}40` }}>
+                <div className="text-2xl">{w.trophy?.icon || '🏆'}</div>
+                <p className="font-heading text-[10px] mt-1" style={{ color: w.trophy?.color || '#FFD700' }}>{w.trophy?.name}</p>
+                {w.notes && <p className="text-[9px] text-muted-foreground italic mt-1">"{w.notes}"</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

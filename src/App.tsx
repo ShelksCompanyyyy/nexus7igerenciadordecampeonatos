@@ -29,6 +29,7 @@ import WalletPage from "@/pages/WalletPage";
 import InventoryPage from "@/pages/InventoryPage";
 import SecurityPage from "@/pages/SecurityPage";
 import TournamentsPage from "@/pages/TournamentsPage";
+import CentralPanelPage from "@/pages/CentralPanelPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -71,6 +72,7 @@ function AppRoutes() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/support" element={<SupportPage />} />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/central" element={<CentralPanelPage />} />
         {isAdminUser && <Route path="/admin" element={<AdminPage />} />}
         <Route path="*" element={<NotFound />} />
       </Routes>
