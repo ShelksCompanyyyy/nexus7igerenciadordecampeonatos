@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { Shield, Send, Check, X, Calendar, Clock, MessageCircle, Crown, Trophy, RefreshCw, Users as UsersIcon, CheckCircle2, Clock as ClockIcon, XCircle, Trash2 } from 'lucide-react';
+import { Shield, Send, Check, X, Calendar, Clock, MessageCircle, Crown, Trophy, RefreshCw, Users as UsersIcon, CheckCircle2, Clock as ClockIcon, XCircle, Trash2, History, Ticket, Eraser } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import CancelCWDialog from '@/components/CancelCWDialog';
@@ -44,7 +44,7 @@ interface MatchMessage {
   created_at: string;
 }
 
-type Tab = 'available' | 'mine' | 'create';
+type Tab = 'available' | 'mine' | 'history' | 'create';
 const ROUND_OPTIONS = [1, 3, 5, 7];
 const DAILY_LIMIT = 10;
 
@@ -58,6 +58,9 @@ export default function MatchCWPage() {
   const [tab, setTab] = useState<Tab>('available');
   const [openChatId, setOpenChatId] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<MatchCW | null>(null);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [cwTickets, setCwTickets] = useState(0);
+  const [claimingTickets, setClaimingTickets] = useState(false);
 
   // Form simples (sem aposta, sem clã — quem cria já é do clã do perfil)
   const [clanName, setClanName] = useState('');
@@ -76,7 +79,13 @@ export default function MatchCWPage() {
       .select('*')
       .order('created_at', { ascending: false });
     setMatches((m || []) as MatchCW[]);
-  }, []);
+    if (user) {
+      const { data: hid } = await supabase.from('cw_history_hidden').select('matchcw_id').eq('user_id', user.id);
+      setHidden(new Set(((hid || []) as any[]).map(h => h.matchcw_id)));
+      const { data: pf } = await supabase.from('profiles').select('cw_tickets').eq('user_id', user.id).maybeSingle();
+      setCwTickets((pf as any)?.cw_tickets ?? 0);
+    }
+  }, [user]);
 
   useEffect(() => {
     loadAll();
@@ -108,9 +117,36 @@ export default function MatchCWPage() {
   // Pedidos abertos de OUTROS clãs (procurando alguém)
   const lookingForOpponent = matches.filter(m => m.status === 'pending' && !m.clan_b_id && m.clan_a_id !== myClanId && !m.is_bet_match);
   const myMatches = matches.filter(m => m.clan_a_id === myClanId || m.clan_b_id === myClanId);
-  const myActive = myMatches.filter(m => !m.is_bet_match);
+  const myActiveAll = myMatches.filter(m => !m.is_bet_match);
+  const myActive = myActiveAll.filter(m => !hidden.has(m.id) && m.status !== 'finalized' && m.status !== 'declined');
+  const myHistory = myActiveAll.filter(m => (m.status === 'finalized' || m.status === 'declined') && !hidden.has(m.id));
   const todayCount = myActive.filter(m => new Date(m.created_at).toDateString() === new Date().toDateString() && m.status !== 'declined').length;
   const remainingToday = Math.max(0, DAILY_LIMIT - todayCount);
+
+  const claimTickets = async () => {
+    setClaimingTickets(true);
+    const { data, error } = await supabase.rpc('claim_daily_cw_tickets' as any);
+    setClaimingTickets(false);
+    if (error) return toast.error(error.message);
+    const res = data as any;
+    if (res?.success) toast.success(`+${res.granted} tickets de CW!`);
+    else toast.info(res?.error === 'already_claimed' ? 'Já resgatou hoje' : 'Erro');
+    loadAll();
+  };
+
+  const clearOne = async (id: string) => {
+    const { error } = await supabase.rpc('clear_finished_cw' as any, { _match_id: id });
+    if (error) return toast.error(error.message);
+    setHidden(prev => new Set(prev).add(id));
+  };
+
+  const clearAll = async () => {
+    if (!confirm('Limpar todos os CWs finalizados/recusados da sua tela?')) return;
+    const { error } = await supabase.rpc('clear_all_finished_cw' as any);
+    if (error) return toast.error(error.message);
+    toast.success('Histórico limpo');
+    loadAll();
+  };
 
   const sendRequest = async () => {
     if (!myClanId) { toast.error('Você precisa estar em um clã'); return; }
@@ -185,18 +221,28 @@ export default function MatchCWPage() {
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: 'available', label: 'Disponíveis', count: lookingForOpponent.length },
-    { id: 'mine', label: 'Meus CWs', count: myActive.filter(m => m.status !== 'finalized' && m.status !== 'declined').length },
+    { id: 'mine', label: 'Meus CWs', count: myActive.length },
+    { id: 'history', label: 'Histórico', count: myHistory.length },
     { id: 'create', label: 'Criar CW' },
   ];
 
   return (
     <div className="space-y-5 animate-slide-up max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-3xl font-heading text-primary text-glow tracking-wider">MATCH CW</h1>
-        <span className="px-3 py-1.5 rounded-md bg-secondary/60 border border-border text-xs font-display text-muted-foreground">
-          {todayCount}/{DAILY_LIMIT} hoje
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="px-2 py-1.5 rounded-md bg-fuchsia-500/10 border border-fuchsia-400/40 text-xs font-heading text-fuchsia-200 flex items-center gap-1">
+            <Ticket size={12} /> {cwTickets}
+          </span>
+          <button onClick={claimTickets} disabled={claimingTickets}
+            className="px-2 py-1.5 rounded-md bg-primary/15 border border-primary/40 text-xs font-heading text-primary hover:bg-primary/20 disabled:opacity-50">
+            🎁 Resgatar diário
+          </button>
+          <span className="px-3 py-1.5 rounded-md bg-secondary/60 border border-border text-xs font-display text-muted-foreground">
+            {todayCount}/{DAILY_LIMIT}
+          </span>
+        </div>
       </div>
 
       {/* Atalho para CW Apostado */}
@@ -206,15 +252,15 @@ export default function MatchCWPage() {
         </p>
       </Link>
 
-      {/* Tabs (3) */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* Tabs (4) */}
+      <div className="grid grid-cols-4 gap-2">
         {tabs.map(t => {
           const active = tab === t.id;
           return (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`py-3 rounded-md font-display text-sm transition-all ${
+              className={`py-3 rounded-md font-display text-xs sm:text-sm transition-all ${
                 active
                   ? 'bg-primary text-primary-foreground font-heading'
                   : 'bg-secondary/60 text-muted-foreground hover:bg-secondary'
