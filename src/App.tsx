@@ -30,6 +30,7 @@ import InventoryPage from "@/pages/InventoryPage";
 import SecurityPage from "@/pages/SecurityPage";
 import TournamentsPage from "@/pages/TournamentsPage";
 import CentralPanelPage from "@/pages/CentralPanelPage";
+import PublicProfilePage from "@/pages/PublicProfilePage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -66,6 +67,7 @@ function AppRoutes() {
         <Route path="/news" element={<NewsPage />} />
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/u/:id" element={<PublicProfilePage />} />
         <Route path="/friends" element={<FriendsPage />} />
         <Route path="/tutorial" element={<TutorialPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />

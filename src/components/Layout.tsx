@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { path: '/matchcw-bet', label: 'CW Apostado', icon: DollarSign, accent: 'gold' as const },
   { path: '/friends', label: 'Amigos & Chat Privado', icon: UserPlus, accent: 'info' as const },
   { path: '/tournaments', label: 'Campeonatos Internos', icon: Trophy, accent: 'gold' as const },
-  { path: '/central', label: 'Painel Central', icon: Crown, accent: 'gold' as const },
+  { path: '/central', label: 'Central de Premiações', icon: Crown, accent: 'gold' as const },
   { path: '/matches', label: 'Partidas', icon: Swords, accent: 'primary' as const },
   { path: '/teams', label: 'Times (Lines)', icon: Users, accent: 'primary' as const },
   { path: '/training', label: 'X-Treinos', icon: Target, accent: 'primary' as const },

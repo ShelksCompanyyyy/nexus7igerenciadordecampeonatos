@@ -115,7 +115,7 @@ export default function CentralPanelPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-4 animate-slide-up pb-10">
       <h1 className="text-2xl font-heading text-primary text-glow flex items-center gap-2">
-        <Crown size={22} /> PAINEL CENTRAL
+        <Crown size={22} /> CENTRAL DE PREMIAÇÕES
       </h1>
 
       <div className="grid grid-cols-3 gap-2">
