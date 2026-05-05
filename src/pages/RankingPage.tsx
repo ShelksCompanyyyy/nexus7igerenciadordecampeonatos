@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { Trophy, Target, Zap, Users, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 type Tab = 'players' | 'teams' | 'mvp' | 'gold' | 'clans';
 
@@ -45,7 +46,7 @@ function ClanDetailView({ clanId, onBack }: { clanId: string; onBack: () => void
           <tbody>
             {clanMembers.map(p => (
               <tr key={p.id} className="border-b border-border/50 hover:bg-primary/5 transition-colors">
-                <td className="p-3 text-foreground">{p.game_nick || p.username}</td>
+                <td className="p-3 text-foreground"><Link to={`/u/${p.unique_id || p.user_id}`} className="hover:text-primary story-link">{p.game_nick || p.username}</Link></td>
                 <td className="p-3 text-center text-primary font-heading">{(p.deaths || 0) > 0 ? ((p.kills || 0) / (p.deaths || 1)).toFixed(2) : (p.kills || 0).toFixed(2)}</td>
                 <td className="p-3 text-center text-foreground">{p.mvps || 0}</td>
               </tr>
@@ -123,7 +124,7 @@ export default function RankingPage() {
               {sortedPlayers.map((p, i) => (
                 <tr key={p.id} className={`border-b border-border/50 hover:bg-primary/5 transition-colors ${i < 3 ? 'bg-primary/5' : ''}`}>
                   <td className="p-3"><span className={`font-heading ${i < 3 ? 'text-primary text-glow-sm' : 'text-muted-foreground'}`}>{i + 1}</span></td>
-                  <td className="p-3 text-foreground">{p.game_nick || p.username}</td>
+                  <td className="p-3 text-foreground"><Link to={`/u/${p.unique_id || p.user_id}`} className="hover:text-primary">{p.game_nick || p.username}</Link></td>
                   <td className="p-3 text-center text-foreground">{p.kills || 0}</td>
                   <td className="p-3 text-center text-foreground">{p.deaths || 0}</td>
                   <td className="p-3 text-center text-foreground">{p.assists || 0}</td>
@@ -168,7 +169,7 @@ export default function RankingPage() {
               {sortedMvp.map((p, i) => (
                 <tr key={p.id} className={`border-b border-border/50 ${i < 3 ? 'bg-primary/5' : ''}`}>
                   <td className="p-3"><span className={`font-heading ${i < 3 ? 'text-primary text-glow-sm' : 'text-muted-foreground'}`}>{i + 1}</span></td>
-                  <td className="p-3 text-foreground">{p.game_nick || p.username}</td>
+                  <td className="p-3 text-foreground"><Link to={`/u/${p.unique_id || p.user_id}`} className="hover:text-primary">{p.game_nick || p.username}</Link></td>
                   <td className="p-3 text-center text-primary font-heading">{p.mvps || 0}</td>
                 </tr>
               ))}
@@ -187,7 +188,7 @@ export default function RankingPage() {
               {sortedGold.map((p, i) => (
                 <tr key={p.id} className={`border-b border-border/50 ${i < 3 ? 'bg-gold/5' : ''}`}>
                   <td className="p-3"><span className={`font-heading ${i < 3 ? 'text-gold text-glow-gold' : 'text-muted-foreground'}`}>{i + 1}</span></td>
-                  <td className="p-3 text-foreground">{p.game_nick || p.username}</td>
+                  <td className="p-3 text-foreground"><Link to={`/u/${p.unique_id || p.user_id}`} className="hover:text-primary">{p.game_nick || p.username}</Link></td>
                   <td className="p-3 text-center text-gold font-heading">{p.gold || 0}G</td>
                 </tr>
               ))}
