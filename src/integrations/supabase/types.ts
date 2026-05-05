@@ -1930,34 +1930,20 @@ export type Database = {
         Args: { _match_id: string; _score_a: number; _score_b: number }
         Returns: Json
       }
-      request_matchcw:
-        | {
-            Args: {
-              _bet_amount?: number
-              _clan_a: string
-              _clan_b?: string
-              _date?: string
-              _is_bet?: boolean
-              _notes?: string
-              _rounds?: number
-              _time?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              _bet_amount?: number
-              _clan_a: string
-              _clan_b?: string
-              _date?: string
-              _is_bet?: boolean
-              _line_a?: string
-              _notes?: string
-              _rounds?: number
-              _time?: string
-            }
-            Returns: Json
-          }
+      request_matchcw: {
+        Args: {
+          _bet_amount?: number
+          _clan_a: string
+          _clan_b?: string
+          _date?: string
+          _is_bet?: boolean
+          _line_a?: string
+          _notes?: string
+          _rounds?: number
+          _time?: string
+        }
+        Returns: Json
+      }
       request_pix_withdrawal: {
         Args: {
           _amount: number
