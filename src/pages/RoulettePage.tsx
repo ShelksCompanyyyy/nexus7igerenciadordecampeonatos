@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
-import { Sparkles, Zap, Trophy, Crown, Gift, Loader2, Wallet, Dices, Flame, ShieldCheck, History } from 'lucide-react';
+import { Sparkles, Zap, Trophy, Crown, Gift, Loader2, Wallet, Dices, Flame, ShieldCheck, History, X, Volume2, VolumeX } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { LUCKY_PACKAGES, LUCKY_TILES, RARITY_STYLES, TILE_W, buildStrip, tileFromCode, type LuckyTile } from './lucky/LuckyNexelData';
 import PixModal from './lucky/PixModal';
@@ -27,11 +27,44 @@ export default function LuckyNexelPage() {
   const [transition, setTransition] = useState('none');
   const [lastWin, setLastWin] = useState<LuckyTile | null>(null);
   const [showWinFlash, setShowWinFlash] = useState(false);
+  const [winModal, setWinModal] = useState<LuckyTile | null>(null);
+  const [goldenFlash, setGoldenFlash] = useState(false);
+  const [muted, setMuted] = useState(false);
   const [history, setHistory] = useState<SpinRow[]>([]);
   const [ranking, setRanking] = useState<RankRow[]>([]);
   const [pix, setPix] = useState<{ id: string; qr: string; qrB64?: string | null; amount: number; spins: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const tickIntervalRef = useRef<number | null>(null);
+
+  const getCtx = () => {
+    if (muted) return null;
+    if (!audioCtxRef.current) {
+      try { audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)(); } catch { return null; }
+    }
+    return audioCtxRef.current;
+  };
+  const playTone = (freq: number, dur = 0.07, type: OscillatorType = 'square', vol = 0.06) => {
+    const ctx = getCtx(); if (!ctx) return;
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime + dur);
+  };
+  const playWinJingle = (rarity: string) => {
+    const seqs: Record<string, number[]> = {
+      common:    [440, 523],
+      uncommon:  [523, 659, 784],
+      rare:      [523, 659, 784, 988],
+      epic:      [659, 784, 988, 1175, 1318],
+      legendary: [523, 659, 784, 1046, 1318, 1568],
+      mythic:    [392, 523, 659, 784, 1046, 1318, 1568, 2093],
+    };
+    const notes = seqs[rarity] || seqs.common;
+    notes.forEach((f, i) => setTimeout(() => playTone(f, 0.18, 'triangle', 0.09), i * 110));
+  };
 
   const freeSpins = profile?.free_spins || 0;
   const wallet = (profile as any)?.wallet_balance ?? 0;
@@ -97,6 +130,8 @@ export default function LuckyNexelPage() {
     setSpinning(true);
     setShowWinFlash(false);
     setLastWin(null);
+    setWinModal(null);
+    setGoldenFlash(false);
 
     try {
       const { data, error } = await supabase.rpc('lucky_nexel_spin' as any);
@@ -109,27 +144,70 @@ export default function LuckyNexelPage() {
       const winnerTile = tileFromCode(winnerCode);
       const newStrip = buildStrip(winnerCode);
 
-      // Reset rápido para a esquerda sem transição.
+      // Reset à esquerda sem transição
       setTransition('none');
       setOffset(0);
       setStrip(newStrip);
 
-      // Próximo frame: anima até centralizar o item vencedor.
+      const SPIN_MS = 5600;
+      // Próximo frame: anima até centralizar o item vencedor com easing realista (ease-out cúbico)
       requestAnimationFrame(() => {
         const center = containerWidth / 2;
-        const jitter = (Math.random() - 0.5) * (TILE_W * 0.5);
-        const target = newStrip.winIndex * TILE_W + TILE_W / 2 - center + jitter;
-        setTransition('transform 5.2s cubic-bezier(0.12, 0.7, 0.18, 1)');
+        const target = newStrip.winIndex * TILE_W + TILE_W / 2 - center;
+        // cubic-bezier ease-out cúbico (rápido início, parada suave)
+        setTransition(`transform ${SPIN_MS}ms cubic-bezier(0.08, 0.82, 0.17, 1)`);
         setOffset(-target);
       });
 
+      // Som de giro contínuo (ticks decrescentes) — simula desaceleração
+      let tickCount = 0;
+      const totalTicks = 38;
+      const startTick = () => {
+        if (tickCount >= totalTicks) {
+          if (tickIntervalRef.current) { clearTimeout(tickIntervalRef.current); tickIntervalRef.current = null; }
+          return;
+        }
+        playTone(800 + Math.random() * 200, 0.03, 'square', 0.04);
+        tickCount++;
+        // intervalo cresce conforme desacelera
+        const progress = tickCount / totalTicks;
+        const delay = 60 + Math.pow(progress, 3) * 380;
+        tickIntervalRef.current = window.setTimeout(startTick, delay);
+      };
+      startTick();
+
       window.setTimeout(() => {
+        if (tickIntervalRef.current) { clearTimeout(tickIntervalRef.current); tickIntervalRef.current = null; }
         setLastWin(winnerTile);
         setShowWinFlash(true);
-        toast.success(`🎉 ${winnerTile.label}!`);
+        setGoldenFlash(true);
+        setTimeout(() => setGoldenFlash(false), 700);
+        // Bounce final (impacto)
+        setTransition('transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1)');
+        setOffset(prev => prev + 8);
+        setTimeout(() => { setTransition('transform 180ms ease-out'); setOffset(prev => prev - 8); }, 180);
+
+        // Vibração mobile
+        if ('vibrate' in navigator) {
+          const pat: Record<string, number[]> = {
+            common: [40], uncommon: [60], rare: [40, 60, 40],
+            epic: [60, 80, 60, 80], legendary: [80, 60, 80, 100, 80], mythic: [100, 80, 120, 80, 140],
+          };
+          try { (navigator as any).vibrate(pat[winnerTile.rarity] || [40]); } catch {}
+        }
+        playWinJingle(winnerTile.rarity);
+
+        // Modal premiação para épico+
+        const intense = ['epic', 'legendary', 'mythic'].includes(winnerTile.rarity);
+        if (intense) {
+          setTimeout(() => setWinModal(winnerTile), 400);
+        } else {
+          toast.success(`🎉 ${winnerTile.label}!`);
+        }
+
         refreshProfile();
         setSpinning(false);
-      }, 5400);
+      }, SPIN_MS + 50);
     } catch (e: any) {
       toast.error(e.message || 'Erro no giro');
       setSpinning(false);
@@ -182,15 +260,24 @@ export default function LuckyNexelPage() {
 
       {/* ROULETTE */}
       <div className="relative bg-gradient-to-b from-zinc-950 to-zinc-900 border border-fuchsia-500/40 rounded-2xl p-3 shadow-[0_0_28px_rgba(168,85,247,0.25)]">
+        {/* Golden flash overlay quando para */}
+        {goldenFlash && (
+          <div className="absolute inset-0 z-30 pointer-events-none rounded-2xl"
+               style={{ background: 'radial-gradient(circle at center, rgba(251,191,36,0.85), rgba(251,191,36,0) 65%)', animation: 'fadeOut 0.7s ease-out forwards' }} />
+        )}
+        {/* Mute button */}
+        <button onClick={() => setMuted(m => !m)} className="absolute top-2 right-2 z-30 text-fuchsia-200/70 hover:text-fuchsia-200">
+          {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+        </button>
         {/* Pointer */}
         <div className="absolute left-1/2 -translate-x-1/2 top-2 z-20 pointer-events-none">
-          <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[12px] border-t-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,1)]" />
+          <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[14px] border-t-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,1)] animate-pulse" />
         </div>
         <div className="absolute left-1/2 -translate-x-1/2 bottom-2 z-20 pointer-events-none">
-          <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[12px] border-b-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,1)]" />
+          <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[14px] border-b-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,1)] animate-pulse" />
         </div>
-        {/* Center selection line */}
-        <div className="absolute left-1/2 top-3 bottom-3 w-0.5 -translate-x-1/2 bg-gradient-to-b from-amber-300 via-amber-200 to-amber-300 z-10 pointer-events-none opacity-70 shadow-[0_0_10px_rgba(251,191,36,0.9)]" />
+        {/* Center selection line — pulsa quando ganha */}
+        <div className={`absolute left-1/2 top-3 bottom-3 w-0.5 -translate-x-1/2 bg-gradient-to-b from-amber-300 via-amber-200 to-amber-300 z-10 pointer-events-none opacity-80 shadow-[0_0_12px_rgba(251,191,36,1)] ${showWinFlash ? 'animate-pulse' : ''}`} />
         {/* Edge fades */}
         <div className="absolute inset-y-0 left-0 w-12 z-10 pointer-events-none bg-gradient-to-r from-zinc-950 to-transparent rounded-l-2xl" />
         <div className="absolute inset-y-0 right-0 w-12 z-10 pointer-events-none bg-gradient-to-l from-zinc-950 to-transparent rounded-r-2xl" />
@@ -202,9 +289,10 @@ export default function LuckyNexelPage() {
           >
             {strip.items.map((tile, i) => {
               const r = RARITY_STYLES[tile.rarity];
+              const isWinner = !spinning && showWinFlash && i === strip.winIndex;
               return (
                 <div key={i} className="shrink-0 px-1" style={{ width: TILE_W }}>
-                  <div className={`flex flex-col items-center justify-center h-[94px] rounded-lg border-2 ${r.bg} ${r.border} ${r.glow}`}>
+                  <div className={`flex flex-col items-center justify-center h-[94px] rounded-lg border-2 ${r.bg} ${r.border} ${r.glow} ${isWinner ? 'animate-pulse ring-4 ring-amber-300/80' : ''} transition-all`}>
                     <span className="text-2xl">{tile.emoji}</span>
                     <span className={`mt-0.5 text-[10px] font-heading text-center px-1 leading-tight ${r.text}`}>{tile.short}</span>
                   </div>
@@ -239,6 +327,14 @@ export default function LuckyNexelPage() {
             </div>
           </div>
         )}
+
+        <style>{`
+          @keyframes fadeOut { 0% { opacity: 1 } 100% { opacity: 0 } }
+          @keyframes burst {
+            0% { transform: translate(-50%,-50%) scale(0); opacity: 1 }
+            100% { transform: translate(-50%,-50%) scale(1) translate(var(--dx), var(--dy)); opacity: 0 }
+          }
+        `}</style>
       </div>
 
       {/* PACOTES */}
@@ -341,6 +437,35 @@ export default function LuckyNexelPage() {
           onClose={() => setPix(null)}
           onPaid={() => refreshProfile()}
         />
+      )}
+
+      {winModal && (
+        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          {/* Particle burst */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {Array.from({ length: 28 }).map((_, i) => {
+              const angle = (i / 28) * Math.PI * 2;
+              const dist = 200 + Math.random() * 180;
+              const dx = Math.cos(angle) * dist + 'px';
+              const dy = Math.sin(angle) * dist + 'px';
+              const colors = ['#fbbf24','#f472b6','#a78bfa','#34d399','#60a5fa'];
+              return (
+                <span key={i} className="absolute left-1/2 top-1/2 w-2 h-2 rounded-full"
+                  style={{ background: colors[i % colors.length], boxShadow: `0 0 8px ${colors[i % colors.length]}`, animation: `burst 1.4s ease-out forwards`, ['--dx' as any]: dx, ['--dy' as any]: dy }} />
+              );
+            })}
+          </div>
+          <div className={`relative w-full max-w-sm bg-card border-2 ${RARITY_STYLES[winModal.rarity].border} ${RARITY_STYLES[winModal.rarity].glow} rounded-2xl p-6 text-center space-y-3 animate-scale-in`}>
+            <button onClick={() => setWinModal(null)} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"><X size={18} /></button>
+            <p className="text-[11px] uppercase font-display text-muted-foreground tracking-widest">Você ganhou</p>
+            <div className="text-7xl drop-shadow-[0_0_24px_rgba(251,191,36,0.7)] animate-[bounce_1s_ease-in-out_infinite]">{winModal.emoji}</div>
+            <p className={`font-heading text-xl ${RARITY_STYLES[winModal.rarity].text}`}>{winModal.label}</p>
+            <p className="text-[10px] uppercase text-muted-foreground font-display tracking-widest">{winModal.rarity}</p>
+            <button onClick={() => setWinModal(null)} className="w-full py-2 rounded-lg bg-gradient-to-r from-fuchsia-600 to-rose-600 text-white font-heading text-sm shadow-[0_0_18px_rgba(217,70,239,0.5)]">
+              Continuar
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
