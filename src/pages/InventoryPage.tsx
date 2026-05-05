@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { Package, Palette, Frame, Crown, Sparkles, Check, Gift, Zap, Ticket, Loader2, X } from 'lucide-react';
+import { Package, Palette, Frame, Crown, Sparkles, Check, Gift, Zap, Ticket, Loader2, X, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { NICK_COLORS, FRAMES } from '@/lib/shopData';
 import { RARITY_STYLES, type LuckyRarity } from './lucky/LuckyNexelData';
@@ -69,6 +69,17 @@ export default function InventoryPage() {
     if (!user) return;
     await supabase.from('profiles').update({ frame_id: null }).eq('user_id', user.id);
     toast.success('Moldura removida'); refreshProfile();
+  };
+
+  const equipLucky = async (id: string) => {
+    if (!user) return;
+    await (supabase.from('profiles') as any).update({ equipped_lucky_id: id }).eq('user_id', user.id);
+    toast.success('Equipado no perfil!'); refreshProfile();
+  };
+  const unequipLucky = async () => {
+    if (!user) return;
+    await (supabase.from('profiles') as any).update({ equipped_lucky_id: null }).eq('user_id', user.id);
+    toast.success('Removido do perfil'); refreshProfile();
   };
 
   const openBox = async (invId: string) => {
@@ -179,10 +190,20 @@ export default function InventoryPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {luckyOthers.map(it => {
               const r = RARITY_STYLES[it.rarity] || RARITY_STYLES.common;
+              const isEquipped = (profile as any)?.equipped_lucky_id === it.id;
               return (
-                <div key={it.id} className={`rounded-lg border ${r.border} ${r.bg} p-2.5`}>
+                <div key={it.id} className={`rounded-lg border-2 ${isEquipped ? 'border-amber-300 shadow-[0_0_14px_rgba(251,191,36,0.6)]' : r.border} ${r.bg} p-2.5 space-y-1.5`}>
                   <p className={`font-heading text-xs ${r.text}`}>{it.item_label}</p>
                   <p className="text-[10px] text-muted-foreground font-display uppercase">{it.rarity}</p>
+                  {isEquipped ? (
+                    <button onClick={unequipLucky} className="w-full text-[10px] py-1 rounded bg-destructive/20 text-destructive font-display flex items-center justify-center gap-1">
+                      <X size={10} /> Desequipar
+                    </button>
+                  ) : (
+                    <button onClick={() => equipLucky(it.id)} className="w-full text-[10px] py-1 rounded bg-amber-500/20 text-amber-200 border border-amber-400/40 font-display flex items-center justify-center gap-1">
+                      <Star size={10} /> Equipar
+                    </button>
+                  )}
                 </div>
               );
             })}
