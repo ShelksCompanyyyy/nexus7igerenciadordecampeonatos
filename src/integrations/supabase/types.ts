@@ -999,6 +999,7 @@ export type Database = {
           cw_tickets: number
           deaths: number | null
           email: string
+          equipped_lucky_id: string | null
           frame_id: string | null
           free_spins: number | null
           game_nick: string
@@ -1025,6 +1026,7 @@ export type Database = {
           cw_tickets?: number
           deaths?: number | null
           email: string
+          equipped_lucky_id?: string | null
           frame_id?: string | null
           free_spins?: number | null
           game_nick: string
@@ -1051,6 +1053,7 @@ export type Database = {
           cw_tickets?: number
           deaths?: number | null
           email?: string
+          equipped_lucky_id?: string | null
           frame_id?: string | null
           free_spins?: number | null
           game_nick?: string
