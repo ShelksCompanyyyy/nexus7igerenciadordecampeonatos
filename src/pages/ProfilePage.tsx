@@ -3,9 +3,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { getFrameStyle, getNickColor } from '@/lib/shopData';
 import { EmblemBadges } from '@/components/Emblems';
-import { UserCircle, Copy, Trophy, Target, Zap, Shield, Award, Camera, Edit, Check, X } from 'lucide-react';
+import { UserCircle, Copy, Trophy, Target, Zap, Shield, Award, Camera, Edit, Check, X, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import PromoCodeRedeem from '@/components/PromoCodeRedeem';
+import { RARITY_STYLES, type LuckyRarity } from './lucky/LuckyNexelData';
 
 export default function ProfilePage() {
   const { user, profile, refreshProfile } = useAuth();
@@ -15,6 +16,7 @@ export default function ProfilePage() {
   const [editGameNick, setEditGameNick] = useState('');
   const [editWhatsapp, setEditWhatsapp] = useState('');
   const [trophies, setTrophies] = useState<any[]>([]);
+  const [equippedLucky, setEquippedLucky] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -25,8 +27,15 @@ export default function ProfilePage() {
         .eq('user_id', user.id)
         .order('awarded_at', { ascending: false });
       setTrophies((data as any) || []);
+      const eqId = (profile as any)?.equipped_lucky_id;
+      if (eqId) {
+        const { data: lk } = await supabase.from('lucky_inventory').select('*').eq('id', eqId).maybeSingle();
+        setEquippedLucky(lk);
+      } else {
+        setEquippedLucky(null);
+      }
     })();
-  }, [user]);
+  }, [user, (profile as any)?.equipped_lucky_id]);
 
   if (!user || !profile) return null;
 
@@ -175,6 +184,20 @@ export default function ProfilePage() {
       </div>
 
       <PromoCodeRedeem />
+
+      {equippedLucky && (() => {
+        const r = RARITY_STYLES[(equippedLucky.rarity || 'common') as LuckyRarity];
+        return (
+          <div className={`rounded-xl border-2 ${r.border} ${r.bg} ${r.glow} p-4 flex items-center gap-3`}>
+            <Star className="text-amber-300" size={20} />
+            <div className="flex-1">
+              <p className="text-[10px] uppercase font-display text-muted-foreground tracking-widest">Recompensa em destaque</p>
+              <p className={`font-heading text-base ${r.text}`}>{equippedLucky.item_label}</p>
+              <p className="text-[10px] uppercase text-muted-foreground font-display">{equippedLucky.rarity}</p>
+            </div>
+          </div>
+        );
+      })()}
 
       {trophies.length > 0 && (
         <div className="bg-card rounded-lg border border-gold/40 p-5" style={{ boxShadow: '0 0 16px hsl(45 100% 50% / 0.15)' }}>
