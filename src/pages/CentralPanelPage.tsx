@@ -257,6 +257,40 @@ export default function CentralPanelPage() {
           )}
         </div>
       )}
+
+      {tab === 'discounts' && (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <h3 className="font-heading text-sm text-primary flex items-center gap-2">
+            <Percent size={16} /> DESCONTOS VIP
+          </h3>
+          <p className="text-[11px] text-muted-foreground font-display">
+            Define o desconto (%) aplicado na <b>Loja</b> e nos <b>pacotes da Roleta</b> para usuários com VIP ativo.
+          </p>
+          {!isSuperAdminUser ? (
+            <p className="text-xs text-muted-foreground">Apenas o Criador pode editar.</p>
+          ) : (
+            <>
+              <div>
+                <label className="text-xs font-display text-muted-foreground">Desconto VIP (%) — 0 a 50</label>
+                <input type="number" min={0} max={50} value={vipDiscount} onChange={e => setVipDiscount(Number(e.target.value))}
+                  className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm mt-1" />
+              </div>
+              <button
+                onClick={async () => {
+                  const { error } = await supabase.rpc('set_admin_setting' as any, {
+                    _key: 'vip_discount_percent',
+                    _value: { percent: vipDiscount },
+                  });
+                  if (error) return toast.error(error.message);
+                  toast.success('Desconto VIP salvo');
+                }}
+                className="w-full bg-primary text-primary-foreground py-2 rounded font-heading text-sm flex items-center justify-center gap-1">
+                <Save size={14} /> Salvar desconto
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
