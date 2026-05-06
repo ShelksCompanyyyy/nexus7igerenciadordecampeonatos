@@ -153,7 +153,7 @@ export default function ProfilePage() {
           <div className="mt-3">
             <p className="text-[10px] font-heading text-muted-foreground tracking-widest mb-1.5">🏅 EMBLEMAS</p>
             <div className="flex items-center justify-center">
-              <EmblemBadges ids={profile.badges} size="md" />
+              <EmblemBadges ids={profile.badges} size="md" clickable />
             </div>
           </div>
         )}
