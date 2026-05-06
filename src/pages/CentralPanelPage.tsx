@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { Trophy, Settings, Plus, Trash2, Award, Save, Star, Crown } from 'lucide-react';
+import { Trophy, Settings, Plus, Trash2, Award, Save, Star, Crown, Percent } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Trophy { id: string; name: string; description: string | null; icon: string; color: string; kind: string }
@@ -10,7 +10,7 @@ interface Profile { user_id: string; username: string; game_nick: string }
 interface Team { id: string; name: string; clan_id: string }
 interface Clan { id: string; name: string; owner_id: string }
 
-type Tab = 'trophies' | 'winners' | 'settings';
+type Tab = 'trophies' | 'winners' | 'settings' | 'discounts';
 
 export default function CentralPanelPage() {
   const { user, profile, isSuperAdminUser } = useAuth();
@@ -21,6 +21,7 @@ export default function CentralPanelPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [clans, setClans] = useState<Clan[]>([]);
   const [dailyTickets, setDailyTickets] = useState<number>(3);
+  const [vipDiscount, setVipDiscount] = useState<number>(0);
   const [isClanLeader, setIsClanLeader] = useState(false);
 
   // Trophy form
@@ -36,6 +37,7 @@ export default function CentralPanelPage() {
       supabase.from('teams').select('id,name,clan_id'),
       supabase.from('clans').select('id,name,owner_id'),
       supabase.from('admin_settings').select('*').eq('key', 'daily_cw_tickets').maybeSingle(),
+      supabase.from('admin_settings').select('*').eq('key', 'vip_discount_percent').maybeSingle(),
     ]);
     setTrophies((tr.data as any) || []);
     setWinners((wn.data as any) || []);
@@ -43,6 +45,8 @@ export default function CentralPanelPage() {
     setTeams((tm.data as any) || []);
     setClans((cl.data as any) || []);
     if (st.data) setDailyTickets((st.data as any).value?.count ?? 3);
+    // last item from destructure
+    const stVip = arguments[0]; // unused; replaced below
     if (user && profile?.clan_id) {
       const { data } = await supabase.from('clan_members').select('role').eq('clan_id', profile.clan_id).eq('user_id', user.id).maybeSingle();
       setIsClanLeader(!!data && (data.role === 'leader' || data.role === 'co_leader'));
