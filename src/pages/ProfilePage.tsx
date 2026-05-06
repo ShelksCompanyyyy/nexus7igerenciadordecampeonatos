@@ -199,9 +199,6 @@ export default function ProfilePage() {
         );
       })()}
 
-      {trophies.length > 0 && (() => {
-        return null;
-      })()}
       {trophies.length > 0 && (
         <div className="bg-card rounded-lg border border-gold/40 p-5" style={{ boxShadow: '0 0 16px hsl(45 100% 50% / 0.15)' }}>
           <h3 className="font-heading text-sm text-gold flex items-center gap-2 mb-3">
