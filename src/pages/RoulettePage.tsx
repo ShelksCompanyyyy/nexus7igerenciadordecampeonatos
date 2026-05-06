@@ -239,50 +239,50 @@ export default function LuckyNexelPage() {
     <span className="text-muted-foreground text-xs w-3.5 text-center">{i + 1}</span>;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 animate-slide-up pb-10">
+    <div className="max-w-md mx-auto space-y-3 animate-slide-up pb-8 px-1">
       {/* HERO */}
-      <div className="relative overflow-hidden rounded-2xl border border-fuchsia-500/40 bg-gradient-to-br from-fuchsia-950/80 via-purple-950/70 to-rose-950/80 p-4">
+      <div className="relative overflow-hidden rounded-2xl border border-fuchsia-500/40 bg-gradient-to-br from-fuchsia-950/80 via-purple-950/70 to-rose-950/80 p-3">
         <div className="absolute inset-0 opacity-30 pointer-events-none"
              style={{ backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(168,85,247,0.5), transparent 40%), radial-gradient(circle at 80% 80%, rgba(244,63,94,0.4), transparent 40%)' }} />
-        <div className="relative flex items-center justify-between gap-3">
+        <div className="relative flex items-center justify-between gap-2">
           <div>
-            <h1 className="font-heading text-xl text-fuchsia-200 drop-shadow-[0_0_12px_rgba(217,70,239,0.7)] flex items-center gap-2">
-              <Sparkles className="text-fuchsia-300" size={20} /> LUCKY NEXEL
+            <h1 className="font-heading text-lg text-fuchsia-200 drop-shadow-[0_0_12px_rgba(217,70,239,0.7)] flex items-center gap-1.5">
+              <Sparkles className="text-fuchsia-300" size={16} /> LUCKY NEXEL
             </h1>
-            <p className="text-[10px] text-fuchsia-200/70 font-display">Prêmios em PIX, VIP e cosméticos</p>
+            <p className="text-[9px] text-fuchsia-200/70 font-display">PIX, VIP, visuais & boosts</p>
           </div>
           <div className="text-right">
-            <p className="text-[9px] uppercase text-fuchsia-200/60 font-display">Giros</p>
-            <p className="font-heading text-2xl text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]">{freeSpins}</p>
+            <p className="text-[8px] uppercase text-fuchsia-200/60 font-display">Giros</p>
+            <p className="font-heading text-xl text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]">{freeSpins}</p>
           </div>
         </div>
       </div>
 
       {/* ROULETTE */}
-      <div className="relative bg-gradient-to-b from-zinc-950 to-zinc-900 border border-fuchsia-500/40 rounded-2xl p-3 shadow-[0_0_28px_rgba(168,85,247,0.25)]">
+      <div className="relative bg-gradient-to-b from-zinc-950 to-zinc-900 border border-fuchsia-500/40 rounded-2xl p-2.5 shadow-[0_0_28px_rgba(168,85,247,0.25)]">
         {/* Golden flash overlay quando para */}
         {goldenFlash && (
           <div className="absolute inset-0 z-30 pointer-events-none rounded-2xl"
                style={{ background: 'radial-gradient(circle at center, rgba(251,191,36,0.85), rgba(251,191,36,0) 65%)', animation: 'fadeOut 0.7s ease-out forwards' }} />
         )}
         {/* Mute button */}
-        <button onClick={() => setMuted(m => !m)} className="absolute top-2 right-2 z-30 text-fuchsia-200/70 hover:text-fuchsia-200">
-          {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+        <button onClick={() => setMuted(m => !m)} className="absolute top-1.5 right-1.5 z-30 text-fuchsia-200/70 hover:text-fuchsia-200">
+          {muted ? <VolumeX size={12} /> : <Volume2 size={12} />}
         </button>
         {/* Pointer */}
-        <div className="absolute left-1/2 -translate-x-1/2 top-2 z-20 pointer-events-none">
-          <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[14px] border-t-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,1)] animate-pulse" />
+        <div className="absolute left-1/2 -translate-x-1/2 top-1 z-20 pointer-events-none">
+          <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[12px] border-t-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,1)] animate-pulse" />
         </div>
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-2 z-20 pointer-events-none">
-          <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[14px] border-b-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,1)] animate-pulse" />
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-1 z-20 pointer-events-none">
+          <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[12px] border-b-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,1)] animate-pulse" />
         </div>
         {/* Center selection line — pulsa quando ganha */}
-        <div className={`absolute left-1/2 top-3 bottom-3 w-0.5 -translate-x-1/2 bg-gradient-to-b from-amber-300 via-amber-200 to-amber-300 z-10 pointer-events-none opacity-80 shadow-[0_0_12px_rgba(251,191,36,1)] ${showWinFlash ? 'animate-pulse' : ''}`} />
+        <div className={`absolute left-1/2 top-2 bottom-2 w-0.5 -translate-x-1/2 bg-gradient-to-b from-amber-300 via-amber-200 to-amber-300 z-10 pointer-events-none opacity-80 shadow-[0_0_12px_rgba(251,191,36,1)] ${showWinFlash ? 'animate-pulse' : ''}`} />
         {/* Edge fades */}
-        <div className="absolute inset-y-0 left-0 w-12 z-10 pointer-events-none bg-gradient-to-r from-zinc-950 to-transparent rounded-l-2xl" />
-        <div className="absolute inset-y-0 right-0 w-12 z-10 pointer-events-none bg-gradient-to-l from-zinc-950 to-transparent rounded-r-2xl" />
+        <div className="absolute inset-y-0 left-0 w-8 z-10 pointer-events-none bg-gradient-to-r from-zinc-950 to-transparent rounded-l-2xl" />
+        <div className="absolute inset-y-0 right-0 w-8 z-10 pointer-events-none bg-gradient-to-l from-zinc-950 to-transparent rounded-r-2xl" />
 
-        <div ref={containerRef} className="relative h-[110px] overflow-hidden">
+        <div ref={containerRef} className="relative h-[92px] overflow-hidden">
           <div
             className="flex items-center h-full will-change-transform"
             style={{ transform: `translateX(${offset}px)`, transition }}
@@ -291,10 +291,10 @@ export default function LuckyNexelPage() {
               const r = RARITY_STYLES[tile.rarity];
               const isWinner = !spinning && showWinFlash && i === strip.winIndex;
               return (
-                <div key={i} className="shrink-0 px-1" style={{ width: TILE_W }}>
-                  <div className={`flex flex-col items-center justify-center h-[94px] rounded-lg border-2 ${r.bg} ${r.border} ${r.glow} ${isWinner ? 'animate-pulse ring-4 ring-amber-300/80' : ''} transition-all`}>
-                    <span className="text-2xl">{tile.emoji}</span>
-                    <span className={`mt-0.5 text-[10px] font-heading text-center px-1 leading-tight ${r.text}`}>{tile.short}</span>
+                <div key={i} className="shrink-0 px-0.5" style={{ width: TILE_W }}>
+                  <div className={`flex flex-col items-center justify-center h-[80px] rounded-lg border-2 ${r.bg} ${r.border} ${r.glow} ${isWinner ? 'animate-pulse ring-4 ring-amber-300/80' : ''} transition-all`}>
+                    <span className="text-xl">{tile.emoji}</span>
+                    <span className={`mt-0.5 text-[9px] font-heading text-center px-1 leading-tight ${r.text}`}>{tile.short}</span>
                   </div>
                 </div>
               );
@@ -303,18 +303,18 @@ export default function LuckyNexelPage() {
         </div>
 
         {/* Spin button */}
-        <div className="mt-3 flex flex-col sm:flex-row items-stretch gap-2">
+        <div className="mt-2.5 flex items-stretch gap-2">
           <button
             onClick={spinNow}
             disabled={spinning || freeSpins < 1}
-            className="flex-1 py-2.5 rounded-lg font-heading text-sm text-white bg-gradient-to-r from-fuchsia-600 via-purple-600 to-rose-600 disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(217,70,239,0.55)] flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 rounded-lg font-heading text-sm text-white bg-gradient-to-r from-fuchsia-600 via-purple-600 to-rose-600 disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(217,70,239,0.55)] flex items-center justify-center gap-1.5"
           >
             {spinning
-              ? <><Loader2 className="animate-spin" size={16} /> Girando...</>
-              : <><Sparkles size={16} /> GIRAR ({freeSpins})</>}
+              ? <><Loader2 className="animate-spin" size={14} /> Girando...</>
+              : <><Sparkles size={14} /> GIRAR ({freeSpins})</>}
           </button>
-          <Link to="/wallet" className="px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-400/40 font-heading text-xs text-amber-300 flex items-center justify-center gap-1.5 hover:bg-amber-500/20 transition">
-            <Wallet size={14} /> R$ {Number(wallet).toFixed(2).replace('.', ',')}
+          <Link to="/wallet" className="px-2.5 py-2.5 rounded-lg bg-amber-500/10 border border-amber-400/40 font-heading text-[11px] text-amber-300 flex items-center justify-center gap-1 hover:bg-amber-500/20 transition shrink-0">
+            <Wallet size={12} /> R$ {Number(wallet).toFixed(2).replace('.', ',')}
           </Link>
         </div>
 
