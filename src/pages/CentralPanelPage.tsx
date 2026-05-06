@@ -122,11 +122,11 @@ export default function CentralPanelPage() {
         <Crown size={22} /> CENTRAL DE PREMIAÇÕES
       </h1>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-1.5">
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`py-2.5 rounded font-display text-xs flex items-center justify-center gap-1.5 ${tab === t.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
-            <t.icon size={14} /> {t.label}
+            className={`py-2 rounded font-display text-[11px] flex items-center justify-center gap-1 ${tab === t.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
+            <t.icon size={12} /> {t.label}
           </button>
         ))}
       </div>
