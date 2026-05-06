@@ -30,7 +30,7 @@ export default function CentralPanelPage() {
   const [aForm, setAForm] = useState({ trophy_id: '', user_id: '', team_id: '', clan_id: profile?.clan_id || '', notes: '' });
 
   const load = async () => {
-    const [tr, wn, pf, tm, cl, st] = await Promise.all([
+    const [tr, wn, pf, tm, cl, st, sv] = await Promise.all([
       supabase.from('xtreino_trophies').select('*').order('created_at', { ascending: false }),
       supabase.from('xtreino_winners').select('*').order('awarded_at', { ascending: false }).limit(100),
       supabase.from('profiles').select('user_id,username,game_nick').limit(1000),
@@ -45,8 +45,7 @@ export default function CentralPanelPage() {
     setTeams((tm.data as any) || []);
     setClans((cl.data as any) || []);
     if (st.data) setDailyTickets((st.data as any).value?.count ?? 3);
-    // last item from destructure
-    const stVip = arguments[0]; // unused; replaced below
+    if (sv.data) setVipDiscount((sv.data as any).value?.percent ?? 0);
     if (user && profile?.clan_id) {
       const { data } = await supabase.from('clan_members').select('role').eq('clan_id', profile.clan_id).eq('user_id', user.id).maybeSingle();
       setIsClanLeader(!!data && (data.role === 'leader' || data.role === 'co_leader'));
@@ -114,6 +113,7 @@ export default function CentralPanelPage() {
     { id: 'trophies', label: 'Troféus', icon: Trophy },
     { id: 'winners', label: 'Vencedores', icon: Award },
     { id: 'settings', label: 'Config CW', icon: Settings },
+    { id: 'discounts', label: 'Descontos', icon: Percent },
   ];
 
   return (
