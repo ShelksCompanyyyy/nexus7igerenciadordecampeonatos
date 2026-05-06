@@ -14,16 +14,19 @@ export interface LuckyTile {
 // Tiles alinhados aos códigos retornados pelo RPC `lucky_nexel_spin`.
 export const LUCKY_TILES: LuckyTile[] = [
   { code: 'gold_main',     label: 'NexelGolds',       short: 'Gold',     rarity: 'common',    emoji: '🪙' },
-  { code: 'boost_main',    label: 'Boost 2x (24h)',   short: 'Boost 2x', rarity: 'uncommon',  emoji: '⚡' },
+  { code: 'boost_main',    label: 'Boost +10%',       short: 'Boost',    rarity: 'uncommon',  emoji: '⚡' },
   { code: 'visual_main',   label: 'Item Visual',      short: 'Visual',   rarity: 'rare',      emoji: '🎨' },
-  { code: 'vip_1d',        label: 'VIP 1 Dia',        short: 'VIP 1d',   rarity: 'common',    emoji: '👑' },
-  { code: 'vip_5d',        label: 'VIP 5 Dias',       short: 'VIP 5d',   rarity: 'uncommon',  emoji: '👑' },
-  { code: 'vip_10d',       label: 'VIP 10 Dias',      short: 'VIP 10d',  rarity: 'rare',      emoji: '👑' },
+  { code: 'vip_1h',        label: 'VIP 1h',           short: 'VIP 1h',   rarity: 'common',    emoji: '👑' },
+  { code: 'vip_5h',        label: 'VIP 5h',           short: 'VIP 5h',   rarity: 'uncommon',  emoji: '👑' },
+  { code: 'vip_10h',       label: 'VIP 10h',          short: 'VIP 10h',  rarity: 'rare',      emoji: '👑' },
+  { code: 'vip_24h',       label: 'VIP 24h',          short: 'VIP 24h',  rarity: 'common',    emoji: '👑' },
+  { code: 'vip_3d',        label: 'VIP 3 Dias',       short: 'VIP 3d',   rarity: 'rare',      emoji: '👑' },
+  { code: 'vip_5d',        label: 'VIP 5 Dias',       short: 'VIP 5d',   rarity: 'epic',      emoji: '👑' },
   { code: 'ticket_cw',     label: 'Ticket MatchCW',   short: 'Ticket',   rarity: 'rare',      emoji: '🎟️' },
   { code: 'box_rare',      label: 'Caixa Rara',       short: 'Caixa R',  rarity: 'rare',      emoji: '📦' },
   { code: 'box_epic',      label: 'Caixa Épica',      short: 'Caixa E',  rarity: 'epic',      emoji: '🎁' },
   { code: 'box_legendary', label: 'Caixa Lendária',   short: 'Caixa L',  rarity: 'legendary', emoji: '🏆' },
-  { code: 'pix_main',      label: 'PIX na Carteira',  short: 'PIX',      rarity: 'mythic',    emoji: '💸' },
+  { code: 'pix_real',      label: 'PIX na Carteira',  short: 'PIX',      rarity: 'mythic',    emoji: '💸' },
 ];
 
 export const RARITY_STYLES: Record<LuckyRarity, { bg: string; border: string; glow: string; text: string }> = {
@@ -44,7 +47,7 @@ export const LUCKY_PACKAGES = [
   { id: 'pkg_15', amount: 32.9, spins: 15, bonus: 5, label: '15 + 5 bônus',    tag: 'Melhor valor' },
 ];
 
-export const TILE_W = 92;
+export const TILE_W = 78;
 
 export function tileFromCode(code?: string | null): LuckyTile {
   return LUCKY_TILES.find(t => t.code === code) || LUCKY_TILES[0];

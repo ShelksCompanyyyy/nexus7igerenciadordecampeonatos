@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { Trophy, Settings, Plus, Trash2, Award, Save, Star, Crown } from 'lucide-react';
+import { Trophy, Settings, Plus, Trash2, Award, Save, Star, Crown, Percent } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Trophy { id: string; name: string; description: string | null; icon: string; color: string; kind: string }
@@ -10,7 +10,7 @@ interface Profile { user_id: string; username: string; game_nick: string }
 interface Team { id: string; name: string; clan_id: string }
 interface Clan { id: string; name: string; owner_id: string }
 
-type Tab = 'trophies' | 'winners' | 'settings';
+type Tab = 'trophies' | 'winners' | 'settings' | 'discounts';
 
 export default function CentralPanelPage() {
   const { user, profile, isSuperAdminUser } = useAuth();
@@ -21,6 +21,7 @@ export default function CentralPanelPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [clans, setClans] = useState<Clan[]>([]);
   const [dailyTickets, setDailyTickets] = useState<number>(3);
+  const [vipDiscount, setVipDiscount] = useState<number>(0);
   const [isClanLeader, setIsClanLeader] = useState(false);
 
   // Trophy form
@@ -29,13 +30,14 @@ export default function CentralPanelPage() {
   const [aForm, setAForm] = useState({ trophy_id: '', user_id: '', team_id: '', clan_id: profile?.clan_id || '', notes: '' });
 
   const load = async () => {
-    const [tr, wn, pf, tm, cl, st] = await Promise.all([
+    const [tr, wn, pf, tm, cl, st, sv] = await Promise.all([
       supabase.from('xtreino_trophies').select('*').order('created_at', { ascending: false }),
       supabase.from('xtreino_winners').select('*').order('awarded_at', { ascending: false }).limit(100),
       supabase.from('profiles').select('user_id,username,game_nick').limit(1000),
       supabase.from('teams').select('id,name,clan_id'),
       supabase.from('clans').select('id,name,owner_id'),
       supabase.from('admin_settings').select('*').eq('key', 'daily_cw_tickets').maybeSingle(),
+      supabase.from('admin_settings').select('*').eq('key', 'vip_discount_percent').maybeSingle(),
     ]);
     setTrophies((tr.data as any) || []);
     setWinners((wn.data as any) || []);
@@ -43,6 +45,7 @@ export default function CentralPanelPage() {
     setTeams((tm.data as any) || []);
     setClans((cl.data as any) || []);
     if (st.data) setDailyTickets((st.data as any).value?.count ?? 3);
+    if (sv.data) setVipDiscount((sv.data as any).value?.percent ?? 0);
     if (user && profile?.clan_id) {
       const { data } = await supabase.from('clan_members').select('role').eq('clan_id', profile.clan_id).eq('user_id', user.id).maybeSingle();
       setIsClanLeader(!!data && (data.role === 'leader' || data.role === 'co_leader'));
@@ -110,6 +113,7 @@ export default function CentralPanelPage() {
     { id: 'trophies', label: 'Troféus', icon: Trophy },
     { id: 'winners', label: 'Vencedores', icon: Award },
     { id: 'settings', label: 'Config CW', icon: Settings },
+    { id: 'discounts', label: 'Descontos', icon: Percent },
   ];
 
   return (
@@ -118,11 +122,11 @@ export default function CentralPanelPage() {
         <Crown size={22} /> CENTRAL DE PREMIAÇÕES
       </h1>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-1.5">
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`py-2.5 rounded font-display text-xs flex items-center justify-center gap-1.5 ${tab === t.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
-            <t.icon size={14} /> {t.label}
+            className={`py-2 rounded font-display text-[11px] flex items-center justify-center gap-1 ${tab === t.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
+            <t.icon size={12} /> {t.label}
           </button>
         ))}
       </div>
@@ -248,6 +252,40 @@ export default function CentralPanelPage() {
               </div>
               <button onClick={saveDaily} className="w-full bg-primary text-primary-foreground py-2 rounded font-heading text-sm flex items-center justify-center gap-1">
                 <Save size={14} /> Salvar
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {tab === 'discounts' && (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <h3 className="font-heading text-sm text-primary flex items-center gap-2">
+            <Percent size={16} /> DESCONTOS VIP
+          </h3>
+          <p className="text-[11px] text-muted-foreground font-display">
+            Define o desconto (%) aplicado na <b>Loja</b> e nos <b>pacotes da Roleta</b> para usuários com VIP ativo.
+          </p>
+          {!isSuperAdminUser ? (
+            <p className="text-xs text-muted-foreground">Apenas o Criador pode editar.</p>
+          ) : (
+            <>
+              <div>
+                <label className="text-xs font-display text-muted-foreground">Desconto VIP (%) — 0 a 50</label>
+                <input type="number" min={0} max={50} value={vipDiscount} onChange={e => setVipDiscount(Number(e.target.value))}
+                  className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm mt-1" />
+              </div>
+              <button
+                onClick={async () => {
+                  const { error } = await supabase.rpc('set_admin_setting' as any, {
+                    _key: 'vip_discount_percent',
+                    _value: { percent: vipDiscount },
+                  });
+                  if (error) return toast.error(error.message);
+                  toast.success('Desconto VIP salvo');
+                }}
+                className="w-full bg-primary text-primary-foreground py-2 rounded font-heading text-sm flex items-center justify-center gap-1">
+                <Save size={14} /> Salvar desconto
               </button>
             </>
           )}

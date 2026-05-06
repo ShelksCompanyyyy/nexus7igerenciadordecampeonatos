@@ -153,7 +153,7 @@ export default function ProfilePage() {
           <div className="mt-3">
             <p className="text-[10px] font-heading text-muted-foreground tracking-widest mb-1.5">🏅 EMBLEMAS</p>
             <div className="flex items-center justify-center">
-              <EmblemBadges ids={profile.badges} size="md" />
+              <EmblemBadges ids={profile.badges} size="md" clickable />
             </div>
           </div>
         )}
@@ -206,12 +206,20 @@ export default function ProfilePage() {
           </h3>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {trophies.map((w) => (
-              <div key={w.id} className="border-2 rounded-lg p-2 text-center"
+              <button
+                key={w.id}
+                type="button"
+                onClick={() => {
+                  const desc = w.trophy?.description ? `\n\n${w.trophy.description}` : '';
+                  const note = w.notes ? `\n\nObs: "${w.notes}"` : '';
+                  alert(`${w.trophy?.icon || '🏆'} ${w.trophy?.name || 'Troféu'}${desc}${note}`);
+                }}
+                className="border-2 rounded-lg p-2 text-center hover:scale-105 transition-transform cursor-pointer"
                 style={{ borderColor: (w.trophy?.color || '#FFD700') + '80', boxShadow: `0 0 10px ${w.trophy?.color || '#FFD700'}40` }}>
                 <div className="text-2xl">{w.trophy?.icon || '🏆'}</div>
                 <p className="font-heading text-[10px] mt-1" style={{ color: w.trophy?.color || '#FFD700' }}>{w.trophy?.name}</p>
                 {w.notes && <p className="text-[9px] text-muted-foreground italic mt-1">"{w.notes}"</p>}
-              </div>
+              </button>
             ))}
           </div>
         </div>

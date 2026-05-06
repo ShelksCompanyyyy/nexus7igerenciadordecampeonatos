@@ -327,7 +327,10 @@ export type Database = {
       }
       lucky_boosts: {
         Row: {
+          activated_at: string | null
+          active: boolean
           boost_type: string
+          consumed_at: string | null
           created_at: string
           expires_at: string
           id: string
@@ -335,7 +338,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          activated_at?: string | null
+          active?: boolean
           boost_type: string
+          consumed_at?: string | null
           created_at?: string
           expires_at: string
           id?: string
@@ -343,7 +349,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          activated_at?: string | null
+          active?: boolean
           boost_type?: string
+          consumed_at?: string | null
           created_at?: string
           expires_at?: string
           id?: string
@@ -362,6 +371,9 @@ export type Database = {
           opened: boolean
           opened_at: string | null
           rarity: string
+          sold: boolean
+          sold_at: string | null
+          sold_for: number | null
           user_id: string
         }
         Insert: {
@@ -373,6 +385,9 @@ export type Database = {
           opened?: boolean
           opened_at?: string | null
           rarity?: string
+          sold?: boolean
+          sold_at?: string | null
+          sold_for?: number | null
           user_id: string
         }
         Update: {
@@ -384,6 +399,9 @@ export type Database = {
           opened?: boolean
           opened_at?: string | null
           rarity?: string
+          sold?: boolean
+          sold_at?: string | null
+          sold_for?: number | null
           user_id?: string
         }
         Relationships: []
@@ -1891,6 +1909,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_vip_discount: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1910,8 +1929,10 @@ export type Database = {
         Args: { _team_id: string; _user_id: string }
         Returns: boolean
       }
+      lucky_activate_boost: { Args: { _boost_id: string }; Returns: Json }
       lucky_nexel_spin: { Args: never; Returns: Json }
       lucky_open_box: { Args: { _inv_id: string }; Returns: Json }
+      lucky_sell_visual: { Args: { _inv_id: string }; Returns: Json }
       manage_team_player: {
         Args: { _action: string; _target_user: string; _team_id: string }
         Returns: Json
