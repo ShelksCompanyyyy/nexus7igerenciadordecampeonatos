@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { Package, Palette, Frame, Crown, Sparkles, Check, Gift, Zap, Ticket, Loader2, X, Star } from 'lucide-react';
+import { Package, Palette, Frame, Crown, Sparkles, Check, Gift, Zap, Ticket, Loader2, X, Star, Coins, Info, Power } from 'lucide-react';
 import { toast } from 'sonner';
 import { NICK_COLORS, FRAMES } from '@/lib/shopData';
 import { RARITY_STYLES, type LuckyRarity } from './lucky/LuckyNexelData';
 
 interface ShopInv { id: string; item_id: string; item_category: string; item_name: string | null; acquired_at: string }
 interface LuckyInv { id: string; item_type: string; item_label: string; rarity: LuckyRarity; metadata: any; opened: boolean; acquired_at: string }
-interface BoostRow { id: string; boost_type: string; multiplier: number; expires_at: string }
+interface BoostRow { id: string; boost_type: string; multiplier: number; expires_at: string; active: boolean; activated_at: string | null; consumed_at: string | null }
 interface VipRow { id: string; days: number; expires_at: string }
 interface TicketRow { id: string; used: boolean; acquired_at: string }
 
@@ -36,8 +36,8 @@ export default function InventoryPage() {
     const now = new Date().toISOString();
     const [shop, lucky, bo, vp, tk] = await Promise.all([
       supabase.from('user_inventory').select('*').eq('user_id', user.id).order('acquired_at', { ascending: false }),
-      supabase.from('lucky_inventory').select('*').eq('user_id', user.id).order('acquired_at', { ascending: false }),
-      supabase.from('lucky_boosts').select('*').eq('user_id', user.id).gt('expires_at', now),
+      supabase.from('lucky_inventory').select('*').eq('user_id', user.id).eq('sold' as any, false).order('acquired_at', { ascending: false }),
+      supabase.from('lucky_boosts').select('*').eq('user_id', user.id).gt('expires_at', now).is('consumed_at' as any, null),
       supabase.from('lucky_vips').select('*').eq('user_id', user.id).gt('expires_at', now),
       supabase.from('lucky_tickets').select('*').eq('user_id', user.id).eq('used', false),
     ]);
@@ -46,6 +46,22 @@ export default function InventoryPage() {
     setBoosts((bo.data as any) || []);
     setVips((vp.data as any) || []);
     setTickets((tk.data as any) || []);
+  };
+
+  const sellVisual = async (invId: string, rarity: LuckyRarity) => {
+    if (rarity !== 'common' && rarity !== 'rare') return toast.error('Apenas visuais comuns e raros podem ser vendidos.');
+    if (!confirm(`Vender este visual por ${rarity === 'common' ? 50 : 200} NexelGolds?`)) return;
+    const { data, error } = await supabase.rpc('lucky_sell_visual' as any, { _inv_id: invId });
+    if (error) return toast.error(error.message);
+    toast.success(`+${(data as any)?.gold || 0} NexelGolds`);
+    reload(); refreshProfile();
+  };
+
+  const activateBoost = async (boostId: string) => {
+    const { error } = await supabase.rpc('lucky_activate_boost' as any, { _boost_id: boostId });
+    if (error) return toast.error(error.message);
+    toast.success('Boost ativado! Próximo giro terá +10% de chance de prêmio raro.');
+    reload();
   };
 
   useEffect(() => { reload(); }, [user]);
@@ -130,6 +146,15 @@ export default function InventoryPage() {
   const boxes = luckyItems.filter(i => i.item_type.startsWith('box_') && !i.opened);
   const luckyOthers = luckyItems.filter(i => !i.item_type.startsWith('box_') || i.opened);
 
+  const activeBoosts = boosts.filter(b => b.active);
+  const availableBoosts = boosts.filter(b => !b.active);
+  const activatedToday = boosts.filter(b => {
+    if (!b.activated_at) return false;
+    const d = new Date(b.activated_at);
+    const today = new Date();
+    return d.toDateString() === today.toDateString();
+  }).length;
+
   return (
     <div className="max-w-3xl mx-auto space-y-5 animate-slide-up pb-10">
       <h1 className="text-2xl font-heading text-primary text-glow flex items-center gap-2">
@@ -142,7 +167,7 @@ export default function InventoryPage() {
           <div className="bg-sky-900/30 border border-sky-400/40 rounded-lg p-2.5 text-center">
             <Zap className="mx-auto text-sky-300 mb-1" size={18} />
             <p className="text-[10px] text-muted-foreground font-display">Boosts ativos</p>
-            <p className="font-heading text-sky-200 text-base">{boosts.length}</p>
+            <p className="font-heading text-sky-200 text-base">{activeBoosts.length}/{boosts.length}</p>
           </div>
           <div className="bg-amber-900/30 border border-amber-400/40 rounded-lg p-2.5 text-center">
             <Crown className="mx-auto text-amber-300 mb-1" size={18} />
@@ -153,6 +178,45 @@ export default function InventoryPage() {
             <Ticket className="mx-auto text-fuchsia-300 mb-1" size={18} />
             <p className="text-[10px] text-muted-foreground font-display">Tickets CW</p>
             <p className="font-heading text-fuchsia-200 text-base">{tickets.length}</p>
+          </div>
+        </div>
+      )}
+
+      {/* BOOSTS — gerenciamento */}
+      {boosts.length > 0 && (
+        <div className="bg-card border-2 border-sky-500/40 rounded-xl p-4 space-y-3 shadow-[0_0_18px_rgba(56,189,248,0.2)]">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-heading text-sm text-sky-200 flex items-center gap-2">
+              <Zap size={16} /> BOOSTS ({boosts.length}/6)
+            </h3>
+            <span className="text-[10px] text-sky-300/70 font-display">Hoje: {activatedToday}/2 ativados</span>
+          </div>
+          <div className="bg-sky-950/40 border border-sky-500/30 rounded-lg p-2.5 text-[10px] text-sky-100/90 font-display flex gap-1.5">
+            <Info size={12} className="shrink-0 mt-0.5" />
+            <span>
+              Cada Boost ativo aumenta em <b>+10%</b> a chance de prêmios raros ou superiores no <b>próximo giro</b>.
+              Limite: <b>2 boosters/dia</b> e <b>6 no inventário</b> (excedente vira 100g cada automaticamente).
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {boosts.map(b => (
+              <div key={b.id} className={`rounded-lg border-2 p-2 text-center ${b.active ? 'border-amber-400 bg-amber-900/30 shadow-[0_0_14px_rgba(251,191,36,0.5)]' : 'border-sky-500/40 bg-sky-900/20'}`}>
+                <Zap className={`mx-auto ${b.active ? 'text-amber-300' : 'text-sky-300'}`} size={18} />
+                <p className={`text-[10px] font-heading mt-0.5 ${b.active ? 'text-amber-200' : 'text-sky-200'}`}>+10% raro</p>
+                <p className="text-[9px] text-muted-foreground font-display">
+                  {b.active ? 'ATIVO (próx. giro)' : `Exp: ${new Date(b.expires_at).toLocaleDateString('pt-BR')}`}
+                </p>
+                {!b.active && (
+                  <button
+                    onClick={() => activateBoost(b.id)}
+                    disabled={activatedToday >= 2}
+                    className="mt-1.5 w-full text-[10px] py-1 rounded bg-sky-500 hover:bg-sky-400 text-white font-heading flex items-center justify-center gap-1 disabled:opacity-40"
+                  >
+                    <Power size={10} /> Ativar
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -191,6 +255,9 @@ export default function InventoryPage() {
             {luckyOthers.map(it => {
               const r = RARITY_STYLES[it.rarity] || RARITY_STYLES.common;
               const isEquipped = (profile as any)?.equipped_lucky_id === it.id;
+              const isVisual = it.item_type === 'visual_item';
+              const sellable = isVisual && (it.rarity === 'common' || it.rarity === 'rare');
+              const sellPrice = it.rarity === 'common' ? 50 : 200;
               return (
                 <div key={it.id} className={`rounded-lg border-2 ${isEquipped ? 'border-amber-300 shadow-[0_0_14px_rgba(251,191,36,0.6)]' : r.border} ${r.bg} p-2.5 space-y-1.5`}>
                   <p className={`font-heading text-xs ${r.text}`}>{it.item_label}</p>
@@ -202,6 +269,12 @@ export default function InventoryPage() {
                   ) : (
                     <button onClick={() => equipLucky(it.id)} className="w-full text-[10px] py-1 rounded bg-amber-500/20 text-amber-200 border border-amber-400/40 font-display flex items-center justify-center gap-1">
                       <Star size={10} /> Equipar
+                    </button>
+                  )}
+                  {sellable && !isEquipped && (
+                    <button onClick={() => sellVisual(it.id, it.rarity)}
+                      className="w-full text-[10px] py-1 rounded bg-emerald-500/20 text-emerald-200 border border-emerald-400/40 font-display flex items-center justify-center gap-1">
+                      <Coins size={10} /> Vender ({sellPrice}g)
                     </button>
                   )}
                 </div>
