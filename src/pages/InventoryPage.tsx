@@ -36,8 +36,8 @@ export default function InventoryPage() {
     const now = new Date().toISOString();
     const [shop, lucky, bo, vp, tk] = await Promise.all([
       supabase.from('user_inventory').select('*').eq('user_id', user.id).order('acquired_at', { ascending: false }),
-      supabase.from('lucky_inventory').select('*').eq('user_id', user.id).eq('sold' as any, false).order('acquired_at', { ascending: false }),
-      supabase.from('lucky_boosts').select('*').eq('user_id', user.id).gt('expires_at', now).is('consumed_at' as any, null),
+      (supabase.from('lucky_inventory') as any).select('*').eq('user_id', user.id).eq('sold', false).order('acquired_at', { ascending: false }),
+      (supabase.from('lucky_boosts') as any).select('*').eq('user_id', user.id).gt('expires_at', now).is('consumed_at', null),
       supabase.from('lucky_vips').select('*').eq('user_id', user.id).gt('expires_at', now),
       supabase.from('lucky_tickets').select('*').eq('user_id', user.id).eq('used', false),
     ]);
